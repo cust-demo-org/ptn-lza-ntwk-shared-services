@@ -10,7 +10,7 @@
 ### Session 2026-03-09
 
 - Q: Should the pattern support a "no connectivity" mode where no hub peering or vWAN connection is created? → A: Yes — connectivity is implicit: hub peering is configured via the AVM VNet module's `peerings` map (empty = no peering), and vWAN connections are configured via the `vhub_connectivity_definitions` map (empty = no vWAN). No explicit `connectivity_mode` enum is needed.
-- Q: For NSG default-deny, should the pattern deny inbound only or both inbound and outbound? → A: Deny inbound only (explicit DenyAllInbound rule); outbound controlled by route table + hub firewall.
+- Q: For NSG default-deny, should the pattern deny inbound only or both inbound and outbound? → A: The pattern does not auto-inject any NSG rules. All security rules (including deny rules) are user-defined via the `security_rules` map. An empty map means only Azure's built-in default rules apply. Outbound traffic control is delegated to the route table and hub firewall.
 - Q: Should the pattern be a flat root module or use nested sub-modules? → A: Flat root module — AVM modules already provide the sub-module abstraction; no need for an additional nesting layer.
 - Q: Does the pattern need to create the hub-side peering resource, or only the spoke-side? → A: Configurable — a variable controls whether hub-side peering is also created (default: spoke-side only).
 - Q: When no existing Log Analytics workspace ID is provided, should the pattern create one or fail? → A: Auto-create a workspace by default if no existing ID is provided.
@@ -127,7 +127,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 #### Network Security Groups
 
 - **FR-007**: The pattern MUST provision an NSG for every subnet (unless the subnet type prohibits it, e.g., `AzureBastionSubnet` has specific NSG requirements managed by Bastion AVM).
-- **FR-008**: NSGs MUST enforce a default-deny inbound posture by including an explicit DenyAllInbound rule at priority 4096 (lowest priority, evaluated last). Azure implicit outbound rules are preserved; outbound traffic control is delegated to the route table and hub firewall/NVA. Additional allow rules MUST be configurable via input variables.
+- **FR-008**: NSGs MUST NOT auto-inject any security rules. All security rules are user-defined via the `security_rules` map input variable. An empty `security_rules = {}` map means only Azure's built-in default rules apply. Consumers are responsible for adding deny/allow rules as needed for their security posture.
 
 #### Route Tables & Routes
 
@@ -167,7 +167,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **FR-021**: All inter-resource references within the pattern MUST use Terraform map keys by default (e.g., a Key Vault role assignment references a managed identity by its map key, not a hard-coded resource ID).
 - **FR-022**: Consumers MAY provide an explicit Azure resource ID as a fallback for any reference. When both a map key and explicit resource ID are provided, the explicit resource ID MUST take precedence.
 - **FR-023**: The resource reference pattern distinguishes two cases:
-  - **Internal references** (resources created by this pattern, e.g., managed identities, VNets, NSGs): the input object shape MUST include both a `key` field (string, optional) and an `id` field (string, optional), with a validation rule requiring at least one to be present. Map key is the default; explicit resource ID is the fallback. Field names are domain-specific (e.g., `managed_identity_key` + `principal_id`, `network_security_group_key`). Example:
+  - **Internal references** (resources created by this pattern, e.g., managed identities, VNets, NSGs): the input object shape MUST include both a `key` field (string, optional) and an `id` field (string, optional), with a validation rule requiring exactly one to be set. Map key is the default; explicit resource ID is the fallback. Field names are domain-specific (e.g., `managed_identity_key` + `principal_id`, `network_security_group_key`). Example:
     ```
     resource_ref = {
       key = "identity-app-01"   # resolved via internal map

@@ -202,7 +202,7 @@ variable "network_security_groups" {
     tags = optional(map(string), {})
   }))
   default     = {}
-  description = "Map of NSGs. A DenyAllInbound rule (priority 4096) is always injected. Additional rules are merged from security_rules."
+  description = "Map of NSGs. All security rules are user-defined via the security_rules map. An empty security_rules = {} means only Azure built-in default rules apply. No rules are auto-injected."
 }
 ```
 
@@ -311,7 +311,7 @@ variable "key_vaults" {
   default     = {}
   description = <<-EOT
     Map of Key Vaults. public_network_access_enabled defaults to false (secure-by-default, overrides AVM default of true).
-    Role assignments support the resource reference pattern: provide principal_id directly OR managed_identity_key to resolve from the managed_identities map.
+    Role assignments support two principal reference modes: principal_id accepts the direct principal ID of any identity (MSI, service principal, users); managed_identity_key references a key in the managed_identities map (for identities created within this pattern). Exactly one must be set.
   EOT
 }
 ```
@@ -403,7 +403,9 @@ variable "role_assignments" {
   description = <<-EOT
     Standalone role assignments at arbitrary scopes (not scoped to an AVM-managed resource).
     Uses avm-res-authorization-roleassignment module.
-    principal_id or managed_identity_key must be provided (resource reference pattern applies).
+    principal_id accepts the direct principal ID of any identity (MSI, service principal, users).
+    managed_identity_key references a key in the managed_identities map (for identities created within this pattern).
+    Exactly one must be set.
   EOT
 }
 ```
@@ -417,7 +419,7 @@ variable "role_assignments" {
 | `vhub_connectivity_definitions[*]` | Each entry must set exactly one of `virtual_network.key` or `virtual_network.id` | "Each vhub_connectivity_definition must set exactly one of virtual_network.key or virtual_network.id." |
 | `enable_bastion` + `bastion_configuration` | `bastion_configuration` must be non-null when `enable_bastion = true` | Precondition on Bastion module |
 | `lock.kind` | Must be `CanNotDelete` or `ReadOnly` | Variable validation block |
-| Key Vault `role_assignments` | At least one of `principal_id` or `managed_identity_key` must be set | Precondition |
+| Key Vault `role_assignments` | Exactly one of `principal_id` or `managed_identity_key` must be set | Precondition |
 | `virtual_networks[*].subnets[*]` | Exactly one of `address_prefix` or `address_prefixes` must be set (mutually exclusive) | "Each subnet must define exactly one of address_prefix or address_prefixes, not both." |
 | `enable_bastion` + `bastion_configuration.virtual_network_key` | The referenced VNet must contain a subnet named `AzureBastionSubnet` | "Bastion is enabled but the VNet referenced by bastion_configuration.virtual_network_key does not contain an 'AzureBastionSubnet'." |
 | Key Vault `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Key Vault role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |

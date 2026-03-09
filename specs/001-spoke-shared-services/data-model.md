@@ -87,7 +87,7 @@ Subnets are nested within the Virtual Network entity's `subnets` map.
 | name | `string` | Yes | CAF-generated | NSG name. |
 | resource_group_name | `string` | Yes | Resolved from RG | Resource group name. |
 | location | `string` | Yes | Inherited from RG | Azure region. |
-| security_rules | `map(object)` | No | DenyAllInbound default | Default-deny rule + user-defined rules. |
+| security_rules | `map(object)` | No | `{}` (empty) | User-defined rules only. Empty = Azure defaults only. |
 | diagnostic_settings | `map(object)` | No | Computed | Auto-populated with Log Analytics workspace ID. |
 | lock | `object({kind, name})` | No | `null` | Resource lock via AVM interface. |
 | tags | `map(string)` | No | `{}` | Merged with common tags. |
@@ -109,7 +109,6 @@ Subnets are nested within the Virtual Network entity's `subnets` map.
 | location | `string` | Yes | Inherited from RG | Azure region. |
 | bgp_route_propagation_enabled | `bool` | No | `true` | BGP propagation control. |
 | routes | `map(object)` | No | `{}` | Route definitions. |
-| subnet_resource_ids | `map(string)` | No | `{}` | Subnet associations. |
 | lock | `object({kind, name})` | No | `null` | Resource lock via AVM interface. |
 | tags | `map(string)` | No | `{}` | Merged with common tags. |
 | role_assignments | `map(object)` | No | `{}` | Via AVM interface. |

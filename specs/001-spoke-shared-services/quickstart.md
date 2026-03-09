@@ -11,7 +11,7 @@
    export ARM_SUBSCRIPTION_ID="<your-subscription-id>"
    ```
    Or: `az account set --subscription "<your-subscription-id>"`
-4. **Terraform state backend** pre-provisioned (Azure Storage Account with blob container and state locking)
+4. **Terraform backend** configured (recommended: Azure Storage Account with state locking)
 5. **Existing hub VNet** or **Virtual WAN Hub** resource ID (if connectivity is needed)
 6. **Existing Private DNS Zones** resource IDs (if DNS zone links are needed)
 
@@ -61,22 +61,32 @@ virtual_networks = {
     address_space           = ["10.1.0.0/16"]
     subnets = {
       "snet-app" = {
-        name             = "snet-app"
-        address_prefixes = ["10.1.1.0/24"]
+        name                       = "snet-app"
+        address_prefixes           = ["10.1.1.0/24"]
+        network_security_group_key = "nsg-app"    # optional
+        route_table_key            = "rt-default"  # optional
       }
       "snet-data" = {
-        name             = "snet-data"
-        address_prefixes = ["10.1.2.0/24"]
+        name                       = "snet-data"
+        address_prefixes           = ["10.1.2.0/24"]
+        network_security_group_key = "nsg-data"    # optional
+        route_table_key            = "rt-default"  # optional
+      }
+    }
+    # Omit 'peerings' entirely (or set peerings = {}) and omit vhub_connectivity_definitions for an isolated spoke VNet with no hub connectivity
+    peerings = {
+      "peer-to-hub" = {
+        name                               = "peer-spoke01-to-hub"
+        remote_virtual_network_resource_id = "/subscriptions/<hub-sub>/resourceGroups/<hub-rg>/providers/Microsoft.Network/virtualNetworks/<hub-vnet>"
+        allow_forwarded_traffic            = true  # default: true
+        allow_gateway_transit              = false # default: false
+        allow_virtual_network_access       = true  # default: true
+        use_remote_gateways                = false # default: false
+        create_reverse_peering             = false # default: false — set true to auto-create hub→spoke peering
       }
     }
   }
 }
-
-# --------------------------------------------------------------------------
-# Connectivity (hub peering)
-# --------------------------------------------------------------------------
-connectivity_mode       = "hub_peering"
-hub_virtual_network_id  = "/subscriptions/<hub-sub>/resourceGroups/<hub-rg>/providers/Microsoft.Network/virtualNetworks/<hub-vnet>"
 
 # --------------------------------------------------------------------------
 # Network Security Groups
@@ -85,7 +95,6 @@ network_security_groups = {
   "nsg-app" = {
     name               = "nsg-app"
     resource_group_key = "rg-networking"
-    subnet_keys        = ["vnet-spoke/snet-app"]
     security_rules = {
       "allow-https-inbound" = {
         priority                   = 100
@@ -101,8 +110,7 @@ network_security_groups = {
   "nsg-data" = {
     name               = "nsg-data"
     resource_group_key = "rg-networking"
-    subnet_keys        = ["vnet-spoke/snet-data"]
-    security_rules     = {}
+    security_rules     = {}  # no custom rules — only Azure built-in defaults apply
   }
 }
 
@@ -113,7 +121,6 @@ route_tables = {
   "rt-default" = {
     name               = "rt-default"
     resource_group_key = "rg-networking"
-    subnet_keys        = ["vnet-spoke/snet-app", "vnet-spoke/snet-data"]
     routes = {
       "default-to-firewall" = {
         name                   = "default-to-firewall"
@@ -143,10 +150,12 @@ terraform plan -out=tfplan
 ```
 
 Review the plan output. Verify:
-- Resource group, VNet, subnets, NSGs, route tables, peering are created
-- NSGs have a DenyAllInbound rule at priority 4096
-- No public endpoints are exposed
-- Diagnostic settings route to the Log Analytics workspace
+- Resource group, VNet, subnets, NSGs, route tables, peering are created  <!-- SC-001 -->
+- NSGs are created with user-defined security rules only (no auto-injected rules)  <!-- FR-008 -->
+- No public endpoints are exposed  <!-- SC-003 -->
+- Diagnostic settings route to the Log Analytics workspace  <!-- FR-028 -->
+
+> **Note:** SC-002 (idempotency) is verified in Step 6. SC-004 (quality gates), SC-005 (AVM modules), SC-006 (dual instantiation), and SC-008 (variable descriptions) are verified at CI/review time.
 
 ## Step 5: Apply
 
@@ -172,10 +181,13 @@ Add to `terraform.tfvars`:
 private_dns_zone_links = {
   "blob" = {
     private_dns_zone_id  = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
+    virtual_network_key  = "vnet-spoke"
     registration_enabled = false
+    # resolution_policy  = "Default"  # optional — "Default" or "NxDomainRedirect"
   }
   "sql" = {
     private_dns_zone_id  = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net"
+    virtual_network_key  = "vnet-spoke"
     registration_enabled = false
   }
 }
@@ -194,7 +206,7 @@ virtual_networks = {
       # ... existing subnets ...
       "AzureBastionSubnet" = {
         name             = "AzureBastionSubnet"
-        address_prefixes = ["10.1.255.0/26"]
+        address_prefixes = ["10.1.255.0/26"]  # minimum /26 required by Azure
       }
     }
   }
@@ -210,9 +222,20 @@ bastion_configuration = {
 
 ### Switching to vWAN Connectivity
 
+Instead of (or in addition to) hub VNet peering, connect spoke VNets to a vWAN hub.
+Add to `terraform.tfvars`:
+
 ```hcl
-connectivity_mode = "vwan"
-virtual_hub_id    = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualHubs/<hub-name>"
+vhub_connectivity_definitions = {
+  "vhub-conn-spoke01" = {
+    vhub_resource_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualHubs/<hub-name>"
+    virtual_network = {
+      key = "vnet-spoke"  # references a key in virtual_networks map
+      # id = "/subscriptions/..."  # alternative — use for VNets not managed by this module
+    }
+    internet_security_enabled = true  # default: true — routes internet traffic through hub firewall
+  }
+}
 ```
 
 ### Adding Key Vault with Managed Identity
@@ -232,12 +255,54 @@ key_vaults = {
     role_assignments = {
       "app-secrets-officer" = {
         role_definition_id_or_name = "Key Vault Secrets Officer"
-        principal_id_reference = {
-          key = "identity-app-01"
-        }
+        # principal_id             = "<principal_id>"    # direct principal_id of MSI, service principal, or user
+        managed_identity_key       = "identity-app-01"   # only for referencing MSI created in this pattern
       }
     }
   }
+}
+```
+
+### Standalone Role Assignments
+
+Assign roles at arbitrary scopes (e.g., subscription, resource group) outside of AVM-managed resources:
+
+```hcl
+role_assignments = {
+  "reader-on-rg" = {
+    role_definition_id_or_name = "Reader"
+    scope                      = "/subscriptions/<sub>/resourceGroups/<rg>"
+    managed_identity_key       = "identity-app-01"  # references key in managed_identities map
+    # principal_id             = "<principal_id>"    # alternative — direct principal_id of MSI, service principal, or user
+  }
+}
+```
+
+### Using an Existing Log Analytics Workspace
+
+By default, the module auto-creates a Log Analytics workspace. To use a shared existing workspace instead:
+
+```hcl
+# Point to an existing workspace — skips auto-creation
+log_analytics_workspace_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>"
+```
+
+### Enabling Random Suffixes for Globally-Unique Names
+
+Append a random suffix to globally-unique resources (e.g., Key Vault) to avoid name collisions:
+
+```hcl
+use_random_suffix = true  # default: false
+```
+
+### Enabling Resource Locks
+
+Apply a lock to all root-level AVM-managed resources (does not apply to submodule resources like DNS links or vHub connections):
+
+```hcl
+lock = {
+  kind = "CanNotDelete"  # "CanNotDelete" or "ReadOnly"
+  name = "lock-spoke-networking"
 }
 ```
 

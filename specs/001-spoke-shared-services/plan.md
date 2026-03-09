@@ -48,7 +48,7 @@ The technical approach uses **Azure Verified Modules (AVM)** exclusively — 10 
 | I | Terraform-Only Declarative Infrastructure | **PASS** | All infrastructure in HCL only. No scripts, `null_resource`, `local-exec`, `remote-exec`, or provisioners. Terraform version pinned to `>= 1.13, < 2.0`. Provider versions pinned with `~>`. |
 | II | Azure Verified Modules Exclusive | **PASS** | 10 AVM root modules + 2 AVM submodules cover ALL resource types in scope. Zero exceptions — no direct `azapi_resource` or `azurerm_*` blocks required. `azapi` is a transitive dependency only. See [research.md §1](research.md). |
 | III | Configuration-Driven Reusability | **PASS** | All configuration via `terraform.tfvars`. Variables have explicit types (no `any`), descriptions, and secure defaults. Feature-flags for optional components (`enable_bastion`). Multiple instantiations supported via naming module. See [contracts/variables.md](contracts/variables.md). |
-| IV | Security by Default | **PASS** | NSG default-deny inbound (FR-008). Key Vault public access disabled by default (FR-017). No public endpoints unless opt-in. Diagnostics on all resources. Sensitive values marked `sensitive = true`. Resource locks via AVM interface. |
+| IV | Security by Default | **PASS** | NSG rules fully user-controlled (FR-008). Key Vault public access disabled by default (FR-017). No public endpoints unless opt-in. Diagnostics on all resources. Sensitive values marked `sensitive = true`. Resource locks via AVM interface. |
 | V | Reliability & Determinism | **PASS** | Exact AVM module version pins. No runtime-varying external data. `lifecycle` blocks configurable. Idempotency: consecutive applies with unchanged inputs → zero changes (SC-002). |
 | VI | Tooling-Based Documentation | **PASS** | `terraform-docs` generates all input/output docs. `<!-- BEGIN_TF_DOCS -->` markers in README. CI gate verifies freshness (FR-033–FR-035). |
 | VII | Operability & Observability | **PASS** | All resource IDs, names, and connection-relevant attributes exported as outputs. All outputs have descriptions. CAF naming via `Azure/naming/azurerm`. Common `tags` variable. Log Analytics workspace ID exported. See [contracts/outputs.md](contracts/outputs.md). |
@@ -105,7 +105,7 @@ specs/001-spoke-shared-services/
 | resource group | `name`, `location`, `tags` | `lock`, `role_assignments` |
 | virtual network | `name`, `location`, `address_space`, `subnets`, `peerings`, `tags` | `diagnostic_settings`, `lock`, `role_assignments` |
 | network security group | `name`, `location`, `resource_group_name`, `security_rules`, `tags` | `diagnostic_settings`, `lock`, `role_assignments` |
-| route table | `name`, `location`, `resource_group_name`, `routes`, `subnet_resource_ids`, `tags` | `lock`, `role_assignments` |
+| route table | `name`, `location`, `resource_group_name`, `routes`, `tags` | `lock`, `role_assignments` |
 | key vault | `name`, `location`, `resource_group_name`, `sku_name`, `tags` | `diagnostic_settings`, `lock`, `role_assignments` |
 | bastion host | `name`, `location`, `resource_group_name`, `virtual_network_id`, `tags` | `diagnostic_settings`, `lock` |
 | log analytics workspace | `name`, `location`, `resource_group_name`, `tags` | `lock` |
