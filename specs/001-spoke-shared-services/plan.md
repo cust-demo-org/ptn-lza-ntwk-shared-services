@@ -7,7 +7,7 @@
 
 This pattern implements a reusable Terraform root module for provisioning Azure Application Landing Zone (ALZ) spoke networking and shared services. It deploys spoke virtual networks with subnets, NSGs (default-deny inbound), route tables, VNet peering to a hub VNet or vWAN hub connection, Private DNS Zone links, managed identities, Key Vaults, and optionally Azure Bastion — all with diagnostic settings routed to a Log Analytics workspace.
 
-The technical approach uses **Azure Verified Modules (AVM)** exclusively — 10 root-level AVM modules plus 2 AVM submodules (`private_dns_virtual_network_link` from `avm-res-network-privatednszone`, `virtual-network-connection` from `avm-ptn-alz-connectivity-virtual-wan`) cover every Azure resource type in scope. Zero custom resource blocks are required. A single `connectivity_mode` enum variable controls the connectivity path (`none`, `hub_peering`, `vwan`). All configuration is driven through `terraform.tfvars` with no modifications to `.tf` files required. See [research.md](research.md) for full decision rationale.
+The technical approach uses **Azure Verified Modules (AVM)** exclusively — 10 root-level AVM modules plus 2 AVM submodules (`private_dns_virtual_network_link` from `avm-res-network-privatednszone`, `virtual-network-connection` from `avm-ptn-alz-connectivity-virtual-wan`) cover every Azure resource type in scope. Zero custom resource blocks are required. Hub VNet peering is configured per-VNet via the AVM VNet module's built-in `peerings` map. vWAN hub connections are configured via a `vhub_connectivity_definitions` map variable. Both use the implicit map-based toggle pattern (empty map = disabled). All configuration is driven through `terraform.tfvars` with no modifications to `.tf` files required. See [research.md](research.md) for full decision rationale.
 
 ## Technical Context
 
@@ -90,7 +90,7 @@ specs/001-spoke-shared-services/
 │   │   └── terraform.tfvars
 │   ├── full/            # All features enabled (all user stories)
 │   │   └── terraform.tfvars
-│   └── vwan/            # vWAN connectivity mode (US4)
+│   └── vwan/            # vWAN connectivity via vhub_connectivity_definitions (US4)
 │       └── terraform.tfvars
 └── docs/
     └── decisions/       # ADRs for constitutional exceptions
@@ -117,21 +117,21 @@ specs/001-spoke-shared-services/
 | Submodule | Parent Module | Version | When Used | Key Inputs |
 |---|---|---|---|---|
 | `private_dns_virtual_network_link` | `avm-res-network-privatednszone` | 0.5.0 | When `private_dns_zone_links` is non-empty | `parent_id` (DNS zone ID), `virtual_network_id`, `registration_enabled`, `resolution_policy` |
-| `virtual-network-connection` | `avm-ptn-alz-connectivity-virtual-wan` | 0.13.5 | When `connectivity_mode = "vwan"` | `virtual_network_connections` map: `name`, `virtual_hub_id`, `remote_virtual_network_id`, `internet_security_enabled`, `routing` |
+| `virtual-network-connection` | `avm-ptn-alz-connectivity-virtual-wan` | 0.13.5 | When `vhub_connectivity_definitions` is non-empty | `virtual_network_connections` map: `name`, `virtual_hub_id`, `remote_virtual_network_id`, `internet_security_enabled`, `routing` |
 
 ## Deployment Order
 
 1. Naming module (no Azure calls — pure computation)
 2. Resource groups
 3. Log Analytics workspace (auto-create, or skip if external ID provided)
-4. Virtual networks (including subnets)
-5. Network security groups → associated to subnets via VNet module
-6. Route tables → associated to subnets via `subnet_resource_ids`
-7. VNet peering (via VNet module `peerings`) OR Virtual Hub connection (via `virtual-network-connection` submodule) — conditional on `connectivity_mode`
+4. Network security groups
+5. Route tables
+6. Virtual networks (including subnets referencing NSG/RT IDs, and peering config)
+7. VNet peering (via VNet module `peerings` map, per-VNet) AND/OR Virtual Hub connection (via `virtual-network-connection` submodule, from `vhub_connectivity_definitions`)
 8. Private DNS zone VNet links (via `private_dns_virtual_network_link` submodule)
 9. Managed identities
 10. Key Vaults (with RBAC role assignments referencing managed identities)
-11. Bastion host (optional, requires `AzureBastionSubnet` from step 4)
+11. Bastion host (optional, requires `AzureBastionSubnet` from step 6)
 12. Standalone role assignments (if any)
 
 ## Complexity Tracking

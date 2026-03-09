@@ -30,8 +30,9 @@ output "virtual_networks" {
     name           = mod.name
     address_spaces = mod.address_spaces
     subnets        = mod.subnets
+    peerings       = mod.peerings
   }}
-  description = "Map of VNet keys to their resource IDs, names, address spaces, and subnet details."
+  description = "Map of VNet keys to their resource IDs, names, address spaces, subnet details, and peering details."
 }
 ```
 
@@ -130,8 +131,9 @@ output "bastion" {
 output "log_analytics_workspace" {
   value = {
     resource_id = local.log_analytics_workspace_id
+    name        = split("/", local.log_analytics_workspace_id)[length(split("/", local.log_analytics_workspace_id)) - 1]
   }
-  description = "Log Analytics workspace resource ID (auto-created or externally provided)."
+  description = "Log Analytics workspace resource ID and name (auto-created or externally provided). Name is derived from the resource ID."
 }
 ```
 
@@ -140,11 +142,13 @@ output "log_analytics_workspace" {
 ## Virtual Hub Connection Outputs
 
 ```hcl
-output "virtual_hub_connection" {
-  value = var.connectivity_mode == "vwan" ? {
-    resource_id = module.vnet_conn[0].resource_id
-  } : null
-  description = "Virtual Hub VNet connection resource ID. Null when connectivity_mode is not 'vwan'."
+output "vhub_connections" {
+  value = {
+    for k, v in module.vnet_conn : k => {
+      resource_id = v.resource_id
+    }
+  }
+  description = "Map of Virtual Hub VNet connections, keyed by vhub_connectivity_definitions map key. Empty map when no vWAN connections are configured."
 }
 ```
 
@@ -156,7 +160,7 @@ output "virtual_hub_connection" {
 
 2. **Map keys preserved**: Output map keys match the input variable map keys, enabling consumers to look up resources by the same logical names they used when configuring the pattern.
 
-3. **Null for disabled features**: Optional features (Bastion, vWAN connection) output `null` when disabled, allowing consumers to use conditional logic.
+3. **Empty map for disabled features**: Optional map-based features (vWAN connections) output empty maps `{}` when disabled, consistent with the implicit map-based toggle pattern. Boolean-toggled features (Bastion) output `null` when disabled.
 
 4. **No sensitive outputs**: Resource IDs and names are not sensitive. Secrets (Key Vault values) are never exposed as outputs.
 

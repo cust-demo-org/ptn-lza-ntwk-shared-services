@@ -7,8 +7,8 @@
 ```
 Resource Group 1───* Virtual Network
 Virtual Network 1───* Subnet
-Virtual Network 1───0..1 VNet Peering (hub_peering mode)
-Virtual Network 1───0..1 Virtual Hub Connection (vwan mode)
+Virtual Network 1───0..* VNet Peering (via peerings map)
+Virtual Network 1───0..* Virtual Hub Connection (via vhub_connectivity_definitions)
 Virtual Network 1───* Private DNS Zone Link
 Subnet *───1 Network Security Group
 Subnet *───0..1 Route Table
@@ -66,8 +66,8 @@ Subnets are nested within the Virtual Network entity's `subnets` map.
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | name | `string` | Yes | — | Subnet name. |
-| address_prefix | `string` | Conditional | — | Single CIDR. One of `address_prefix` or `address_prefixes` required. |
-| address_prefixes | `list(string)` | Conditional | — | Multiple CIDRs. |
+| address_prefix | `string` | Conditional | — | Single CIDR. Mutually exclusive with `address_prefixes`; exactly one must be set. |
+| address_prefixes | `list(string)` | Conditional | — | Multiple CIDRs. Mutually exclusive with `address_prefix`; exactly one must be set. |
 | network_security_group | `object({id})` | No | Computed | NSG ID, auto-linked by the pattern. |
 | route_table | `object({id})` | No | Computed | Route table ID, auto-linked by the pattern. |
 | service_endpoints_with_location | `list(object)` | No | `[]` | Service endpoints. |
@@ -94,9 +94,9 @@ Subnets are nested within the Virtual Network entity's `subnets` map.
 | role_assignments | `map(object)` | No | `{}` | Via AVM interface. |
 
 **AVM Module**: `Azure/avm-res-network-networksecuritygroup/azurerm` v0.5.1
-**Map Key**: Derived from VNet key + subnet key (e.g., `"vnet-spoke-01_subnet-app-01"`).
+**Map Key**: User-defined key in `network_security_groups` input variable.
 **Dependencies**: Resource Group.
-**State Transition**: Created → Associated with subnet (via VNet module's `subnets[*].network_security_group.id`).
+**State Transition**: Created as a standalone resource. Association to subnets is defined in `virtual_networks[*].subnets[*].network_security_group_key` (or explicit ID), resolved by the pattern and passed to the VNet module's `subnets[*].network_security_group.id`.
 
 ---
 
@@ -116,7 +116,8 @@ Subnets are nested within the Virtual Network entity's `subnets` map.
 
 **AVM Module**: `Azure/avm-res-network-routetable/azurerm` v0.5.0
 **Map Key**: User-defined key in `route_tables` input variable.
-**Dependencies**: Resource Group. Association with subnets is post-creation via `subnet_resource_ids` or VNet module `subnets[*].route_table.id`.
+**Dependencies**: Resource Group.
+**State Transition**: Created as a standalone resource. Association to subnets is defined in `virtual_networks[*].subnets[*].route_table_key` (or explicit ID), resolved by the pattern and passed to the VNet module's `subnets[*].route_table.id`.
 
 ---
 
@@ -127,15 +128,15 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | name | `string` | Yes | Computed | Peering name. |
-| remote_virtual_network_resource_id | `string` | Yes | From `hub_virtual_network_id` | Hub VNet ID. |
+| remote_virtual_network_resource_id | `string` | Yes | User-provided | Hub VNet ID (from `virtual_networks[*].peerings[*].remote_virtual_network_resource_id`). |
 | allow_forwarded_traffic | `bool` | No | `true` | Allow forwarded traffic. |
 | allow_gateway_transit | `bool` | No | `false` | Allow gateway transit. |
 | use_remote_gateways | `bool` | No | `false` | Use remote gateways. |
-| create_reverse_peering | `bool` | No | `false` | Controlled by `enable_hub_side_peering`. |
+| create_reverse_peering | `bool` | No | `false` | User-configured per peering entry. When true, creates hub-to-spoke reverse peering. |
 | reverse_allow_forwarded_traffic | `bool` | No | `true` | Reverse peering: allow forwarded traffic. |
 | reverse_allow_gateway_transit | `bool` | No | `false` | Reverse peering: allow gateway transit. |
 
-**Condition**: Only populated when `connectivity_mode = "hub_peering"`.
+**Condition**: Only populated when the VNet's `peerings` map is non-empty.
 
 ---
 
@@ -144,13 +145,14 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | name | `string` | Yes | Computed | Connection name. |
-| virtual_hub_id | `string` | Yes | From `virtual_hub_id` input | Virtual Hub resource ID. |
-| remote_virtual_network_id | `string` | Yes | Resolved from VNet | Spoke VNet resource ID. |
+| virtual_hub_id | `string` | Yes | From `vhub_connectivity_definitions[*].vhub_resource_id` | Virtual Hub resource ID. |
+| remote_virtual_network_id | `string` | Yes | Resolved from VNet (via `virtual_network.key` or `virtual_network.id`) | Spoke VNet resource ID. |
 | internet_security_enabled | `bool` | No | `true` | Enable internet security (route through hub firewall). Pattern overrides submodule default of `false`. |
 | routing | `object(...)` | No | `null` | Optional routing config (associated route table, propagated routes, static routes). |
 
 **AVM Module**: `Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm//modules/virtual-network-connection` v0.13.5 (submodule).
-**Condition**: Only created when `connectivity_mode = "vwan"`.
+**Condition**: Only created when `vhub_connectivity_definitions` is non-empty.
+**Map Key**: User-defined key from `vhub_connectivity_definitions` input variable.
 **Dependencies**: Virtual Network.
 
 ---
@@ -159,7 +161,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| name | `string` | Yes | Computed | VNet link name. |
+| name | `string` | Yes | Computed | VNet link name, derived as `dnslink-{DOMAIN_NAME}-{VNET_NAME}` (e.g., `dnslink-privatelink.blob.core.windows.net-vnet-spoke-01`). |
 | parent_id | `string` | Yes | From `private_dns_zone_id` | Existing Private DNS Zone resource ID. |
 | virtual_network_id | `string` | Yes | Resolved from VNet | Spoke VNet resource ID. |
 | registration_enabled | `bool` | No | `false` | Enable auto-registration. |
@@ -268,16 +270,18 @@ resolved_id = coalesce(ref.id, local.resource_map[ref.key].resource_id)
 ## Deployment Order
 
 ```
-1. Resource Groups
-2. Log Analytics Workspace (if auto-created)
-3. Network Security Groups
-4. Route Tables
-5. Virtual Networks (with subnets referencing NSG/RT IDs, and peering config)
-6. Private DNS Zone Links (depends on VNet)
-7. Virtual Hub VNet Connection (depends on VNet, if vwan mode)
-8. User-Assigned Managed Identities
-9. Key Vaults (with role assignments referencing identity principal IDs)
-10. Azure Bastion (depends on VNet AzureBastionSubnet)
+1. Naming module (no Azure calls — pure computation)
+2. Resource Groups
+3. Log Analytics Workspace (if auto-created)
+4. Network Security Groups
+5. Route Tables
+6. Virtual Networks (with subnets referencing NSG/RT IDs, and peering config)
+7. Private DNS Zone Links (depends on VNet)
+8. Virtual Hub VNet Connection (depends on VNet, if vhub_connectivity_definitions is non-empty)
+9. User-Assigned Managed Identities
+10. Key Vaults (with role assignments referencing identity principal IDs)
+11. Azure Bastion (depends on VNet AzureBastionSubnet)
+12. Standalone Role Assignments (if any)
 ```
 
 Dependencies are expressed through Terraform implicit references (resource attributes). Explicit `depends_on` is not needed because:

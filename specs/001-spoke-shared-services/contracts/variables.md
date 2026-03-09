@@ -24,7 +24,7 @@ variable "location" {
 variable "tags" {
   type        = map(string)
   default     = {}
-  description = "Common tags applied to all resources. Per-resource tags are merged on top of these."
+  description = "Common tags applied to all resources that support tagging. Per-resource tags are merged on top of these. Note: vHub connections (azurerm_virtual_hub_connection) do not support tags; this variable is not passed to the vWAN connection submodule."
 }
 ```
 
@@ -47,7 +47,7 @@ variable "lock" {
     name = optional(string, null)
   })
   default     = null
-  description = "Resource lock applied to all resources via AVM module lock interfaces. Set to null to disable. Possible kind values: 'CanNotDelete', 'ReadOnly'."
+  description = "Resource lock applied to AVM root-module resources that expose the lock interface (resource group, VNet, NSG, route table, Key Vault, Bastion, Log Analytics workspace, managed identity). Does not apply to AVM submodule resources (DNS zone VNet links, vHub connections) as those submodules do not implement the lock interface. Set to null to disable. Possible kind values: 'CanNotDelete', 'ReadOnly'."
 
   validation {
     condition     = var.lock == null || contains(["CanNotDelete", "ReadOnly"], var.lock.kind)
@@ -60,73 +60,27 @@ variable "lock" {
 
 ## Connectivity Variables
 
-### `connectivity_mode`
+> **Design Note**: Hub VNet peering is configured per-VNet via the AVM VNet module's `peerings` map within `virtual_networks`. The standalone `connectivity_mode`, `hub_virtual_network_id`, `enable_hub_side_peering`, and `hub_peering_options` variables have been removed. See `virtual_networks[*].peerings` for hub peering configuration.
+
+### `vhub_connectivity_definitions`
 
 ```hcl
-variable "connectivity_mode" {
-  type        = string
-  default     = "none"
-  description = "Hub connectivity mode. 'none' = isolated spoke, 'hub_peering' = VNet peering to a hub VNet, 'vwan' = connection to a Virtual WAN hub."
+variable "vhub_connectivity_definitions" {
+  type = map(object({
+    vhub_resource_id = string
+    virtual_network = object({
+      key = optional(string)
+      id  = optional(string)
+    })
+    internet_security_enabled = optional(bool, true)
+  }))
+  default     = {}
+  description = "Map of vWAN hub connections. Each entry links a spoke VNet to a vWAN hub. Reference the VNet by key (from virtual_networks map) or by resource ID. Empty map = no vWAN connections (implicit toggle). Default internet_security_enabled = true (secure-by-default, routes internet traffic through the hub firewall)."
 
   validation {
-    condition     = contains(["none", "hub_peering", "vwan"], var.connectivity_mode)
-    error_message = "connectivity_mode must be one of: 'none', 'hub_peering', 'vwan'."
+    condition     = alltrue([for k, v in var.vhub_connectivity_definitions : (v.virtual_network.key != null) != (v.virtual_network.id != null)])
+    error_message = "Each vhub_connectivity_definition must set exactly one of virtual_network.key or virtual_network.id."
   }
-}
-```
-
-### `hub_virtual_network_id`
-
-```hcl
-variable "hub_virtual_network_id" {
-  type        = string
-  default     = null
-  description = "Resource ID of the hub VNet. Required when connectivity_mode = 'hub_peering'. Ignored otherwise."
-}
-```
-
-### `enable_hub_side_peering`
-
-```hcl
-variable "enable_hub_side_peering" {
-  type        = bool
-  default     = false
-  description = "When true and connectivity_mode = 'hub_peering', creates the hub-to-spoke reverse peering. Requires write access to the hub VNet."
-}
-```
-
-### `hub_peering_options`
-
-```hcl
-variable "hub_peering_options" {
-  type = object({
-    allow_forwarded_traffic      = optional(bool, true)
-    allow_gateway_transit        = optional(bool, false)
-    use_remote_gateways          = optional(bool, false)
-    allow_virtual_network_access = optional(bool, true)
-  })
-  default     = {}
-  description = "Advanced peering options when connectivity_mode = 'hub_peering'. AVM module defaults apply for any omitted field."
-}
-```
-
-### `virtual_hub_id`
-
-```hcl
-variable "virtual_hub_id" {
-  type        = string
-  default     = null
-  description = "Resource ID of the Virtual WAN Hub. Required when connectivity_mode = 'vwan'. Ignored otherwise."
-}
-```
-
-### `virtual_hub_connection_internet_security_enabled`
-
-```hcl
-variable "virtual_hub_connection_internet_security_enabled" {
-  type        = bool
-  default     = true
-  description = "When true and connectivity_mode = 'vwan', routes internet traffic through the hub firewall. Default: true (secure-by-default)."
 }
 ```
 
@@ -170,6 +124,17 @@ variable "virtual_networks" {
       enforcement = string
     }))
     tags = optional(map(string), {})
+    peerings = optional(map(object({
+      name                                = string
+      remote_virtual_network_resource_id  = string
+      allow_forwarded_traffic             = optional(bool, true)
+      allow_gateway_transit               = optional(bool, false)
+      use_remote_gateways                 = optional(bool, false)
+      allow_virtual_network_access        = optional(bool, true)
+      create_reverse_peering              = optional(bool, false)
+      reverse_allow_forwarded_traffic     = optional(bool, true)
+      reverse_allow_gateway_transit       = optional(bool, false)
+    })), {})
     subnets = optional(map(object({
       name                                = string
       address_prefix                      = optional(string)
@@ -200,7 +165,7 @@ variable "virtual_networks" {
       })), {})
     })), {})
   }))
-  description = "Map of spoke virtual networks. Each entry creates a VNet with optional subnets. Subnets reference NSGs and route tables by map key."
+  description = "Map of spoke virtual networks. Each entry creates a VNet with optional subnets and optional hub peerings via the AVM VNet module's peerings interface. Peerings follow the implicit map-based toggle pattern (empty map = no peering). Subnets reference NSGs and route tables by map key."
 }
 ```
 
@@ -449,9 +414,11 @@ variable "role_assignments" {
 
 | Variable | Rule | Error Message |
 |---|---|---|
-| `connectivity_mode` | Must be `none`, `hub_peering`, or `vwan` | "connectivity_mode must be one of: 'none', 'hub_peering', 'vwan'." |
-| `hub_virtual_network_id` | Must be non-null when `connectivity_mode = "hub_peering"` | Precondition on VNet peering |
-| `virtual_hub_id` | Must be non-null when `connectivity_mode = "vwan"` | Precondition on vWAN connection |
+| `vhub_connectivity_definitions[*]` | Each entry must set exactly one of `virtual_network.key` or `virtual_network.id` | "Each vhub_connectivity_definition must set exactly one of virtual_network.key or virtual_network.id." |
 | `enable_bastion` + `bastion_configuration` | `bastion_configuration` must be non-null when `enable_bastion = true` | Precondition on Bastion module |
 | `lock.kind` | Must be `CanNotDelete` or `ReadOnly` | Variable validation block |
 | Key Vault `role_assignments` | At least one of `principal_id` or `managed_identity_key` must be set | Precondition |
+| `virtual_networks[*].subnets[*]` | Exactly one of `address_prefix` or `address_prefixes` must be set (mutually exclusive) | "Each subnet must define exactly one of address_prefix or address_prefixes, not both." |
+| `enable_bastion` + `bastion_configuration.virtual_network_key` | The referenced VNet must contain a subnet named `AzureBastionSubnet` | "Bastion is enabled but the VNet referenced by bastion_configuration.virtual_network_key does not contain an 'AzureBastionSubnet'." |
+| Key Vault `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Key Vault role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
+| `private_dns_zone_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |

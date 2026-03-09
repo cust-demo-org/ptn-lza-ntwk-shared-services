@@ -58,25 +58,22 @@ No separate peering AVM module exists. The VNet module handles peering natively,
 
 ---
 
-## 3. Connectivity Mode Implementation
+## 3. Connectivity Implementation
 
-### Decision: Use `connectivity_mode` variable with conditional module instantiation
+### Decision: Use implicit map-based toggles for both connectivity paths (no `connectivity_mode` enum)
 
-- `none`: No peering or vWAN resources. `peerings = {}` on VNet module.
-- `hub_peering`: VNet module `peerings` map populated with hub VNet peering config.
-- `vwan`: AVM submodule `virtual-network-connection` from `avm-ptn-alz-connectivity-virtual-wan` for `virtual_hub_connection`.
-
-Enforcement: `connectivity_mode` variable has a validation block restricting to `["none", "hub_peering", "vwan"]`.
-
-Hub peering inputs are conditionally evaluated: when `connectivity_mode != "hub_peering"`, peering-related variables are ignored.
+- **Hub VNet peering**: Configured per-VNet via the AVM VNet module's `peerings` map within `virtual_networks[*].peerings`. Empty map (or omitted) = no peering. Each VNet can peer to a different hub independently.
+- **vWAN connections**: Configured via a `vhub_connectivity_definitions` map variable. Each entry links a spoke VNet to a vWAN hub by specifying `vhub_resource_id` and a VNet reference (`key` or `id`). Empty map = no vWAN connections.
+- **Both can coexist**: A VNet can have hub peering AND a vWAN connection simultaneously if needed.
 
 ### Rationale
 
-Clean separation of concerns; a single enum variable controls the connectivity path. No dead resources are created.
+Aligns with the FR-032 implicit map-based toggle pattern used by other optional features (`private_dns_zone_links`, `managed_identities`, `key_vaults`). Eliminates the `connectivity_mode` enum and its associated standalone variables (`hub_virtual_network_id`, `enable_hub_side_peering`, `hub_peering_options`, `virtual_hub_id`). Per-VNet peering configuration is more flexible — different VNets can peer to different hubs. The `vhub_connectivity_definitions` variable supports multi-hub vWAN scenarios.
 
 ### Alternatives considered
 
-- Separate feature-flag booleans (`enable_hub_peering`, `enable_vwan`): Rejected — mutual exclusivity is harder to enforce with two booleans; a single enum is cleaner (aligns with FR-013/FR-014).
+- Single `connectivity_mode` enum (`none`/`hub_peering`/`vwan`): Rejected — forced mutual exclusivity between peering and vWAN, couldn't handle multi-VNet scenarios, and required standalone variables that felt disconnected from the VNet they applied to.
+- Separate feature-flag booleans (`enable_hub_peering`, `enable_vwan`): Rejected — mutual exclusivity harder to enforce with two booleans, and still wouldn't solve the per-VNet targeting problem.
 
 ---
 
@@ -224,15 +221,16 @@ AVM built-in interfaces handle the lifecycle coupling between the resource and i
 
 ### Decision: Use AVM submodule `virtual-network-connection` from `avm-ptn-alz-connectivity-virtual-wan`
 
-When `connectivity_mode = "vwan"`, the pattern uses the `virtual-network-connection` submodule from `Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm//modules/virtual-network-connection` v0.13.5.
+When `vhub_connectivity_definitions` is non-empty, the pattern uses the `virtual-network-connection` submodule from `Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm//modules/virtual-network-connection` v0.13.5.
 
-The submodule accepts a `virtual_network_connections` map:
+Each entry in `vhub_connectivity_definitions` maps to a submodule instance:
 ```hcl
-virtual_network_connections = {
+vhub_connectivity_definitions = {
   "spoke-to-hub" = {
-    name                      = "conn-spoke-01"
-    virtual_hub_id            = var.virtual_hub_id
-    remote_virtual_network_id = module.virtual_network["spoke"].resource_id
+    vhub_resource_id = "/subscriptions/.../virtualHubs/hub-01"
+    virtual_network = {
+      key = "spoke-01"  # references virtual_networks map key
+    }
     internet_security_enabled = true
   }
 }
