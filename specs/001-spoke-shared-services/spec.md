@@ -5,6 +5,16 @@
 **Status**: Draft
 **Input**: User description: "Create a detailed specification for a highly reusable Terraform pattern implementing Azure ALZ spoke networking and shared services for application workloads."
 
+## Clarifications
+
+### Session 2026-03-09
+
+- Q: Should the pattern support a "no connectivity" mode where no hub peering or vWAN connection is created? → A: Yes — three modes: `none`, `hub_peering`, `vwan`.
+- Q: For NSG default-deny, should the pattern deny inbound only or both inbound and outbound? → A: Deny inbound only (explicit DenyAllInbound rule); outbound controlled by route table + hub firewall.
+- Q: Should the pattern be a flat root module or use nested sub-modules? → A: Flat root module — AVM modules already provide the sub-module abstraction; no need for an additional nesting layer.
+- Q: Does the pattern need to create the hub-side peering resource, or only the spoke-side? → A: Configurable — a variable controls whether hub-side peering is also created (default: spoke-side only).
+- Q: When no existing Log Analytics workspace ID is provided, should the pattern create one or fail? → A: Auto-create a workspace by default if no existing ID is provided.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — Deploy a Minimal Spoke VNet with Peering to Hub (Priority: P1)
@@ -93,6 +103,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - What happens when a consumer enables Bastion but does not configure an `AzureBastionSubnet` CIDR? The pattern MUST fail with a clear validation error (via `variable` validation block or `precondition`).
 - What happens when `terraform apply` is run with no changes to inputs? Zero resource changes MUST be reported (idempotency).
 - What happens when a consumer deploys the same pattern twice in the same subscription with different name prefixes? Both deployments MUST coexist without conflict.
+- What happens when `connectivity_mode = "none"` is set? No peering or vWAN connection resources are created; the spoke VNet exists in isolation. Hub-related input variables are ignored.
 
 ## Requirements *(mandatory)*
 
@@ -116,7 +127,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 #### Network Security Groups
 
 - **FR-007**: The pattern MUST provision an NSG for every subnet (unless the subnet type prohibits it, e.g., `AzureBastionSubnet` has specific NSG requirements managed by Bastion AVM).
-- **FR-008**: NSGs MUST enforce a default-deny baseline posture. Additional allow rules MUST be configurable via input variables.
+- **FR-008**: NSGs MUST enforce a default-deny inbound posture by including an explicit DenyAllInbound rule at the lowest priority. Azure implicit outbound rules are preserved; outbound traffic control is delegated to the route table and hub firewall/NVA. Additional allow rules MUST be configurable via input variables.
 
 #### Route Tables & Routes
 
@@ -126,12 +137,12 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 #### Connectivity — Hub VNet Peering
 
 - **FR-011**: The pattern MUST support VNet peering from the spoke VNet to a hub VNet, configurable via input variables (hub VNet ID or map key reference).
-- **FR-012**: Peering MUST be created in both directions (spoke-to-hub and hub-to-spoke) when hub peering is enabled.
+- **FR-012**: The pattern MUST create the spoke-to-hub peering resource by default. An `enable_hub_side_peering` variable (default: `false`) MUST control whether the hub-to-spoke peering resource is also created. When hub-side peering is enabled, the deployer MUST have write access to the hub VNet.
 
 #### Connectivity — Virtual WAN
 
-- **FR-013**: The pattern MUST support connecting the spoke VNet to a Virtual WAN hub as an alternative to hub VNet peering, selectable via an input variable (connectivity mode).
-- **FR-014**: Only one connectivity mode (hub VNet peering or vWAN) MUST be active at a time; the pattern MUST enforce this via validation.
+- **FR-013**: The pattern MUST support three connectivity modes selectable via a `connectivity_mode` input variable: `none` (no hub connectivity), `hub_peering` (VNet peering to a hub VNet), or `vwan` (connection to a Virtual WAN hub). The default MUST be `none`.
+- **FR-014**: Only one connectivity mode MUST be active at a time; the pattern MUST enforce this via a variable validation rule restricting values to `none`, `hub_peering`, or `vwan`.
 
 #### Private DNS Zone Links
 
@@ -173,7 +184,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 #### Diagnostics & Observability
 
 - **FR-027**: Diagnostic settings MUST be enabled for every resource that supports them. Logs MUST be sent to a Log Analytics workspace.
-- **FR-028**: The Log Analytics workspace MAY be provisioned by this pattern or consumed as an existing resource ID input variable.
+- **FR-028**: The Log Analytics workspace MAY be consumed as an existing resource ID via an input variable. If no existing workspace ID is provided, the pattern MUST auto-create a Log Analytics workspace using the AVM module so that diagnostic settings always have a valid sink.
 
 #### Configuration & Reusability
 
@@ -216,6 +227,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 ## Assumptions
 
+- The pattern is structured as a flat root module (no nested sub-modules). Each Azure resource is already abstracted by its AVM module; an additional sub-module layer is unnecessary.
 - An Azure subscription and appropriate RBAC permissions are available before deployment.
 - A hub VNet or Virtual WAN hub already exists when spoke connectivity is configured.
 - Private DNS Zones already exist (provisioned by a platform team) when DNS zone links are configured.
