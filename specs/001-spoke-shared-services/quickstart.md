@@ -278,6 +278,41 @@ role_assignments = {
 }
 ```
 
+### Enabling Network Watcher Flow Logs
+
+Configure VNet flow logs on an existing Network Watcher (typically auto-created by Azure per region). Add to `terraform.tfvars`:
+
+```hcl
+flowlog_configuration = {
+  network_watcher_id   = "/subscriptions/<sub>/resourceGroups/NetworkWatcherRG/providers/Microsoft.Network/networkWatchers/NetworkWatcher_eastus"
+  network_watcher_name = "NetworkWatcher_eastus"
+  resource_group_name  = "NetworkWatcherRG"
+  # location           = "eastus"  # optional — defaults to module location if omitted
+
+  flow_logs = {
+    "vnet-spoke-flow-log" = {
+      enabled            = true
+      name               = "flowlog-vnet-spoke"
+      target_resource_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
+      storage_account_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage-name>"
+      retention_policy = {
+        days    = 90
+        enabled = true
+      }
+      traffic_analytics = {
+        enabled               = true
+        interval_in_minutes   = 10
+        workspace_id          = "<law-workspace-guid>"
+        workspace_region      = "eastus"
+        workspace_resource_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>"
+      }
+    }
+  }
+}
+```
+
+> **Note**: Set `flowlog_configuration = null` (or omit it entirely) to disable Network Watcher flow logs. The `target_resource_id` should reference the VNet or subnet you want to monitor. The storage account must exist and be in the same region as the Network Watcher.
+
 ### Using an Existing Log Analytics Workspace
 
 By default, the module auto-creates a Log Analytics workspace. To use a shared existing workspace instead:

@@ -160,7 +160,8 @@ convenience in every trade-off decision.
   documented.
 - **Network segmentation:** The spoke network MUST enforce
   segmentation through NSGs and route tables. Default-deny MUST be the baseline posture for all
-  NSGs.
+  NSGs (satisfied by Azure's built-in default rules; the
+  pattern does not auto-inject additional deny rules).
 - **No public exposure by default:** No resource MUST expose a
   public endpoint by default. Public endpoints MUST be opt-in
   via an explicit input variable (e.g.,

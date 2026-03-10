@@ -125,6 +125,35 @@ output "bastion" {
 
 ---
 
+## Network Watcher Outputs
+
+```hcl
+output "network_watcher" {
+  value = var.flowlog_configuration != null ? {
+    resource_id = module.network_watcher[0].resource_id
+    flow_logs   = module.network_watcher[0].resource_flow_log
+  } : null
+  description = "Network Watcher resource ID and flow log details. Null when flowlog_configuration is not provided."
+}
+```
+
+---
+
+## Role Assignment Outputs
+
+```hcl
+output "role_assignments" {
+  value = {
+    for key, mod in module.role_assignment : key => {
+      resource_id = mod.resource_id
+    }
+  }
+  description = "Map of standalone role assignment keys to their resource IDs. Empty map when no standalone role assignments are configured."
+}
+```
+
+---
+
 ## Log Analytics Workspace Outputs
 
 ```hcl
@@ -160,7 +189,7 @@ output "vhub_connections" {
 
 2. **Map keys preserved**: Output map keys match the input variable map keys, enabling consumers to look up resources by the same logical names they used when configuring the pattern.
 
-3. **Empty map for disabled features**: Optional map-based features (vWAN connections) output empty maps `{}` when disabled, consistent with the implicit map-based toggle pattern. Boolean-toggled features (Bastion) output `null` when disabled.
+3. **Empty map for disabled features**: Optional map-based features (vWAN connections, standalone role assignments) output empty maps `{}` when disabled, consistent with the implicit map-based toggle pattern. Boolean-toggled features (Bastion) and implicit-toggle features (Network Watcher) output `null` when disabled.
 
 4. **No sensitive outputs**: Resource IDs and names are not sensitive. Secrets (Key Vault values) are never exposed as outputs.
 

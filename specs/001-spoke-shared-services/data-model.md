@@ -234,6 +234,24 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 
 ---
 
+### Network Watcher (Flow Logs)
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| network_watcher_id | `string` | Yes | — | Resource ID of an existing Network Watcher (typically auto-created by Azure per region). |
+| network_watcher_name | `string` | Yes | — | Name of the existing Network Watcher. |
+| resource_group_name | `string` | Yes | — | Resource group containing the Network Watcher. |
+| location | `string` | Yes | Inherited from var.location | Azure region. |
+| flow_logs | `map(object)` | No | `null` | VNet flow log configurations. Each entry specifies target resource ID, storage account, retention policy, and optional traffic analytics. |
+| lock | `object({kind, name})` | No | `null` | Resource lock via AVM interface. |
+| tags | `map(string)` | No | `{}` | Merged with common tags. |
+
+**AVM Module**: `Azure/avm-res-network-networkwatcher/azurerm` v0.3.2
+**Condition**: Only created when `flowlog_configuration` is non-null.
+**Dependencies**: Virtual Network (for `target_resource_id`), Storage Account (external, for flow log storage).
+
+---
+
 ### Log Analytics Workspace
 
 | Field | Type | Required | Default | Description |
@@ -275,12 +293,13 @@ resolved_id = coalesce(ref.id, local.resource_map[ref.key].resource_id)
 4. Network Security Groups
 5. Route Tables
 6. Virtual Networks (with subnets referencing NSG/RT IDs, and peering config)
-7. Private DNS Zone Links (depends on VNet)
-8. Virtual Hub VNet Connection (depends on VNet, if vhub_connectivity_definitions is non-empty)
-9. User-Assigned Managed Identities
-10. Key Vaults (with role assignments referencing identity principal IDs)
-11. Azure Bastion (depends on VNet AzureBastionSubnet)
-12. Standalone Role Assignments (if any)
+7. Virtual Hub VNet Connection (depends on VNet, if vhub_connectivity_definitions is non-empty)
+8. Private DNS Zone Links (depends on VNet)
+9. Network Watcher flow logs (optional, if flowlog_configuration is non-null)
+10. User-Assigned Managed Identities
+11. Key Vaults (with role assignments referencing identity principal IDs)
+12. Azure Bastion (depends on VNet AzureBastionSubnet)
+13. Standalone Role Assignments (if any)
 ```
 
 Dependencies are expressed through Terraform implicit references (resource attributes). Explicit `depends_on` is not needed because:

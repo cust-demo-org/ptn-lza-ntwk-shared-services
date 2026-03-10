@@ -385,6 +385,51 @@ variable "log_analytics_workspace_configuration" {
 
 ---
 
+## Network Watcher Variables
+
+### `flowlog_configuration`
+
+```hcl
+variable "flowlog_configuration" {
+  type = object({
+    network_watcher_id   = string
+    network_watcher_name = string
+    resource_group_name  = string
+    location             = optional(string)
+    flow_logs = optional(map(object({
+      enabled            = bool
+      name               = string
+      target_resource_id = string
+      retention_policy = object({
+        days    = number
+        enabled = bool
+      })
+      storage_account_id = string
+      traffic_analytics = optional(object({
+        enabled               = bool
+        interval_in_minutes   = optional(number)
+        workspace_id          = string
+        workspace_region      = string
+        workspace_resource_id = string
+      }))
+      version = optional(number)
+    })), null)
+    tags = optional(map(string), {})
+  })
+  default     = null
+  description = <<-EOT
+    Configuration for Network Watcher VNet flow logs using the AVM network watcher module (avm-res-network-networkwatcher v0.3.2).
+    When null (default), no Network Watcher or flow logs are configured.
+    The network_watcher_id, network_watcher_name, and resource_group_name reference the existing Network Watcher
+    (typically auto-created by Azure per region per subscription).
+    flow_logs defines VNet flow log configurations passed through to the AVM module.
+    All settings are consumer-defined; the pattern does not auto-configure any flow log settings.
+  EOT
+}
+```
+
+---
+
 ## Role Assignment Variables
 
 ### `role_assignments`
@@ -422,5 +467,8 @@ variable "role_assignments" {
 | Key Vault `role_assignments` | Exactly one of `principal_id` or `managed_identity_key` must be set | Precondition |
 | `virtual_networks[*].subnets[*]` | Exactly one of `address_prefix` or `address_prefixes` must be set (mutually exclusive) | "Each subnet must define exactly one of address_prefix or address_prefixes, not both." |
 | `enable_bastion` + `bastion_configuration.virtual_network_key` | The referenced VNet must contain a subnet named `AzureBastionSubnet` | "Bastion is enabled but the VNet referenced by bastion_configuration.virtual_network_key does not contain an 'AzureBastionSubnet'." |
+| `log_analytics_workspace_id` + `log_analytics_workspace_configuration` | When `log_analytics_workspace_id` is null, `log_analytics_workspace_configuration` must be non-null (FR-028) | "log_analytics_workspace_configuration must be provided when log_analytics_workspace_id is null, so that a Log Analytics workspace can be auto-created." |
+| Standalone `role_assignments[*]` | Exactly one of `principal_id` or `managed_identity_key` must be set | "Each standalone role assignment must set exactly one of principal_id or managed_identity_key." |
+| Standalone `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Standalone role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
 | Key Vault `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Key Vault role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
 | `private_dns_zone_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |
