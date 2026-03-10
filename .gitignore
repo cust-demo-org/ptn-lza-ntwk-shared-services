@@ -16,11 +16,9 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 
-# Ignore override files as they are usually used to override resources locally and so
-# are not checked in
-override.tf
-override.tf.json
-*_override.tf
+# But DO track the pattern's example/template tfvars files (no secrets — only structure + comments)
+!terraform.tfvars
+!examples/**/terraform.tfvars
 *_override.tf.json
 
 # Ignore transient lock info files created by terraform apply
@@ -35,3 +33,6 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ignore terraform dependency lock file
+.terraform.lock.hcl
