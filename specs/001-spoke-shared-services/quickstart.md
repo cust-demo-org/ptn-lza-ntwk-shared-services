@@ -212,11 +212,13 @@ virtual_networks = {
   }
 }
 
-enable_bastion = true
 bastion_configuration = {
   name               = "bas-spoke-01"
   resource_group_key = "rg-networking"
-  virtual_network_key = "vnet-spoke"
+  sku                = "Standard"  # "Basic", "Standard", "Developer", or "Premium"
+  ip_configuration = {
+    subnet_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/AzureBastionSubnet"
+  }
 }
 ```
 

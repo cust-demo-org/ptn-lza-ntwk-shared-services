@@ -228,7 +228,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | role_assignments | `map(object)` | No | `{}` | Via AVM interface. |
 
 **AVM Module**: `Azure/avm-res-network-bastionhost/azurerm` v0.9.0
-**Condition**: Only created when `enable_bastion = true`.
+**Condition**: Only created when `bastion_configuration != null`.
 **Dependencies**: Virtual Network (AzureBastionSubnet must exist), Resource Group.
 **Validation**: `AzureBastionSubnet` CIDR must be provided when Bastion is enabled.
 

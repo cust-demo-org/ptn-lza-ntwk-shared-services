@@ -115,7 +115,7 @@ output "key_vaults" {
 
 ```hcl
 output "bastion" {
-  value = var.enable_bastion ? {
+  value = var.bastion_configuration != null ? {
     resource_id = module.bastion_host[0].resource_id
     name        = module.bastion_host[0].name
   } : null

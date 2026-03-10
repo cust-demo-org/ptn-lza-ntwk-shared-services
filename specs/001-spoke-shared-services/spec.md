@@ -81,7 +81,7 @@ A platform engineer deploys a spoke VNet connected to an Azure Virtual WAN (vWAN
 
 ### User Story 5 — Deploy Azure Bastion for Spoke Access (Priority: P5)
 
-A platform engineer enables Azure Bastion for secure remote access to VMs in the spoke by setting `enable_bastion = true`. Bastion is deployed into a dedicated `AzureBastionSubnet` within the spoke VNet.
+A platform engineer enables Azure Bastion for secure remote access to VMs in the spoke by providing a `bastion_configuration` object (non-null). Bastion is deployed into a dedicated `AzureBastionSubnet` within the spoke VNet.
 
 **Why this priority**: Bastion is a common but optional component. Many spokes share a hub-deployed Bastion; deploying Bastion per-spoke is less common, so this is lower priority.
 
@@ -89,8 +89,8 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 **Acceptance Scenarios**:
 
-1. **Given** `enable_bastion = true` in `terraform.tfvars`, **When** `terraform apply` is executed, **Then** an `AzureBastionSubnet` is created, a Bastion host is provisioned with diagnostics enabled, and the Bastion SKU defaults to the zone-redundant option.
-2. **Given** `enable_bastion = false` (default), **When** `terraform apply` is executed, **Then** no Bastion resources are created.
+1. **Given** `bastion_configuration` is provided (non-null) in `terraform.tfvars`, **When** `terraform apply` is executed, **Then** a Bastion host is provisioned with diagnostics enabled, and the Bastion SKU defaults to Standard (zone-redundant).
+2. **Given** `bastion_configuration` is omitted or set to `null` (default), **When** `terraform apply` is executed, **Then** no Bastion resources are created.
 
 ---
 
@@ -159,7 +159,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 #### Azure Bastion
 
-- **FR-019**: The pattern MUST support optional deployment of Azure Bastion, controlled by an `enable_bastion` feature-flag variable (default: `false`).
+- **FR-019**: The pattern MUST support optional deployment of Azure Bastion, controlled by `bastion_configuration` (implicit null-toggle — `null` = no Bastion, non-null = deploy). All AVM Bastion module variables MUST be exposed to the consumer.
 - **FR-020**: When Bastion is enabled, an `AzureBastionSubnet` MUST be provisioned and the Bastion SKU MUST default to the zone-redundant option.
 
 #### Resource Referencing & Lookup
@@ -193,7 +193,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **FR-029**: End users MUST only need to edit `terraform.tfvars` to customise the deployment. All `.tf` files MUST be reusable without modification.
 - **FR-030**: All input variables MUST have a descriptive name, explicit type constraint (no `any`), a non-empty `description` attribute, and a secure default value. Sensitive values MUST be marked `sensitive = true`. Note: the current pattern accepts no sensitive inputs (no passwords, connection strings, or secrets); this requirement applies if future variables introduce sensitive values.
 - **FR-031**: Example `.tfvars` files MUST be provided with rich inline comments explaining each variable, its object shape, and why defaults are secure.
-- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Explicit boolean flags** (e.g., `enable_bastion`) for features that involve multiple sub-resources not naturally expressed as a single map; (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `private_dns_zone_links`, `managed_identities`, `key_vaults`, `role_assignments`). The chosen pattern for each feature MUST be documented in the variable description.
+- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Implicit null-toggle** where `null` disables the feature and a non-null object enables it (e.g., `bastion_configuration`, `flowlog_configuration`, `log_analytics_workspace_configuration`); (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `private_dns_zone_links`, `managed_identities`, `key_vaults`, `role_assignments`). The chosen pattern for each feature MUST be documented in the variable description.
 
 #### Documentation
 
@@ -248,7 +248,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 - **SC-001**: A platform engineer can deploy a complete spoke landing zone (VNet, subnets, NSGs, route tables, peering, diagnostics) by editing only `terraform.tfvars` and running `terraform apply`, with no modifications to `.tf` files.
 - **SC-002**: Consecutive `terraform apply` runs with unchanged inputs produce zero resource changes (idempotency verified).
-- **SC-003**: No resource exposes a public endpoint unless an explicit opt-in variable is set to `true`. Azure Bastion's public IP is the expected exception — it is only created when `enable_bastion = true`.
+- **SC-003**: No resource exposes a public endpoint unless an explicit opt-in variable is set. Azure Bastion's public IP is the expected exception — it is only created when `bastion_configuration` is non-null.
 - **SC-004**: All five quality gates (fmt, validate, plan, terraform-docs freshness, lint) pass with zero errors on every PR.
 - **SC-005**: 100% of Azure resources are provisioned via AVM modules (or have documented exceptions with tracking issues).
 - **SC-006**: The pattern can be instantiated twice in the same subscription with different resource names (provided via `terraform.tfvars`) and zero resource conflicts. Differentiation is achieved through user-controlled `name` fields in each resource map — no dedicated `name_prefix` variable is required.
