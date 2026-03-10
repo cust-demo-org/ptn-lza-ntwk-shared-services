@@ -3,6 +3,7 @@ formatter: "markdown document" # this is required
 version: "~> 0.18"
 
 header-from: "_header.md"
+footer-from: "_footer.md"
 
 sections:
   hide: []

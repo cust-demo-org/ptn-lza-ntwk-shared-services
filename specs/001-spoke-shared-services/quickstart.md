@@ -358,7 +358,7 @@ terraform validate
 terraform plan
 
 # 4. Documentation freshness
-terraform-docs markdown table . --output-check
+terraform-docs markdown document . --output-check
 
 # 5. Linting
 tflint --init
