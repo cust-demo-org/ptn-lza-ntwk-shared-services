@@ -1,42 +1,37 @@
 # ──────────────────────────────────────────────────────────────
 # Full Example – All Features Enabled
 # ──────────────────────────────────────────────────────────────
-# Demonstrates every user story and optional feature in a single
-# deployment.  Adjust resource IDs and CIDR ranges for your env.
+# Demonstrates every feature in a single deployment. Dynamic
+# resource IDs (hub VNet, DNS zones, NW, storage, public IP)
+# are computed in main.tf locals from inline resources.
 # ──────────────────────────────────────────────────────────────
 
-location = "australiaeast"
+location = "southeastasia"
 
 tags = {
   Environment = "FullExample"
   ManagedBy   = "Terraform"
   CostCenter  = "12345"
+  Example     = "full"
 }
 
 use_random_suffix = true
-
-lock = {
-  kind = "CanNotDelete"
-  name = "full-example-lock"
-}
 
 # ─── Resource Groups ────────────────────────────────────────
 
 resource_groups = {
   rg_networking = {
-    name = "rg-spoke-networking"
+    name = "rg-spoke-networking-full"
   }
   rg_shared = {
-    name = "rg-spoke-shared-services"
+    name = "rg-spoke-shared-full"
   }
 }
 
 # ─── Log Analytics (auto-create) ────────────────────────────
 
-log_analytics_workspace_id = null
-
 log_analytics_workspace_configuration = {
-  name               = "law-shared-services"
+  name               = "law-shared-full"
   resource_group_key = "rg_shared"
   sku                = "PerGB2018"
   retention_in_days  = 90
@@ -46,7 +41,7 @@ log_analytics_workspace_configuration = {
 
 network_security_groups = {
   nsg_app = {
-    name               = "nsg-app-subnet"
+    name               = "nsg-app-full"
     resource_group_key = "rg_networking"
     security_rules = {
       allow_https_inbound = {
@@ -74,7 +69,7 @@ network_security_groups = {
     }
   }
   nsg_pe = {
-    name               = "nsg-pe-subnet"
+    name               = "nsg-pe-full"
     resource_group_key = "rg_networking"
     security_rules     = {}
   }
@@ -84,7 +79,7 @@ network_security_groups = {
 
 route_tables = {
   rt_default = {
-    name               = "rt-default"
+    name               = "rt-default-full"
     resource_group_key = "rg_networking"
     routes = {
       to_firewall = {
@@ -97,11 +92,12 @@ route_tables = {
   }
 }
 
-# ─── Virtual Networks (US1) ─────────────────────────────────
+# ─── Virtual Networks ───────────────────────────────────────
+# Peering to hub VNet is injected in main.tf using computed hub VNet ID.
 
 virtual_networks = {
   vnet_spoke = {
-    name               = "vnet-spoke-shared"
+    name               = "vnet-spoke-full"
     address_space      = ["10.1.0.0/16"]
     resource_group_key = "rg_networking"
 
@@ -123,48 +119,27 @@ virtual_networks = {
         address_prefix = "10.1.255.0/26"
       }
     }
-
-    peerings = {
-      to_hub = {
-        name                               = "spoke-to-hub"
-        remote_virtual_network_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworks/vnet-hub"
-        allow_forwarded_traffic            = true
-        allow_gateway_transit              = false
-        use_remote_gateways                = false
-      }
-    }
   }
 }
 
-# ─── DNS Zone Links (US2) ───────────────────────────────────
+# private_dns_zone_links — constructed in main.tf with computed DNS zone IDs
 
-private_dns_zone_links = {
-  link_blob = {
-    name                = "link-blob-to-spoke"
-    private_dns_zone_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dns/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
-    virtual_network_key = "vnet_spoke"
-  }
-  link_kv = {
-    name                = "link-kv-to-spoke"
-    private_dns_zone_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dns/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net"
-    virtual_network_key = "vnet_spoke"
-  }
-}
-
-# ─── Managed Identities (US3) ───────────────────────────────
+# ─── Managed Identities ─────────────────────────────────────
 
 managed_identities = {
   mi_app = {
-    name               = "mi-shared-services"
+    name               = "mi-shared-full"
     resource_group_key = "rg_shared"
   }
 }
 
-# ─── Key Vaults (US3) ───────────────────────────────────────
+# ─── Key Vaults ─────────────────────────────────────────────
+# private_endpoints subnet_resource_id and DNS zone IDs are overridden
+# in main.tf locals with computed values from inline resources.
 
 key_vaults = {
   kv_shared = {
-    name               = "kv-shared-svc"
+    name               = "kv-shared-full"
     resource_group_key = "rg_shared"
     sku_name           = "premium"
 
@@ -177,36 +152,27 @@ key_vaults = {
 
     private_endpoints = {
       pe_kv = {
-        subnet_resource_id            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-spoke-networking/providers/Microsoft.Network/virtualNetworks/vnet-spoke-shared/subnets/snet-private-endpoints"
-        private_dns_zone_resource_ids = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-dns/providers/Microsoft.Network/privateDnsZones/privatelink.vaultcore.azure.net"]
+        subnet_resource_id            = "overridden-in-main-tf"
+        private_dns_zone_resource_ids = ["overridden-in-main-tf"]
       }
     }
   }
 }
 
 # ─── Standalone Role Assignments ─────────────────────────────
+# scope is overridden in main.tf locals with computed spoke RG ID.
 
 role_assignments = {
   ra_spoke_reader = {
     role_definition_id_or_name = "Reader"
-    scope                      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-spoke-networking"
+    scope                      = "overridden-in-main-tf"
     managed_identity_key       = "mi_app"
   }
 }
 
-# ─── vWAN Hub Connections (US4) ──────────────────────────────
-
-vhub_connectivity_definitions = {
-  conn_spoke = {
-    vhub_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-connectivity/providers/Microsoft.Network/virtualHubs/vhub-australiaeast"
-    virtual_network = {
-      key = "vnet_spoke"
-    }
-    internet_security_enabled = true
-  }
-}
-
-# ─── Bastion Host (US5) ─────────────────────────────────────
+# ─── Bastion Host ───────────────────────────────────────────
+# ip_configuration.subnet_id and public_ip_address_id are overridden
+# in main.tf locals with computed values from inline resources.
 
 bastion_configuration = {
   resource_group_key = "rg_networking"
@@ -214,7 +180,8 @@ bastion_configuration = {
   zones              = ["1", "2", "3"]
 
   ip_configuration = {
-    subnet_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-spoke-networking/providers/Microsoft.Network/virtualNetworks/vnet-spoke-shared/subnets/AzureBastionSubnet"
+    subnet_id        = "overridden-in-main-tf"
+    create_public_ip = false
   }
 
   copy_paste_enabled     = true
@@ -224,31 +191,36 @@ bastion_configuration = {
   shareable_link_enabled = false
 }
 
-# ─── Network Watcher / Flow Logs (C3) ───────────────────────
-
-flowlog_configuration = {
-  network_watcher_id   = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/NetworkWatcherRG/providers/Microsoft.Network/networkWatchers/NetworkWatcher_australiaeast"
-  network_watcher_name = "NetworkWatcher_australiaeast"
-  resource_group_name  = "NetworkWatcherRG"
-
-  flow_logs = {
-    fl_spoke_vnet = {
-      enabled            = true
-      name               = "fl-spoke-vnet"
-      target_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-spoke-networking/providers/Microsoft.Network/virtualNetworks/vnet-spoke-shared"
-      storage_account_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-shared/providers/Microsoft.Storage/storageAccounts/stflowlogsprod"
-      retention_policy = {
-        enabled = true
-        days    = 90
-      }
-      traffic_analytics = {
-        enabled               = true
-        interval_in_minutes   = 10
-        workspace_id          = "00000000-0000-0000-0000-000000000000"
-        workspace_region      = "australiaeast"
-        workspace_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-shared/providers/Microsoft.OperationalInsights/workspaces/law-shared-services"
-      }
-      version = 2
-    }
-  }
-}
+# ─── Network Watcher / Flow Logs ────────────────────────────
+# NOTE: The AVM network_watcher module performs a data lookup for an existing
+# Network Watcher. Azure auto-creates NetworkWatcher_<region> in
+# NetworkWatcherRG when VNets are deployed. To enable flow logs, first deploy
+# without flowlog_configuration, then uncomment the block below after the
+# auto-created Network Watcher exists.
+#
+# flowlog_configuration = {
+#   network_watcher_id   = "overridden-in-main-tf"
+#   network_watcher_name = "overridden-in-main-tf"
+#   resource_group_name  = "overridden-in-main-tf"
+#
+#   flow_logs = {
+#     fl_spoke_vnet = {
+#       enabled            = true
+#       name               = "fl-spoke-vnet"
+#       target_resource_id = "overridden-in-main-tf"
+#       storage_account_id = "overridden-in-main-tf"
+#       retention_policy = {
+#         enabled = true
+#         days    = 90
+#       }
+#       traffic_analytics = {
+#         enabled               = true
+#         interval_in_minutes   = 10
+#         workspace_id          = "00000000-0000-0000-0000-000000000000"
+#         workspace_region      = "southeastasia"
+#         workspace_resource_id = "overridden-in-main-tf"
+#       }
+#       version = 2
+#     }
+#   }
+# }

@@ -59,10 +59,11 @@ module "resource_group" {
 
   for_each = var.resource_groups
 
-  name     = each.value.name
-  location = coalesce(each.value.location, var.location)
-  tags     = merge(var.tags, each.value.tags)
-  lock     = var.lock
+  name             = each.value.name
+  location         = coalesce(each.value.location, var.location)
+  tags             = merge(var.tags, each.value.tags)
+  lock             = each.value.lock != null ? each.value.lock : var.lock
+  role_assignments = each.value.role_assignments
 }
 
 module "log_analytics_workspace" {
@@ -78,6 +79,8 @@ module "log_analytics_workspace" {
   log_analytics_workspace_retention_in_days = var.log_analytics_workspace_configuration.retention_in_days
   tags                                      = merge(var.tags, var.log_analytics_workspace_configuration.tags)
   lock                                      = var.lock
+  role_assignments                          = var.log_analytics_workspace_configuration.role_assignments
+  private_endpoints                         = var.log_analytics_workspace_configuration.private_endpoints
 }
 
 module "network_security_group" {
@@ -93,6 +96,7 @@ module "network_security_group" {
   diagnostic_settings = local.diagnostic_settings_default
   lock                = var.lock
   tags                = merge(var.tags, each.value.tags)
+  role_assignments    = each.value.role_assignments
 }
 
 module "route_table" {
@@ -121,7 +125,7 @@ module "virtual_network" {
   location      = coalesce(each.value.location, var.location)
   address_space = each.value.address_space
 
-  dns_servers          = each.value.dns_servers
+  dns_servers          = each.value.dns_servers != null ? { dns_servers = each.value.dns_servers } : null
   ddos_protection_plan = each.value.ddos_protection_plan
   encryption           = each.value.encryption
 
@@ -140,6 +144,7 @@ module "virtual_network" {
   diagnostic_settings = local.diagnostic_settings_default
   lock                = var.lock
   tags                = merge(var.tags, each.value.tags)
+  role_assignments    = each.value.role_assignments
 }
 
 module "private_dns_zone_link" {
@@ -167,6 +172,7 @@ module "managed_identity" {
   resource_group_name = local.resource_group_names[each.value.resource_group_key]
   lock                = var.lock
   tags                = merge(var.tags, each.value.tags)
+  role_assignments    = each.value.role_assignments
 }
 
 module "key_vault" {
@@ -258,6 +264,7 @@ module "bastion_host" {
   diagnostic_settings       = local.diagnostic_settings_default
   lock                      = var.lock
   tags                      = merge(var.tags, var.bastion_configuration.tags)
+  role_assignments          = var.bastion_configuration.role_assignments
 }
 
 # ──────────────────────────────────────────────────────────────

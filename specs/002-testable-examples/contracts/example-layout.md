@@ -68,6 +68,11 @@ module "pattern" {
   vhub_connectivity_definitions         = var.vhub_connectivity_definitions
   bastion_configuration                 = var.bastion_configuration
   flowlog_configuration                 = var.flowlog_configuration
+
+  # Examples with inline dependencies MUST include depends_on
+  # to ensure inline resources are created before the pattern module.
+  # Example: depends_on = [ azurerm_virtual_network.hub ]
+  # The minimal/ example has no inline deps and omits depends_on.
 }
 ```
 

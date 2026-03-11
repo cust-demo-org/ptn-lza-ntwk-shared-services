@@ -28,6 +28,7 @@ For each example (`minimal/`, `vnet_hub/`, `vwan_hub/`, `full/`):
    - Naming module
    - Inline dependencies (scenario-specific)
    - Pattern module call passing all variables
+   - `depends_on` on pattern module referencing inline dependencies (when applicable)
 4. Create/update `terraform.tfvars` with scenario overrides
 5. Create `_header.md` with example description
 

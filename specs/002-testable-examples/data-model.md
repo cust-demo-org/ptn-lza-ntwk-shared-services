@@ -34,7 +34,7 @@ Each example's `variables.tf` mirrors the root module's 17+ variables. All have 
 | `location` | ✅ | ✅ | ✅ | ✅ | `"australiaeast"` |
 | `tags` | ✅ | ✅ | ✅ | ✅ | `{}` |
 | `use_random_suffix` | ❌ | ❌ | ❌ | ✅ | `false` |
-| `lock` | ❌ | ❌ | ❌ | ✅ | `null` |
+| `lock` | ❌ | ❌ | ❌ | ❌ | `null` |
 | `resource_groups` | ✅ | ✅ | ✅ | ✅ | `{}` |
 | `log_analytics_workspace_id` | ❌ | ❌ | ❌ | ❌ | `null` |
 | `log_analytics_workspace_configuration` | ✅ | ✅ | ✅ | ✅ | `null` |
@@ -67,7 +67,7 @@ module "pattern" (source = "../..") — the module under test
 module "naming"
 azurerm_resource_group — hub RG (separate from spoke)
 azurerm_virtual_network — hub VNet (peering target)
-module "pattern"
+module "pattern" — depends_on = [ azurerm_virtual_network.hub ]
 ```
 
 ### vwan_hub/
@@ -76,7 +76,7 @@ module "naming"
 azurerm_resource_group — connectivity RG
 azurerm_virtual_wan
 azurerm_virtual_hub
-module "pattern"
+module "pattern" — depends_on = [ azurerm_virtual_hub.main ]
 ```
 
 ### full/
@@ -88,7 +88,7 @@ azurerm_private_dns_zone — for private_dns_zone_links
 azurerm_network_watcher — for flow log configuration
 azurerm_public_ip — for Bastion
 azurerm_storage_account — for flow log storage
-module "pattern"
+module "pattern" — depends_on = [ azurerm_virtual_network.hub, azurerm_private_dns_zone.blob, azurerm_private_dns_zone.kv, azurerm_public_ip.bastion, azurerm_storage_account.flowlog ]
 ```
 
 **Note**: The hub resource group is created inline only for examples that need external dependencies (hub VNet, vWAN, etc.). The spoke's resource groups are created by the pattern module itself.

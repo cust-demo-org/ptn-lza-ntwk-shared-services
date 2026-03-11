@@ -1,23 +1,25 @@
 # --------------------------------------------------------------------------
-# Spoke VNet connected to a Virtual WAN Hub
+# vWAN Hub Connectivity Example
 # --------------------------------------------------------------------------
-# This example creates a spoke VNet and connects it to a vWAN hub instead of
-# using traditional hub VNet peering. Set internet_security_enabled = true
-# (default) to route internet traffic through the hub firewall.
+# Deploys a spoke VNet and connects it to an inline vWAN Hub (created in
+# main.tf) instead of using traditional VNet peering.
+# vhub_connectivity_definitions is constructed dynamically in main.tf.
 # --------------------------------------------------------------------------
 
-location = "uksouth"
+location = "southeastasia"
 tags = {
-  environment = "dev"
-  project     = "landing-zone-spoke-vwan"
+  Environment = "dev"
+  Project     = "spoke-vwan-hub"
+  ManagedBy   = "terraform"
+  Example     = "vwan_hub"
 }
 
 # --------------------------------------------------------------------------
 # Resource Groups
 # --------------------------------------------------------------------------
 resource_groups = {
-  "rg-networking" = {
-    name = "rg-spoke-networking"
+  rg_networking = {
+    name = "rg-spoke-networking-vwanhub"
   }
 }
 
@@ -25,19 +27,20 @@ resource_groups = {
 # Log Analytics (auto-create for diagnostics)
 # --------------------------------------------------------------------------
 log_analytics_workspace_configuration = {
-  resource_group_key = "rg-networking"
+  name               = "law-spoke-vwanhub"
+  resource_group_key = "rg_networking"
 }
 
 # --------------------------------------------------------------------------
 # Network Security Groups
 # --------------------------------------------------------------------------
 network_security_groups = {
-  "nsg-app" = {
-    name               = "nsg-app"
-    resource_group_key = "rg-networking"
+  nsg_app = {
+    name               = "nsg-app-vwanhub"
+    resource_group_key = "rg_networking"
     security_rules = {
-      "allow-https-inbound" = {
-        name                       = "allow-https-inbound"
+      allow_https_inbound = {
+        name                       = "AllowHttpsInbound"
         priority                   = 100
         direction                  = "Inbound"
         access                     = "Allow"
@@ -55,11 +58,11 @@ network_security_groups = {
 # Route Tables
 # --------------------------------------------------------------------------
 route_tables = {
-  "rt-default" = {
-    name               = "rt-default"
-    resource_group_key = "rg-networking"
+  rt_default = {
+    name               = "rt-default-vwanhub"
+    resource_group_key = "rg_networking"
     routes = {
-      "default-to-firewall" = {
+      to_firewall = {
         name                   = "default-to-firewall"
         address_prefix         = "0.0.0.0/0"
         next_hop_type          = "VirtualAppliance"
@@ -70,33 +73,23 @@ route_tables = {
 }
 
 # --------------------------------------------------------------------------
-# Virtual Networks — no peerings block (connectivity via vWAN instead)
+# Virtual Networks — no peerings (connectivity via vWAN instead)
 # --------------------------------------------------------------------------
 virtual_networks = {
-  "vnet-spoke" = {
-    name               = "vnet-spoke-01"
-    resource_group_key = "rg-networking"
+  vnet_spoke = {
+    name               = "vnet-spoke-vwanhub"
+    resource_group_key = "rg_networking"
     address_space      = ["10.1.0.0/16"]
     subnets = {
-      "snet-app" = {
+      snet_app = {
         name                       = "snet-app"
         address_prefixes           = ["10.1.1.0/24"]
-        network_security_group_key = "nsg-app"
-        route_table_key            = "rt-default"
+        network_security_group_key = "nsg_app"
+        route_table_key            = "rt_default"
       }
     }
   }
 }
 
-# --------------------------------------------------------------------------
-# vWAN Hub Connectivity — connect the spoke VNet to a vWAN hub
-# --------------------------------------------------------------------------
-vhub_connectivity_definitions = {
-  "vhub-conn-spoke01" = {
-    vhub_resource_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualHubs/<hub-name>"
-    virtual_network = {
-      key = "vnet-spoke" # references a key in virtual_networks map
-    }
-    internet_security_enabled = true # routes internet traffic through hub firewall
-  }
-}
+# vhub_connectivity_definitions is constructed in main.tf using the
+# computed azurerm_virtual_hub.main.id — see locals in main.tf.

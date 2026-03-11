@@ -68,21 +68,21 @@ examples/
 │   └── README.md        # terraform-docs generated
 ├── vnet_hub/
 │   ├── terraform.tf
-│   ├── main.tf          # RG + naming + hub VNet + pattern module call (with peering)
+│   ├── main.tf          # RG + naming + hub VNet + pattern module call (with peering, depends_on hub VNet)
 │   ├── variables.tf
 │   ├── terraform.tfvars # Hub peering scenario overrides
 │   ├── _header.md
 │   └── README.md
 ├── vwan_hub/            # Renamed from vwan/
 │   ├── terraform.tf
-│   ├── main.tf          # RG + naming + vWAN + vHub + pattern module call
+│   ├── main.tf          # RG + naming + vWAN + vHub + pattern module call (depends_on vHub)
 │   ├── variables.tf
 │   ├── terraform.tfvars # vWAN hub connectivity overrides
 │   ├── _header.md
 │   └── README.md
 └── full/
     ├── terraform.tf
-    ├── main.tf          # RG + naming + hub VNet + DNS zone + NW + public IP + pattern module call (all features)
+    ├── main.tf          # RG + naming + hub VNet + DNS zone + NW + public IP + pattern module call (all features, depends_on inline resources)
     ├── variables.tf
     ├── terraform.tfvars # All-features overrides
     ├── _header.md

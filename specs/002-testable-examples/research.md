@@ -134,6 +134,8 @@ variable "resource_groups" {
 | `vwan_hub/` | `azurerm_virtual_wan`, `azurerm_virtual_hub` | vHub connectivity target |
 | `full/` | `azurerm_virtual_network` (hub), `azurerm_private_dns_zone`, `azurerm_network_watcher` (if not auto-created), `azurerm_public_ip`, `azurerm_storage_account` | All feature dependencies |
 
+**`depends_on` requirement**: When inline `azurerm_*` resources are referenced by the pattern module (via computed IDs passed through locals), the `module "pattern"` block **must** include an explicit `depends_on` listing all inline resources it depends on. This ensures Terraform creates the inline resources before the pattern module attempts to use their IDs. Examples: `depends_on = [ azurerm_virtual_network.hub ]` (vnet_hub), `depends_on = [ azurerm_virtual_hub.main ]` (vwan_hub), and the full list for `full/`. The `minimal/` example has no inline dependencies and does not need `depends_on`.
+
 **Note**: Using `azurerm_*` for inline deps (not AVM) is acceptable per Constitution Principle II exemption: "Custom resource blocks are permitted ONLY when no AVM module exists for the resource type AND the omission is documented." In the examples context, these are ephemeral test dependencies, not pattern infrastructure. However, `azurerm_resource_group` could be replaced by an AVM naming call + the pattern module creating the RG. The decision here is that **the RG is created by the pattern module itself** (via the `resource_groups` variable), so examples only deploy resources the pattern does NOT create.
 
 **Rationale**: Inline `azurerm_*` resources are simpler, faster, and avoid AVM module version management for ephemeral test infrastructure.
