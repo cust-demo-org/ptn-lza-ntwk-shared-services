@@ -65,7 +65,7 @@ Each example deploys the absolute minimum set of supporting Azure resources (e.g
 
 **Acceptance Scenarios**:
 
-1. **Given** the `examples/minimal/` example, **When** reviewing dependencies, **Then** only a resource group (and naming module) are created outside the pattern module call.
+1. **Given** the `examples/minimal/` example, **When** reviewing dependencies, **Then** only the naming module and pattern module call are present — no inline `azurerm_*` resources (resource groups are created by the pattern module via the `resource_groups` variable).
 2. **Given** the `examples/vnet_hub/` example, **When** reviewing dependencies, **Then** only a resource group, a hub VNet (to peer with), and naming module are created outside the pattern module call.
 3. **Given** the `examples/vwan_hub/` example, **When** reviewing dependencies, **Then** only a resource group, vWAN, vHub, and naming module are created outside the pattern module call.
 4. **Given** any example, **When** counting resources outside the module call, **Then** the count is the bare minimum required for the scenario (no luxury extras).
@@ -94,7 +94,7 @@ Examples should run with zero required input variables. All variables declared i
 - How are dummy resource IDs handled for resources that reference external infrastructure (e.g., hub VNet peering targets)? — Examples deploy dependencies inline (e.g., a hub VNet to peer with). Syntactically valid but non-existent resource IDs will fail plan with provider-level validation errors, so they must be avoided.
 - What about the vnet_hub example's hub VNet dependency? — The vnet_hub example deploys its own `azurerm_virtual_network` (hub VNet) inline for the spoke to peer with.
 - What about the vwan_hub example's dependency on a vHub? — The vwan_hub example deploys its own `azurerm_virtual_wan` and `azurerm_virtual_hub` resources inline before calling the module.
-- What about `flowlog_configuration` which references an external Network Watcher? — The full example deploys an `azurerm_network_watcher` inline to satisfy the dependency.
+- What about `flowlog_configuration` which references an external Network Watcher and storage? — The full example deploys an `azurerm_network_watcher` and an `azurerm_storage_account` inline to satisfy the flow log dependencies.
 - What about `bastion_configuration` which needs a public IP and subnet? — The full example deploys the AzureBastionSubnet within the VNet and an `azurerm_public_ip` inline.
 - What about `private_dns_zone_links` which reference external Private DNS Zones? — The example deploys an `azurerm_private_dns_zone` inline to satisfy the reference.
 - Should `.terraform.lock.hcl` files be committed in examples? — No. Lock files are gitignored in example directories. Exact provider version pins (FR-018) provide version reproducibility; lock file hash verification adds cross-platform friction without meaningful benefit.
@@ -119,7 +119,7 @@ Examples should run with zero required input variables. All variables declared i
 
 ### Functional Requirements
 
-- **FR-001**: Each example directory MUST be a self-contained Terraform root module with its own `terraform.tf` (or `versions.tf`), `main.tf`, `variables.tf`, and `terraform.tfvars`.
+- **FR-001**: Each example directory MUST be a self-contained Terraform root module with its own `terraform.tf`, `main.tf`, `variables.tf`, and `terraform.tfvars`.
 - **FR-002**: Each example MUST declare its own `required_providers` block with version constraints compatible with the root module.
 - **FR-003**: Each example MUST include a `provider "azurerm"` configuration block with `features {}`.
 - **FR-004**: Each example MUST call the pattern module using `source = "../.."`.
@@ -127,10 +127,10 @@ Examples should run with zero required input variables. All variables declared i
 - **FR-006**: Each example MUST have zero required input variables — all variables in `variables.tf` MUST have default values so that `terraform plan` works with no flags. Scenario-specific values are provided via `terraform.tfvars` which overrides the defaults.
 - **FR-007**: Each example MUST use the naming module (`Azure/naming/azurerm`) pinned to an exact version (e.g., `0.4.3`) to generate unique resource names, ensuring parallel deployments do not collide.
 - **FR-008**: Each example MUST pass `terraform fmt -check` and `terraform validate` cleanly.
-- **FR-009**: Each example's `terraform.tfvars` serves as the primary value source for that scenario, providing the concrete values that override `variables.tf` defaults. The `variables.tf` exposes all pattern module variables (with defaults) and `terraform.tfvars` provides example-specific overrides.
+- **FR-009**: Each example's `terraform.tfvars` serves as the primary value source for that scenario, providing the concrete values that override `variables.tf` defaults.
 - **FR-010**: Each example SHOULD include a `_header.md` file describing what the example demonstrates, following the AVM documentation convention.
 - **FR-011**: The `examples/minimal/` example MUST exercise the minimum viable configuration of the pattern module (resource groups, VNet without peering, NSGs, route tables, Log Analytics). Peering and other advanced features are excluded from minimal.
-- **FR-012**: The `examples/full/` example MUST exercise all optional features of the pattern module (Bastion, Key Vault, managed identities, role assignments, flow logs, DNS zone links) by deploying the necessary dependencies inline.
+- **FR-012**: The `examples/full/` example MUST exercise all VNet-peering-compatible optional features of the pattern module (Bastion, Key Vault, managed identities, role assignments, flow logs, DNS zone links) by deploying the necessary dependencies inline. vHub connectivity is excluded (covered by the `vwan_hub` example).
 - **FR-013**: The `examples/vwan_hub/` example MUST deploy an `azurerm_virtual_wan` and `azurerm_virtual_hub` inline so that the module's vHub connectivity feature can be tested.
 - **FR-014**: Each example MUST produce an idempotent deployment — a second `terraform apply` results in zero changes.
 - **FR-015**: Each example MUST be destroyable — `terraform destroy` cleanly removes all created resources.
@@ -159,6 +159,7 @@ Examples should run with zero required input variables. All variables declared i
 - **SC-006**: All examples pass `terraform fmt -check` and `terraform validate` with zero errors.
 - **SC-007**: All root module variable descriptions use multi-line heredoc format (`<<-EOT ... EOT`) and reference the upstream AVM module and variable they map to.
 - **SC-008**: All high and medium priority AVM module variables identified in the R4 audit are exposed in the root module's variable type definitions.
+- **SC-009**: Every example's module call uses `source = "../.."` (relative to the example directory, resolving to the repository root module). No registry paths are used.
 
 ## Assumptions
 
@@ -168,7 +169,7 @@ Examples should run with zero required input variables. All variables declared i
 - For features requiring external resources that are impractical to deploy inline (e.g., existing Private DNS Zones for the `private_dns_zone_links` variable), examples will deploy a minimal `azurerm_private_dns_zone` inline.
 - Examples are not CI-automated in this feature — CI integration would be a follow-up concern. This feature focuses on making examples locally runnable.
 - The `vhub_connectivity_definitions` feature requires a vWAN + vHub, which are relatively expensive and slow to deploy. The vwan_hub example accepts this cost as a trade-off for testability.
-- Each example's `variables.tf` mirrors the root module's variable interface (all 17+ variables with defaults). `terraform.tfvars` provides the scenario-specific overrides. This enables both `terraform plan` with no flags (defaults) and realistic deployments (via tfvars).
+- Each example's `variables.tf` mirrors the root module's variable interface (all 17 variables, some with expanded type definitions per FR-021, all with defaults). `terraform.tfvars` provides the scenario-specific overrides. This enables both `terraform plan` with no flags (defaults) and realistic deployments (via tfvars).
 
 ## Scope Boundaries
 

@@ -85,6 +85,7 @@ module "naming"
 azurerm_resource_group — hub/connectivity RG
 azurerm_virtual_network — hub VNet (peering target)
 azurerm_private_dns_zone — for private_dns_zone_links
+azurerm_network_watcher — for flow log configuration
 azurerm_public_ip — for Bastion
 azurerm_storage_account — for flow log storage
 module "pattern"

@@ -77,20 +77,23 @@ module "pattern" {
 
 ### variables.tf
 
-Declares ALL pattern module variables with defaults. Must mirror root module variable types exactly (post FR-021 expansion).
+Declares ALL pattern module variables with defaults. Must mirror root module variable types exactly (post FR-021 expansion). Every variable MUST include a `description` attribute (may abbreviate the root module description) per Constitution Principles III and VI.
 
 ```hcl
 variable "location" {
-  type    = string
-  default = "australiaeast"
+  type        = string
+  default     = "australiaeast"
+  description = "Azure region for all resources."
 }
 
 variable "tags" {
-  type    = map(string)
-  default = {}
+  type        = map(string)
+  default     = {}
+  description = "Tags to apply to all resources."
+}
 }
 
-# ... all 17+ variables with appropriate defaults ...
+# ... all 17 variables with appropriate defaults and descriptions ...
 ```
 
 **Default strategy**:

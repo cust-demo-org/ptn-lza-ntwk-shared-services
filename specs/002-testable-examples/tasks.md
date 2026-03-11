@@ -9,7 +9,7 @@
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can run in parallel (different files, no dependencies)
+- **[P]**: Logically independent (no data dependencies). Tasks marked [P] within the same file must be serialized but have no ordering constraint relative to each other. Tasks marked [P] across different files can run truly in parallel.
 - **[Story]**: Which user story this task belongs to (e.g., US1, US5)
 - Exact file paths included in descriptions
 
@@ -67,7 +67,12 @@
 - [ ] T032 Run `terraform fmt -write=true` on root `variables.tf` to ensure formatting compliance
 - [ ] T033 Run `terraform validate` to confirm descriptions don't introduce regressions
 
-**Checkpoint**: Root module variable types expanded (FR-021) and descriptions improved (FR-020). SC-007 and SC-008 verifiable. Example scaffolding can now begin.
+### SC-007 / SC-008 Verification
+
+- [ ] T033a Review all 17 variable descriptions in root `variables.tf` against SC-007 criteria: each MUST use heredoc format (`<<-EOT ... EOT`) and reference the upstream AVM module name, version, and registry URL
+- [ ] T033b [P] Cross-check R4 high and medium priority audit table against implemented type extensions in root `variables.tf` for SC-008 completeness: every field listed in R4 high/medium MUST be present in the variable type definition
+
+**Checkpoint**: Root module variable types expanded (FR-021) and descriptions improved (FR-020). SC-007 and SC-008 verified. Example scaffolding can now begin.
 
 ---
 
@@ -82,29 +87,29 @@
 ### minimal/ example (FR-011)
 
 - [ ] T034 [P] [US1] Create `examples/minimal/terraform.tf` with exact provider pins (`azurerm = "4.63.0"`, `azapi = "2.8.0"`, `random = "3.8.1"`) and provider configuration per contracts/example-layout.md
-- [ ] T035 [P] [US1] Create `examples/minimal/variables.tf` declaring all 17 pattern module variables with defaults appropriate for minimal scenario (RGs, LAW, NSGs, route tables, VNets — no peering; unused features default to `null`/`{}`)
+- [ ] T035 [P] [US1] Create `examples/minimal/variables.tf` declaring all 17 pattern module variables with descriptions and defaults appropriate for minimal scenario (RGs, LAW, NSGs, route tables, VNets — no peering; unused features default to `null`/`{}`). Every variable MUST include a `description` attribute per Constitution Principles III and VI.
 - [ ] T036 [US1] Create `examples/minimal/main.tf` with naming module (`Azure/naming/azurerm` pinned to `0.4.3`), and pattern module call (`source = "../.."`) passing all variables through. No inline dependencies beyond naming — pattern module creates RGs via `resource_groups` variable
 - [ ] T037 [US1] Update `examples/minimal/terraform.tfvars` with scenario-specific overrides for minimal deployment (resource_groups, log_analytics_workspace_configuration, network_security_groups, route_tables, virtual_networks per data-model feature matrix)
 
 ### vnet_hub/ example (FR-016)
 
 - [ ] T038 [P] [US1] Create `examples/vnet_hub/terraform.tf` with exact provider pins per contracts/example-layout.md
-- [ ] T039 [P] [US1] Create `examples/vnet_hub/variables.tf` declaring all 17 pattern module variables with defaults appropriate for VNet hub peering scenario
+- [ ] T039 [P] [US1] Create `examples/vnet_hub/variables.tf` declaring all 17 pattern module variables with descriptions and defaults appropriate for VNet hub peering scenario
 - [ ] T040 [US1] Create `examples/vnet_hub/main.tf` with naming module, inline `azurerm_resource_group` (hub RG), inline `azurerm_virtual_network` (hub VNet as peering target), and pattern module call (`source = "../.."`) passing all variables. Use locals to merge computed hub VNet ID into `virtual_networks` peering configuration
 - [ ] T041 [US1] Create `examples/vnet_hub/terraform.tfvars` with scenario-specific overrides for VNet hub peering deployment (all minimal features + VNet peering to inline hub VNet)
 
 ### vwan_hub/ example (FR-013)
 
 - [ ] T042 [P] [US1] Create `examples/vwan_hub/terraform.tf` with exact provider pins per contracts/example-layout.md
-- [ ] T043 [P] [US1] Create `examples/vwan_hub/variables.tf` declaring all 17 pattern module variables with defaults appropriate for vWAN hub connectivity scenario
+- [ ] T043 [P] [US1] Create `examples/vwan_hub/variables.tf` declaring all 17 pattern module variables with descriptions and defaults appropriate for vWAN hub connectivity scenario
 - [ ] T044 [US1] Create `examples/vwan_hub/main.tf` with naming module, inline `azurerm_resource_group` (connectivity RG), inline `azurerm_virtual_wan`, inline `azurerm_virtual_hub`, and pattern module call (`source = "../.."`) passing all variables. Use locals to merge computed vHub ID into `vhub_connectivity_definitions`
 - [ ] T045 [US1] Update `examples/vwan_hub/terraform.tfvars` (preserved from rename) with scenario-specific overrides for vWAN hub connectivity deployment
 
 ### full/ example (FR-012)
 
 - [ ] T046 [P] [US1] Create `examples/full/terraform.tf` with exact provider pins per contracts/example-layout.md
-- [ ] T047 [P] [US1] Create `examples/full/variables.tf` declaring all 17 pattern module variables with defaults appropriate for full-feature scenario
-- [ ] T048 [US1] Create `examples/full/main.tf` with naming module, inline `azurerm_resource_group` (hub RG), inline `azurerm_virtual_network` (hub VNet), inline `azurerm_private_dns_zone`, inline `azurerm_public_ip` (Bastion), inline `azurerm_storage_account` (flow logs), and pattern module call (`source = "../.."`) passing all variables. Use locals to merge computed resource IDs into variable values for peering, DNS links, Bastion, and flow log configuration
+- [ ] T047 [P] [US1] Create `examples/full/variables.tf` declaring all 17 pattern module variables with descriptions and defaults appropriate for full-feature scenario
+- [ ] T048 [US1] Create `examples/full/main.tf` with naming module, inline `azurerm_resource_group` (hub RG), inline `azurerm_virtual_network` (hub VNet), inline `azurerm_private_dns_zone`, inline `azurerm_network_watcher`, inline `azurerm_public_ip` (Bastion), inline `azurerm_storage_account` (flow logs), and pattern module call (`source = "../.."`) passing all variables. Use locals to merge computed resource IDs into variable values for peering, DNS links, Bastion, and flow log configuration
 - [ ] T049 [US1] Update `examples/full/terraform.tfvars` with scenario-specific overrides exercising ALL pattern features (resource_groups, LAW, NSGs, route_tables, virtual_networks with peering, private_dns_zone_links, managed_identities, key_vaults, role_assignments, bastion_configuration, flowlog_configuration)
 
 ### Validation
@@ -148,7 +153,7 @@
 - [ ] T064 [US4] Review `examples/minimal/main.tf` — confirm only naming module + pattern module (no inline `azurerm_*` deps; RGs created by pattern)
 - [ ] T065 [P] [US4] Review `examples/vnet_hub/main.tf` — confirm only naming + `azurerm_resource_group` (hub RG) + `azurerm_virtual_network` (hub VNet) + pattern module
 - [ ] T066 [P] [US4] Review `examples/vwan_hub/main.tf` — confirm only naming + `azurerm_resource_group` + `azurerm_virtual_wan` + `azurerm_virtual_hub` + pattern module
-- [ ] T067 [P] [US4] Review `examples/full/main.tf` — confirm only naming + `azurerm_resource_group` (hub RG) + `azurerm_virtual_network` (hub VNet) + `azurerm_private_dns_zone` + `azurerm_public_ip` + `azurerm_storage_account` + pattern module
+- [ ] T067 [P] [US4] Review `examples/full/main.tf` — confirm only naming + `azurerm_resource_group` (hub RG) + `azurerm_virtual_network` (hub VNet) + `azurerm_private_dns_zone` + `azurerm_network_watcher` + `azurerm_public_ip` + `azurerm_storage_account` + pattern module
 - [ ] T068 [US4] Verify no example uses external AVM modules for inline dependencies (only `azurerm_*` resource blocks + naming module)
 
 **Checkpoint**: US4 verified. Each example deploys bare minimum dependencies per R7 + data-model.
