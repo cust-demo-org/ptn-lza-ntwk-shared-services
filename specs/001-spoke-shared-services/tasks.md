@@ -121,14 +121,14 @@
 
 ## Phase 7: User Story 5 — Deploy Azure Bastion for Spoke Access (Priority: P5)
 
-**Goal**: A platform engineer enables Azure Bastion for secure remote access by providing a `bastion_configuration` object (non-null).
+**Goal**: A platform engineer enables Azure Bastion for secure remote access by providing one or more entries in the `bastion_hosts` map.
 
 **Independent Test**: Deploy a spoke VNet with Bastion enabled. Verify AzureBastionSubnet, Bastion host, and diagnostic settings exist.
 
 ### Implementation for User Story 5
 
-- [X] T035 [US5] Add `bastion_configuration` variable (implicit null-toggle, default `null`) to variables.tf per contracts/variables.md §Bastion Variables — pass through all AVM bastion module variables (name, resource_group_key, location, sku, zones, ip_configuration, virtual_network_id, copy_paste_enabled, file_copy_enabled, ip_connect_enabled, kerberos_enabled, private_only_enabled, scale_units, session_recording_enabled, shareable_link_enabled, tunneling_enabled, tags)
-- [X] T036 [US5] Add conditional bastion_host module block (`Azure/avm-res-network-bastionhost/azurerm` v0.9.0) to main.tf — conditional on `var.bastion_configuration != null`, pass all AVM variables through (name, parent_id from resource_group_key, location, sku, zones, ip_configuration, virtual_network_id, copy_paste_enabled, file_copy_enabled, ip_connect_enabled, kerberos_enabled, private_only_enabled, scale_units, session_recording_enabled, shareable_link_enabled, tunneling_enabled, diagnostic_settings, `var.lock`, and merged tags)
+- [X] T035 [US5] Add `bastion_hosts` variable (map-based toggle, default `{}`) to variables.tf per contracts/variables.md §Bastion Variables — pass through all AVM bastion module variables (name, resource_group_key, location, sku, zones, ip_configuration, virtual_network_id, copy_paste_enabled, file_copy_enabled, ip_connect_enabled, kerberos_enabled, private_only_enabled, scale_units, session_recording_enabled, shareable_link_enabled, tunneling_enabled, tags)
+- [X] T036 [US5] Add bastion_host module block (`Azure/avm-res-network-bastionhost/azurerm` v0.9.0) to main.tf — iterating over `var.bastion_hosts` via `for_each`, pass all AVM variables through, pass all AVM variables through (name, parent_id from resource_group_key, location, sku, zones, ip_configuration, virtual_network_id, copy_paste_enabled, file_copy_enabled, ip_connect_enabled, kerberos_enabled, private_only_enabled, scale_units, session_recording_enabled, shareable_link_enabled, tunneling_enabled, diagnostic_settings, `var.lock`, and merged tags)
 - [X] T037 [P] [US5] Add `bastion` output to outputs.tf per contracts/outputs.md — {resource_id, name} when enabled, `null` when disabled
 
 **Checkpoint**: User Story 5 complete — Bastion is deployable as an optional add-on.
@@ -158,7 +158,7 @@
 - [X] T038 Add cross-variable validation preconditions to module blocks in main.tf — (1) Key Vault role_assignments: exactly one of principal_id or managed_identity_key set, and managed_identity_key exists in var.managed_identities, (2) private_dns_zone_links: virtual_network_key exists in var.virtual_networks, (3) subnets: each address_prefix XOR address_prefixes set (per contracts/variables.md §Validation Rules Summary), (4) log_analytics_workspace_configuration must be non-null when log_analytics_workspace_id is null (FR-028), (5) standalone role_assignments: exactly one of principal_id or managed_identity_key set, and managed_identity_key exists in var.managed_identities
 - [X] T039 [P] Create terraform.tfvars with rich inline comments for all variables — document each variable's purpose, type, object shape, defaults, and security implications per FR-031
 - [X] T040 [P] Create examples/full/terraform.tfvars with all features enabled (all user stories) — resource groups, VNet with subnets/NSGs/route tables/peering, DNS zone links, managed identities, Key Vault with role assignments, vWAN connection, Bastion, flowlog_configuration, resource locks, random suffix
-- [X] T041 Run all quality gates: `terraform fmt -check -recursive`, `terraform validate`, `terraform plan` (against a CI subscription or mock backend), `tflint --init && tflint` per FR-036/FR-037. Verify no public IP resources appear in the plan output unless bastion_configuration is non-null (SC-003).
+- [X] T041 Run all quality gates: `terraform fmt -check -recursive`, `terraform validate`, `terraform plan` (against a CI subscription or mock backend), `tflint --init && tflint` per FR-036/FR-037. Verify no public IP resources appear in the plan output unless bastion_hosts is non-empty (SC-003).
 - [X] T042 [P] Run `terraform-docs markdown document . --output-file README.md` to regenerate the full README (header + auto-docs + footer) per FR-033/FR-035
 
 ---

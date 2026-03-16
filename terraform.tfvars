@@ -19,10 +19,6 @@ tags = {
   ManagedBy   = "Terraform"
 }
 
-# (Optional) Append a random suffix to globally-unique names (e.g., Key Vault).
-# Default: false
-use_random_suffix = false
-
 # (Optional) Resource lock applied to all AVM root-module resources.
 # Set to null to disable.  kind: "CanNotDelete" | "ReadOnly"
 # lock = {
@@ -52,8 +48,8 @@ resource_groups = {
 # (Required when log_analytics_workspace_id is null)
 # Configuration for the auto-created workspace.
 log_analytics_workspace_configuration = {
+  name               = "law-shared-services"
   resource_group_key = "rg_networking"
-  # name             = "law-shared-services"  # auto-generated if omitted
   # location         = "australiaeast"        # defaults to var.location
   # sku              = "PerGB2018"            # default
   # retention_in_days = 30                    # default
@@ -83,6 +79,14 @@ log_analytics_workspace_configuration = {
 #       }
 #     }
 #     # tags = {}
+#     # diagnostic_settings = {
+#     #   to_law = {
+#     #     name = "diag-nsg-to-law"
+#     #     # storage_account = {
+#     #     #   key = "sa_diag"    # OR resource_id = "/subscriptions/.../storageAccounts/..."
+#     #     # }
+#     #   }
+#     # }
 #   }
 # }
 
@@ -140,14 +144,19 @@ log_analytics_workspace_configuration = {
 #     #   }
 #     # }
 #     # tags = {}
+#     # diagnostic_settings = {
+#     #   to_law = {
+#     #     name = "diag-vnet-to-law"
+#     #   }
+#     # }
 #   }
 # }
 
-# ─── Private DNS Zone Links ─────────────────────────────────
+# ─── Private DNS Zone Links (BYO) ───────────────────────────
 
 # (Optional) Link existing Private DNS Zones to spoke VNets.
 # Default: {}
-# private_dns_zone_links = {
+# byo_private_dns_zone_links = {
 #   link_blob = {
 #     name                = "link-blob-to-spoke"
 #     private_dns_zone_id = "/subscriptions/.../providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
@@ -199,6 +208,11 @@ log_analytics_workspace_configuration = {
 #     #   }
 #     # }
 #     # tags = {}
+#     # diagnostic_settings = {
+#     #   to_law = {
+#     #     name = "diag-kv-to-law"
+#     #   }
+#     # }
 #   }
 # }
 
@@ -228,34 +242,56 @@ log_analytics_workspace_configuration = {
 #       # id = "/subscriptions/.../providers/Microsoft.Network/virtualNetworks/..."
 #     }
 #     # internet_security_enabled = true   # default (routes through hub firewall)
+#     # routing = {
+#     #   associated_route_table_id = "/subscriptions/.../providers/Microsoft.Network/virtualHubs/vhub-prod/hubRouteTables/defaultRouteTable"
+#     #   propagated_route_table = {
+#     #     route_table_ids = ["/subscriptions/.../providers/Microsoft.Network/virtualHubs/vhub-prod/hubRouteTables/defaultRouteTable"]
+#     #     labels          = ["default"]
+#     #   }
+#     #   static_vnet_route = {
+#     #     name                = "to-onprem"
+#     #     address_prefixes    = ["10.0.0.0/8"]
+#     #     next_hop_ip_address = "10.1.0.4"
+#     #   }
+#     # }
 #   }
 # }
 
-# ─── Bastion Host ────────────────────────────────────────────
+# ─── Bastion Hosts ────────────────────────────────────────────
 
-# (Optional) Azure Bastion Host.  null = no Bastion deployed.
+# (Optional) Map of Azure Bastion Host configurations.
+# Empty map = no Bastion hosts deployed.
 # For non-Developer SKUs, ip_configuration is required with an
 # AzureBastionSubnet (minimum /26).  For Developer SKU, set
-# virtual_network_id instead.
-# Default: null
-# bastion_configuration = {
-#   resource_group_key = "rg_networking"
-#   # name             = "bastion-shared"      # auto-generated if omitted
-#   # sku              = "Standard"             # default
-#   # zones            = ["1", "2", "3"]        # default (zone-redundant)
+# virtual_network instead.
+# Default: {}
+# bastion_hosts = {
+#   bastion_shared = {
+#     name               = "bastion-shared"
+#     resource_group_key = "rg_networking"
+#     # sku              = "Standard"             # default
+#     # zones            = ["1", "2", "3"]        # default (zone-redundant)
 #
-#   ip_configuration = {
-#     subnet_id        = "/subscriptions/.../subnets/AzureBastionSubnet"
-#     # create_public_ip = true                 # default
+#     ip_configuration = {
+#       network_configuration = {
+#         subnet_resource_id = "/subscriptions/.../subnets/AzureBastionSubnet"
+#       }
+#       # create_public_ip = true                 # default
+#     }
+#
+#     # copy_paste_enabled        = true          # default
+#     # file_copy_enabled         = false         # default
+#     # ip_connect_enabled        = false         # default
+#     # tunneling_enabled         = false         # default
+#     # private_only_enabled      = false         # default
+#     # scale_units               = 2             # default
+#     # tags = {}
+#     # diagnostic_settings = {
+#     #   to_law = {
+#     #     name = "diag-bastion-to-law"
+#     #   }
+#     # }
 #   }
-#
-#   # copy_paste_enabled        = true          # default
-#   # file_copy_enabled         = false         # default
-#   # ip_connect_enabled        = false         # default
-#   # tunneling_enabled         = false         # default
-#   # private_only_enabled      = false         # default
-#   # scale_units               = 2             # default
-#   # tags = {}
 # }
 
 # ─── Network Watcher / Flow Logs ────────────────────────────

@@ -10,13 +10,20 @@ Convert the three existing `.tfvars`-only example directories into four self-con
 ## Technical Context
 
 **Language/Version**: Terraform HCL, CLI >= 1.13 < 2.0
-**Primary Dependencies**: azurerm v4.63.0, azapi v2.8.0, random v3.8.1, Azure/naming/azurerm v0.4.3
-**AVM Modules**: 13 modules (resource_group v0.2.2, log_analytics v0.5.1, NSG v0.5.1, route_table v0.5.0, VNet v0.17.1, DNS link submodule v0.5.0, managed_identity v0.4.0, key_vault v0.10.2, role_assignment v0.3.0, vnet_conn v0.13.5, bastion v0.9.0, network_watcher v0.3.2)
+**Primary Dependencies**: azurerm v4.63.0, azapi v2.8.0
+**AVM Modules**: 13 modules (resource_group v0.2.2, log_analytics v0.5.1, NSG v0.5.1, route_table v0.5.0, VNet v0.17.1, DNS link submodule v0.5.0, managed_identity v0.4.0, key_vault v0.10.2, role_assignment v0.3.0, vnet_conn v0.13.5, bastion v0.9.0, network_watcher v0.3.2, storage_account v0.6.7)
 **Testing**: `terraform fmt -check`, `terraform validate`, `terraform plan`, `terraform apply` (manual)
 **Target Platform**: Azure (any region)
 **Project Type**: Terraform pattern module with examples
 **Constraints**: Examples must plan with zero inputs; exact provider pins; all variables defaulted
 **Scale/Scope**: 4 example directories, 17+ root module variables, ~6 files per example
+**PE Pattern**: Private endpoints use key-based references (`vnet_key`/`subnet_key`, `private_dns_zone.keys`) resolved internally by the pattern module — callers no longer merge computed IDs in locals
+**Bastion Pattern**: Bastion `ip_configuration` uses `network_configuration` sub-object (same shape as PE) for subnet resolution; `virtual_network` uses `object({ resource_id, key })` matching the vHub pattern
+**Locals**: `vnet_resource_ids` and `subnet_resource_ids` lookup maps in `locals.tf` centralise VNet/subnet ID resolution — all `module.virtual_network[...]` references go through these locals
+**Storage Pattern**: `storage_accounts` variable backed by AVM storage module v0.6.7; flow logs reference storage via nested `storage_account = { resource_id, key }` object; `storage_account_resource_ids` local resolves keys; AVM storage module uses `diagnostic_settings_storage_account` (not `diagnostic_settings`)
+**Flow Log Target**: `flow_logs.target_resource_id` replaced with `flow_logs.vnet_key` — flow logs always target module-managed VNets, resolved via `local.vnet_resource_ids[fl.vnet_key]`
+**Network Watcher Defaults**: `flowlog_configuration.network_watcher_id`, `network_watcher_name`, `resource_group_name` are `optional(string)` — pattern module computes Azure standard defaults (`NetworkWatcherRG`, `NetworkWatcher_<location>`) via `coalesce`; callers can override for custom Network Watcher setups
+**BYO LAW & Traffic Analytics**: `log_analytics_workspace_id` replaced with `byo_log_analytics_workspace = { resource_id, location }` object; `traffic_analytics.workspace_id`, `workspace_region`, `workspace_resource_id` are now optional — pattern module auto-resolves from internal LAW module or BYO data source; `local.log_analytics_workspace_resource_id` (renamed for clarity), `local.law_workspace_id`, `local.law_workspace_region` provide resolved values
 
 ## Constitution Check
 
@@ -61,28 +68,28 @@ main.tf                  # Updated module calls to pass new fields
 examples/
 ├── minimal/
 │   ├── terraform.tf     # Exact provider pins
-│   ├── main.tf          # RG + naming + pattern module call
+│   ├── main.tf          # RG + pattern module call
 │   ├── variables.tf     # All 17+ pattern variables with minimal defaults
 │   ├── terraform.tfvars # Minimal scenario overrides
 │   ├── _header.md       # Example description
 │   └── README.md        # terraform-docs generated
 ├── vnet_hub/
 │   ├── terraform.tf
-│   ├── main.tf          # RG + naming + hub VNet + pattern module call (with peering, depends_on hub VNet)
+│   ├── main.tf          # RG + hub VNet + pattern module call (with peering, depends_on hub VNet)
 │   ├── variables.tf
 │   ├── terraform.tfvars # Hub peering scenario overrides
 │   ├── _header.md
 │   └── README.md
 ├── vwan_hub/            # Renamed from vwan/
 │   ├── terraform.tf
-│   ├── main.tf          # RG + naming + vWAN + vHub + pattern module call (depends_on vHub)
+│   ├── main.tf          # RG + vWAN + vHub + pattern module call (depends_on vHub)
 │   ├── variables.tf
 │   ├── terraform.tfvars # vWAN hub connectivity overrides
 │   ├── _header.md
 │   └── README.md
 └── full/
     ├── terraform.tf
-    ├── main.tf          # RG + naming + hub VNet + DNS zone + NW + public IP + pattern module call (all features, depends_on inline resources)
+    ├── main.tf          # RG + hub VNet + DNS zone + NW + public IP + pattern module call (all features, depends_on inline resources)
     ├── variables.tf
     ├── terraform.tfvars # All-features overrides
     ├── _header.md

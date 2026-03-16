@@ -81,7 +81,7 @@ A platform engineer deploys a spoke VNet connected to an Azure Virtual WAN (vWAN
 
 ### User Story 5 — Deploy Azure Bastion for Spoke Access (Priority: P5)
 
-A platform engineer enables Azure Bastion for secure remote access to VMs in the spoke by providing a `bastion_configuration` object (non-null). Bastion is deployed into a dedicated `AzureBastionSubnet` within the spoke VNet.
+A platform engineer enables Azure Bastion for secure remote access to VMs in the spoke by providing one or more entries in the `bastion_hosts` map. Each Bastion host is deployed into a dedicated `AzureBastionSubnet` within the spoke VNet.
 
 **Why this priority**: Bastion is a common but optional component. Many spokes share a hub-deployed Bastion; deploying Bastion per-spoke is less common, so this is lower priority.
 
@@ -89,8 +89,8 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 **Acceptance Scenarios**:
 
-1. **Given** `bastion_configuration` is provided (non-null) in `terraform.tfvars`, **When** `terraform apply` is executed, **Then** a Bastion host is provisioned with diagnostics enabled, and the Bastion SKU defaults to Standard (zone-redundant).
-2. **Given** `bastion_configuration` is omitted or set to `null` (default), **When** `terraform apply` is executed, **Then** no Bastion resources are created.
+1. **Given** `bastion_hosts` contains one or more entries in `terraform.tfvars`, **When** `terraform apply` is executed, **Then** a Bastion host is provisioned for each entry with diagnostics enabled, and the Bastion SKU defaults to Standard (zone-redundant).
+2. **Given** `bastion_hosts` is omitted or set to `{}` (default), **When** `terraform apply` is executed, **Then** no Bastion resources are created.
 
 ---
 
@@ -146,7 +146,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 #### Private DNS Zone Links
 
-- **FR-015**: The pattern MUST support linking one or more Azure Private DNS Zones to the spoke VNet. DNS zones MUST be referenceable by map key or explicit resource ID.
+- **FR-015**: The pattern MUST support two modes for Private DNS Zone integration: (a) **Create zones** — the `private_dns_zones` variable creates Private DNS Zones using the AVM `avm-res-network-privatednszone` root module (v0.5.0) and optionally links them to spoke VNets via `virtual_network_links`; (b) **BYO zones** — the `byo_private_dns_zone_links` variable links one or more existing (externally managed) Azure Private DNS Zones to the spoke VNet by resource ID. Both use the implicit map-based toggle pattern (empty map = disabled).
 
 #### Managed Identities
 
@@ -159,7 +159,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 #### Azure Bastion
 
-- **FR-019**: The pattern MUST support optional deployment of Azure Bastion, controlled by `bastion_configuration` (implicit null-toggle — `null` = no Bastion, non-null = deploy). All AVM Bastion module variables MUST be exposed to the consumer.
+- **FR-019**: The pattern MUST support optional deployment of one or more Azure Bastion hosts, controlled by `bastion_hosts` (map-based toggle — empty map `{}` = no Bastion, non-empty = deploy). All AVM Bastion module variables MUST be exposed to the consumer.
 - **FR-020**: When Bastion is enabled, an `AzureBastionSubnet` MUST be provisioned and the Bastion SKU MUST default to the zone-redundant option.
 
 #### Resource Referencing & Lookup
@@ -179,8 +179,8 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 #### Naming & Tagging
 
-- **FR-024**: All resource names MUST follow Azure Cloud Adoption Framework (CAF) kebab-case conventions by default, while respecting resource-specific constraints (length, allowed characters).
-- **FR-025**: Random suffixes MUST NOT be appended to resource names by default. A `use_random_suffix` variable (default: `false`) MUST control whether globally-unique resources (e.g., Key Vault) receive a random suffix.
+- **FR-024**: All resource names MUST follow Azure Cloud Adoption Framework (CAF) kebab-case conventions, while respecting resource-specific constraints (length, allowed characters). Naming is the responsibility of pattern consumers.
+- **FR-025**: Resources with globally unique name requirements (e.g., Log Analytics workspaces, Bastion hosts) MUST be named explicitly by pattern consumers via required `name` fields. The pattern module MUST NOT generate resource names internally.
 - **FR-026**: A common `tags` map variable MUST be applied to all resources. Additional per-resource tags MUST be mergeable via input variables.
 
 #### Diagnostics & Observability
@@ -193,7 +193,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **FR-029**: End users MUST only need to edit `terraform.tfvars` to customise the deployment. All `.tf` files MUST be reusable without modification.
 - **FR-030**: All input variables MUST have a descriptive name, explicit type constraint (no `any`), a non-empty `description` attribute, and a secure default value. Sensitive values MUST be marked `sensitive = true`. Note: the current pattern accepts no sensitive inputs (no passwords, connection strings, or secrets); this requirement applies if future variables introduce sensitive values.
 - **FR-031**: Example `.tfvars` files MUST be provided with rich inline comments explaining each variable, its object shape, and why defaults are secure. A `examples/full/terraform.tfvars` with all features enabled MUST be maintained as an integration-level design validation tool — if a variable is difficult to express in an example, the variable interface SHOULD be reconsidered.
-- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Implicit null-toggle** where `null` disables the feature and a non-null object enables it (e.g., `bastion_configuration`, `flowlog_configuration`, `log_analytics_workspace_configuration`); (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `private_dns_zone_links`, `managed_identities`, `key_vaults`, `role_assignments`). Standalone `enable_*` boolean variables MUST NOT be introduced alongside a configuration object — the configuration object itself serves as the toggle. The chosen pattern for each feature MUST be documented in the variable description.
+- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Implicit null-toggle** where `null` disables the feature and a non-null object enables it (e.g., `flowlog_configuration`, `log_analytics_workspace_configuration`); (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `bastion_hosts`, `private_dns_zones`, `byo_private_dns_zone_links`, `managed_identities`, `key_vaults`, `role_assignments`). Standalone `enable_*` boolean variables MUST NOT be introduced alongside a configuration object — the configuration object itself serves as the toggle. The chosen pattern for each feature MUST be documented in the variable description.
 
 #### Documentation
 
@@ -233,7 +233,8 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **Route Table**: A set of network routes. Attributes: name, routes (address prefix, next hop type, next hop IP), disable BGP propagation flag.
 - **VNet Peering**: A bidirectional link between two VNets, configured via the AVM VNet module's `peerings` map. Attributes: spoke VNet reference, hub VNet reference, allow forwarded traffic, allow gateway transit, use remote gateways, create reverse peering.
 - **Virtual Hub Connection**: A link from a spoke VNet to a vWAN hub, configured via `vhub_connectivity_definitions`. Attributes: Virtual Hub ID, spoke VNet reference (by key or ID), internet security enabled, routing configuration.
-- **Private DNS Zone Link**: Binds a VNet to a Private DNS Zone for name resolution. Attributes: DNS zone reference (key or ID), VNet reference, registration enabled flag.
+- **Private DNS Zone**: A DNS zone created by the pattern for private endpoint resolution. Attributes: domain name, resource group, VNet links, tags. Provisioned via AVM module `avm-res-network-privatednszone`.
+- **Private DNS Zone Link (BYO)**: Binds a VNet to an existing (externally managed) Private DNS Zone for name resolution. Attributes: DNS zone resource ID, VNet reference, registration enabled flag.
 - **User-Assigned Managed Identity**: An Azure identity for workloads. Attributes: name, location, tags.
 - **Key Vault**: A secrets/keys/certificates store. Attributes: name, SKU, public network access, soft delete, purge protection, RBAC role assignments, diagnostics.
 - **Azure Bastion**: Secure remote access service. Attributes: name, SKU (zone-redundant default), subnet, diagnostics.
@@ -246,7 +247,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - The pattern is structured as a flat root module (no nested sub-modules). Each Azure resource is already abstracted by its AVM module; an additional sub-module layer is unnecessary.
 - An Azure subscription and appropriate RBAC permissions are available before deployment.
 - A hub VNet or Virtual WAN hub already exists when spoke connectivity is configured.
-- Private DNS Zones already exist (provisioned by a platform team) when DNS zone links are configured.
+- Private DNS Zones already exist (provisioned by a platform team) when BYO DNS zone links (`byo_private_dns_zone_links`) are configured. Alternatively, the pattern can create Private DNS Zones directly via the `private_dns_zones` variable.
 - Consumers are familiar with Terraform CLI workflows (`init`, `plan`, `apply`).
 - The pattern targets Terraform >= 1.13, < 2.0 and AzureRM provider ~> 4.0 (exact versions pinned in the pattern).
 - `terraform-docs` and `tflint` are available in the CI environment.
@@ -257,7 +258,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 - **SC-001**: A platform engineer can deploy a complete spoke landing zone (VNet, subnets, NSGs, route tables, peering, diagnostics) by editing only `terraform.tfvars` and running `terraform apply`, with no modifications to `.tf` files.
 - **SC-002**: Consecutive `terraform apply` runs with unchanged inputs produce zero resource changes (idempotency verified).
-- **SC-003**: No resource exposes a public endpoint unless an explicit opt-in variable is set. Azure Bastion's public IP is the expected exception — it is only created when `bastion_configuration` is non-null.
+- **SC-003**: No resource exposes a public endpoint unless an explicit opt-in variable is set. Azure Bastion's public IP is the expected exception — it is only created when `bastion_hosts` is non-empty.
 - **SC-004**: All five quality gates (fmt, validate, plan, terraform-docs freshness, lint) pass with zero errors on every PR.
 - **SC-005**: 100% of Azure resources are provisioned via AVM modules (or have documented exceptions with tracking issues).
 - **SC-006**: The pattern can be instantiated twice in the same subscription with different resource names (provided via `terraform.tfvars`) and zero resource conflicts. Differentiation is achieved through user-controlled `name` fields in each resource map — no dedicated `name_prefix` variable is required.
@@ -270,4 +271,4 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 - **Design changes cascade through all spec files** — A single design decision (switching from `enable_bastion` to implicit null-toggle) required updates across 9 spec files. Make design decisions during clarification, not implementation.
 - **Phased implementation with checkpoints** — Implementing in user-story order with `terraform validate` checkpoints after each phase caught integration issues early. Writing all variables first then all modules defers validation too long.
-- **Example tfvars surface design gaps** — Writing `examples/full/terraform.tfvars` exposed variable default and cross-variable coupling issues that `terraform validate` alone missed. See FR-031.
+- **Example tfvars surface design ggaps** — Writing `examples/full/terraform.tfvars` exposed variable default and cross-variable coupling issues that `terraform validate` alone missed. See FR-031.

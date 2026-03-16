@@ -54,15 +54,13 @@ The following requirements are needed by this module:
 
 - <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) (~> 4.0)
 
-- <a name="requirement_random"></a> [random](#requirement\_random) (~> 3.0)
-
 ## Resources
 
 The following resources are used by this module:
 
-- [random_pet.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/pet) (resource)
 - [terraform_data.validation](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) (resource)
 - [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) (data source)
+- [azurerm_log_analytics_workspace.external](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/log_analytics_workspace) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
@@ -73,11 +71,24 @@ The following input variables are required:
 
 Description: The Azure region for all resources. Changing this forces recreation of all resources.
 
+All AVM module calls default their location to this value when not overridden per-resource.
+
 Type: `string`
 
 ### <a name="input_resource_groups"></a> [resource\_groups](#input\_resource\_groups)
 
-Description: Map of resource groups to create. The map key is used as a reference key for other resources. Location defaults to var.location if not specified.
+Description: Map of resource groups to create. The map key is used as a reference key for other resources.
+
+Uses: Azure/avm-res-resources-resourcegroup/azurerm v0.2.2  
+See:  https://registry.terraform.io/modules/Azure/avm-res-resources-resourcegroup/azurerm
+
+- name:             Resource group name.
+- location:         Azure region. Defaults to var.location if not specified.
+- tags:             Per-resource-group tags, merged with var.tags.
+- lock:             Per-resource-group lock override. When set, overrides var.lock for this RG.  
+                    See AVM module variable: lock.
+- role\_assignments: Per-resource-group RBAC assignments.  
+                    See AVM module variable: role\_assignments.
 
 Type:
 
@@ -86,6 +97,20 @@ map(object({
     name     = string
     location = optional(string)
     tags     = optional(map(string), {})
+    lock = optional(object({
+      kind = string
+      name = optional(string, null)
+    }))
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
   }))
 ```
 
@@ -93,33 +118,60 @@ map(object({
 
 The following input variables are optional (have default values):
 
-### <a name="input_bastion_configuration"></a> [bastion\_configuration](#input\_bastion\_configuration)
+### <a name="input_bastion_hosts"></a> [bastion\_hosts](#input\_bastion\_hosts)
 
-Description: Bastion host configuration. When non-null, deploys an Azure Bastion Host (implicit toggle — null = no Bastion).  
-All AVM bastion module variables are exposed — see https://registry.terraform.io/modules/Azure/avm-res-network-bastionhost/azurerm.  
-For non-Developer SKUs, ip\_configuration is required with subnet\_id pointing to an AzureBastionSubnet (minimum /26).  
-For Developer SKU, set virtual\_network\_id instead and omit ip\_configuration.  
-SKU defaults to 'Standard'. Zones default to ["1","2","3"] (zone-redundant).
+Description: Map of Azure Bastion Host configurations, keyed by a user-chosen identifier.  
+Empty map = no Bastion hosts deployed.
+
+Uses: Azure/avm-res-network-bastionhost/azurerm v0.9.0  
+See:  https://registry.terraform.io/modules/Azure/avm-res-network-bastionhost/azurerm
+
+- name:                    Bastion name (required).
+- resource\_group\_key:      Key in resource\_groups map for placement.
+- location:                Azure region. Defaults to var.location.
+- sku:                     SKU tier. Default: "Standard".
+- zones:                   Availability zones. Default: ["1","2","3"] (zone-redundant).
+- ip\_configuration:        Required for non-Developer SKUs. Provide subnet\_resource\_id  
+                           directly, or use vnet\_key + subnet\_key to resolve from  
+                           virtual\_networks map.
+- virtual\_network:         For Developer SKU only. Omit ip\_configuration. Provide  
+                           resource\_id directly or key to resolve from virtual\_networks map.
+- role\_assignments:        Per-Bastion RBAC assignments.  
+                           See AVM module variable: role\_assignments.
+- diagnostic\_settings:     Per-Bastion diagnostic settings. Each entry can send logs/metrics  
+                           to a Log Analytics workspace, storage account, Event Hub, or  
+                           partner solution. workspace\_resource\_id defaults to the pattern's  
+                           LAW (BYO or auto-created) but can be overridden per entry. Storage  
+                           account supports key-based reference (from storage\_accounts map)  
+                           or direct resource\_id.
+- tags:                    Per-Bastion tags, merged with var.tags.
 
 Type:
 
 ```hcl
-object({
-    name               = optional(string)
+map(object({
+    name               = string
     resource_group_key = string
     location           = optional(string)
     sku                = optional(string, "Standard")
     zones              = optional(set(string), ["1", "2", "3"])
     ip_configuration = optional(object({
-      name                             = optional(string)
-      subnet_id                        = string
+      name = optional(string)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
       create_public_ip                 = optional(bool, true)
       public_ip_tags                   = optional(map(string), null)
       public_ip_merge_with_module_tags = optional(bool, true)
       public_ip_address_name           = optional(string, null)
       public_ip_address_id             = optional(string, null)
     }))
-    virtual_network_id        = optional(string)
+    virtual_network = optional(object({
+      resource_id = optional(string)
+      key         = optional(string)
+    }))
     copy_paste_enabled        = optional(bool, true)
     file_copy_enabled         = optional(bool, false)
     ip_connect_enabled        = optional(bool, false)
@@ -130,6 +182,48 @@ object({
     shareable_link_enabled    = optional(bool, false)
     tunneling_enabled         = optional(bool, false)
     tags                      = optional(map(string), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    diagnostic_settings = optional(map(object({
+      name                           = optional(string, null)
+      log_categories                 = optional(set(string), [])
+      log_groups                     = optional(set(string), ["allLogs"])
+      metric_categories              = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type = optional(string, "Dedicated")
+      workspace_resource_id          = optional(string, null)
+      storage_account = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
+  }))
+```
+
+Default: `{}`
+
+### <a name="input_byo_log_analytics_workspace"></a> [byo\_log\_analytics\_workspace](#input\_byo\_log\_analytics\_workspace)
+
+Description: Bring-your-own Log Analytics workspace. Provide the resource ID and location of an  
+existing workspace. If null, the pattern auto-creates one using  
+log\_analytics\_workspace\_configuration.
+
+Type:
+
+```hcl
+object({
+    resource_id = string
+    location    = string
   })
 ```
 
@@ -137,36 +231,53 @@ Default: `null`
 
 ### <a name="input_flowlog_configuration"></a> [flowlog\_configuration](#input\_flowlog\_configuration)
 
-Description: Configuration for Network Watcher VNet flow logs using the AVM network watcher module (avm-res-network-networkwatcher v0.3.2).  
-When null (default), no Network Watcher or flow logs are configured.  
-The network\_watcher\_id, network\_watcher\_name, and resource\_group\_name reference the existing Network Watcher
-(typically auto-created by Azure per region per subscription).  
-flow\_logs defines VNet flow log configurations passed through to the AVM module.  
-All settings are consumer-defined; the pattern does not auto-configure any flow log settings.
+Description: Network Watcher and VNet flow log configuration. When null (default), no Network Watcher or  
+flow logs are configured (implicit toggle).
+
+Uses: Azure/avm-res-network-networkwatcher/azurerm v0.3.2  
+See:  https://registry.terraform.io/modules/Azure/avm-res-network-networkwatcher/azurerm
+
+- network\_watcher\_id:   Resource ID of the existing Network Watcher. Defaults to the Azure  
+                        auto-created NetworkWatcher\_<location> in NetworkWatcherRG.
+- network\_watcher\_name: Name of the existing Network Watcher. Defaults to  
+                        NetworkWatcher\_<location>.
+- resource\_group\_name:  Resource group containing the Network Watcher. Defaults to  
+                        NetworkWatcherRG.
+- location:             Azure region. Defaults to var.location.
+- flow\_logs:            Map of VNet flow log configurations. Each requires vnet\_key (key in  
+                        virtual\_networks map), retention\_policy, and storage\_account. Provide  
+                        either storage\_account.resource\_id (direct) or storage\_account.key
+                        (reference to storage\_accounts map). Optional traffic\_analytics —  
+                        workspace\_id, workspace\_region, and workspace\_resource\_id default to  
+                        values from the pattern's Log Analytics workspace (internal or BYO).
+- tags:                 Per-resource tags, merged with var.tags.
 
 Type:
 
 ```hcl
 object({
-    network_watcher_id   = string
-    network_watcher_name = string
-    resource_group_name  = string
+    network_watcher_id   = optional(string)
+    network_watcher_name = optional(string)
+    resource_group_name  = optional(string)
     location             = optional(string)
     flow_logs = optional(map(object({
-      enabled            = bool
-      name               = string
-      target_resource_id = string
+      enabled  = bool
+      name     = string
+      vnet_key = string
       retention_policy = object({
         days    = number
         enabled = bool
       })
-      storage_account_id = string
+      storage_account = object({
+        resource_id = optional(string)
+        key         = optional(string)
+      })
       traffic_analytics = optional(object({
         enabled               = bool
         interval_in_minutes   = optional(number)
-        workspace_id          = string
-        workspace_region      = string
-        workspace_resource_id = string
+        workspace_id          = optional(string)
+        workspace_region      = optional(string)
+        workspace_resource_id = optional(string)
       }))
       version = optional(number)
     })), null)
@@ -178,8 +289,31 @@ Default: `null`
 
 ### <a name="input_key_vaults"></a> [key\_vaults](#input\_key\_vaults)
 
-Description: Map of Key Vaults. public\_network\_access\_enabled defaults to false (secure-by-default, overrides AVM default of true).  
-Role assignments support two principal reference modes: principal\_id accepts the direct principal ID of any identity (MSI, service principal, users); managed\_identity\_key references a key in the managed\_identities map (for identities created within this pattern). Exactly one must be set.
+Description: Map of Key Vaults.
+
+Uses: Azure/avm-res-keyvault-vault/azurerm v0.10.2  
+See:  https://registry.terraform.io/modules/Azure/avm-res-keyvault-vault/azurerm
+
+- name:                          Key Vault name.
+- resource\_group\_key:            Key in resource\_groups map for placement.
+- location:                      Azure region. Defaults to var.location.
+- sku\_name:                      SKU tier. Default: "premium".
+- public\_network\_access\_enabled: Default: false (secure-by-default, overrides AVM default).
+- purge\_protection\_enabled:      Default: true.
+- soft\_delete\_retention\_days:    Soft-delete retention. Default: null (AVM default).
+- network\_acls:                  Network ACL configuration. Default: bypass=None, action=Deny.
+- role\_assignments:              Per-Key-Vault RBAC assignments. Supports principal\_id (direct)  
+                                 or managed\_identity\_key (from managed\_identities map).  
+                                 Exactly one must be set per assignment.
+- private\_endpoints:             Private endpoint configurations.  
+                                 See AVM module variable: private\_endpoints.
+- tags:                          Per-Key-Vault tags, merged with var.tags.
+- diagnostic\_settings:           Per-Key-Vault diagnostic settings. Each entry can send  
+                                 logs/metrics to a Log Analytics workspace, storage account,  
+                                 Event Hub, or partner solution. workspace\_resource\_id defaults  
+                                 to the pattern's LAW (BYO or auto-created) but can be  
+                                 overridden per entry. Storage account supports key-based  
+                                 reference (from storage\_accounts map) or direct resource\_id.
 
 Type:
 
@@ -206,12 +340,34 @@ map(object({
       principal_type             = optional(string, null)
     })), {})
     private_endpoints = optional(map(object({
-      name                          = optional(string, null)
-      subnet_resource_id            = string
-      private_dns_zone_resource_ids = optional(set(string), [])
-      tags                          = optional(map(string), null)
+      name = optional(string, null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      tags = optional(map(string), null)
     })), {})
     tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                           = optional(string, null)
+      log_categories                 = optional(set(string), [])
+      log_groups                     = optional(set(string), ["allLogs"])
+      metric_categories              = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type = optional(string, "Dedicated")
+      workspace_resource_id          = optional(string, null)
+      storage_account = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
   }))
 ```
 
@@ -219,7 +375,14 @@ Default: `{}`
 
 ### <a name="input_lock"></a> [lock](#input\_lock)
 
-Description: Resource lock applied to AVM root-module resources that expose the lock interface (resource group, VNet, NSG, route table, Key Vault, Bastion, Log Analytics workspace, managed identity). Does not apply to AVM submodule resources (DNS zone VNet links, vHub connections) as those submodules do not implement the lock interface. Set to null to disable. Possible kind values: 'CanNotDelete', 'ReadOnly'.
+Description: Resource lock applied to AVM root-module resources that expose the lock interface (resource  
+group, VNet, NSG, route table, Key Vault, Bastion, Log Analytics workspace, managed identity).
+
+Does not apply to AVM submodule resources (DNS zone VNet links, vHub connections) as those  
+submodules do not implement the lock interface. Per-resource-group lock overrides are available  
+via the resource\_groups variable's lock field.
+
+Set to null to disable. Possible kind values: 'CanNotDelete', 'ReadOnly'.
 
 Type:
 
@@ -234,34 +397,74 @@ Default: `null`
 
 ### <a name="input_log_analytics_workspace_configuration"></a> [log\_analytics\_workspace\_configuration](#input\_log\_analytics\_workspace\_configuration)
 
-Description: Configuration for the auto-created Log Analytics workspace. Used only when log\_analytics\_workspace\_id is null.
+Description: Configuration for the auto-created Log Analytics workspace. Used only when  
+byo\_log\_analytics\_workspace is null.
+
+Uses: Azure/avm-res-operationalinsights-workspace/azurerm v0.5.1  
+See:  https://registry.terraform.io/modules/Azure/avm-res-operationalinsights-workspace/azurerm
+
+- name:               Workspace name (required).
+- resource\_group\_key: Key in resource\_groups map for placement.
+- location:           Azure region. Defaults to var.location.
+- sku:                Pricing tier. Default: "PerGB2018".
+- retention\_in\_days:  Data retention. Default: 30.
+- tags:               Per-workspace tags, merged with var.tags.
+- role\_assignments:   Per-workspace RBAC assignments.  
+                      See AVM module variable: role\_assignments.
+- private\_endpoints:  Private endpoint configurations for the workspace.  
+                      See AVM module variable: private\_endpoints.
 
 Type:
 
 ```hcl
 object({
-    name               = optional(string)
+    name               = string
     resource_group_key = string
     location           = optional(string)
     sku                = optional(string, "PerGB2018")
     retention_in_days  = optional(number, 30)
     tags               = optional(map(string), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    private_endpoints = optional(map(object({
+      name = optional(string, null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      tags = optional(map(string), null)
+    })), {})
   })
 ```
-
-Default: `null`
-
-### <a name="input_log_analytics_workspace_id"></a> [log\_analytics\_workspace\_id](#input\_log\_analytics\_workspace\_id)
-
-Description: Resource ID of an existing Log Analytics workspace. If null, the pattern auto-creates one.
-
-Type: `string`
 
 Default: `null`
 
 ### <a name="input_managed_identities"></a> [managed\_identities](#input\_managed\_identities)
 
 Description: Map of user-assigned managed identities to create.
+
+Uses: Azure/avm-res-managedidentity-userassignedidentity/azurerm v0.4.0  
+See:  https://registry.terraform.io/modules/Azure/avm-res-managedidentity-userassignedidentity/azurerm
+
+- name:               Identity name.
+- resource\_group\_key: Key in resource\_groups map for placement.
+- location:           Azure region. Defaults to var.location.
+- tags:               Per-identity tags, merged with var.tags.
+- role\_assignments:   Per-identity RBAC assignments.  
+                      See AVM module variable: role\_assignments.
 
 Type:
 
@@ -271,6 +474,15 @@ map(object({
     resource_group_key = string
     location           = optional(string)
     tags               = optional(map(string), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      scope                                  = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, null)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+    })), {})
   }))
 ```
 
@@ -278,7 +490,25 @@ Default: `{}`
 
 ### <a name="input_network_security_groups"></a> [network\_security\_groups](#input\_network\_security\_groups)
 
-Description: Map of NSGs. All security rules are user-defined via the security\_rules map. An empty security\_rules = {} means only Azure built-in default rules apply. No rules are auto-injected.
+Description: Map of Network Security Groups. The map key is used as a reference key for subnet associations.
+
+Uses: Azure/avm-res-network-networksecuritygroup/azurerm v0.5.1  
+See:  https://registry.terraform.io/modules/Azure/avm-res-network-networksecuritygroup/azurerm
+
+- name:               NSG name.
+- resource\_group\_key: Key in resource\_groups map for placement.
+- location:           Azure region. Defaults to var.location.
+- security\_rules:     Map of user-defined security rules. An empty map means only Azure  
+                      built-in default rules apply. No rules are auto-injected.
+- tags:               Per-NSG tags, merged with var.tags.
+- role\_assignments:   Per-NSG RBAC assignments.  
+                      See AVM module variable: role\_assignments.
+- diagnostic\_settings: Per-NSG diagnostic settings. Each entry can send logs/metrics to a  
+                      Log Analytics workspace, storage account, Event Hub, or partner solution.  
+                      workspace\_resource\_id defaults to the pattern's Log Analytics workspace
+                      (BYO or auto-created) but can be overridden per entry. Storage account  
+                      supports key-based reference (from storage\_accounts map) or direct  
+                      resource\_id.
 
 Type:
 
@@ -306,6 +536,31 @@ map(object({
       description                                = optional(string)
     })), {})
     tags = optional(map(string), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    diagnostic_settings = optional(map(object({
+      name                           = optional(string, null)
+      log_categories                 = optional(set(string), [])
+      log_groups                     = optional(set(string), ["allLogs"])
+      metric_categories              = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type = optional(string, "Dedicated")
+      workspace_resource_id          = optional(string, null)
+      storage_account = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
   }))
 ```
 
@@ -313,7 +568,18 @@ Default: `{}`
 
 ### <a name="input_private_dns_zone_links"></a> [private\_dns\_zone\_links](#input\_private\_dns\_zone\_links)
 
-Description: Map of Private DNS Zone VNet links. Each links an existing DNS zone (by resource ID) to a spoke VNet (by map key). Uses avm-res-network-privatednszone submodule private\_dns\_virtual\_network\_link.
+Description: Map of Private DNS Zone VNet links. Each links an existing DNS zone (by resource ID) to a spoke  
+VNet (by map key).
+
+Uses: Azure/avm-res-network-privatednszone/azurerm//modules/private\_dns\_virtual\_network\_link v0.5.0  
+See:  https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm
+
+- name:                 Link name.
+- private\_dns\_zone\_id:  Resource ID of the Private DNS Zone to link.
+- virtual\_network\_key:  Key in virtual\_networks map identifying the spoke VNet.
+- registration\_enabled: Enable auto-registration. Default: false.
+- resolution\_policy:    Resolution policy. Default: "Default".
+- tags:                 Per-link tags, merged with var.tags.
 
 Type:
 
@@ -332,11 +598,17 @@ Default: `{}`
 
 ### <a name="input_role_assignments"></a> [role\_assignments](#input\_role\_assignments)
 
-Description: Standalone role assignments at arbitrary scopes (not scoped to an AVM-managed resource).  
-Uses avm-res-authorization-roleassignment module.  
-principal\_id accepts the direct principal ID of any identity (MSI, service principal, users).  
-managed\_identity\_key references a key in the managed\_identities map (for identities created within this pattern).  
-Exactly one must be set.
+Description: Standalone role assignments at arbitrary scopes (not scoped to an AVM-managed resource).
+
+Uses: Azure/avm-res-authorization-roleassignment/azurerm v0.3.0  
+See:  https://registry.terraform.io/modules/Azure/avm-res-authorization-roleassignment/azurerm
+
+- role\_definition\_id\_or\_name: Role name or ID.
+- scope:                      Azure resource ID scope for the assignment.
+- principal\_id:               Direct principal ID. Mutually exclusive with managed\_identity\_key.
+- managed\_identity\_key:       Key in managed\_identities map. Mutually exclusive with principal\_id.
+- description:                Optional description for the assignment.
+- principal\_type:             Optional principal type hint.
 
 Type:
 
@@ -355,7 +627,18 @@ Default: `{}`
 
 ### <a name="input_route_tables"></a> [route\_tables](#input\_route\_tables)
 
-Description: Map of route tables. Each can contain multiple routes. Associate to subnets via the subnet's route\_table\_key.
+Description: Map of route tables. Each can contain multiple routes. Associate to subnets via the subnet's  
+route\_table\_key.
+
+Uses: Azure/avm-res-network-routetable/azurerm v0.5.0  
+See:  https://registry.terraform.io/modules/Azure/avm-res-network-routetable/azurerm
+
+- name:                          Route table name.
+- resource\_group\_key:            Key in resource\_groups map for placement.
+- location:                      Azure region. Defaults to var.location.
+- bgp\_route\_propagation\_enabled: Enable BGP route propagation. Default: true.
+- routes:                        Map of routes with address\_prefix and next\_hop\_type.
+- tags:                          Per-route-table tags, merged with var.tags.
 
 Type:
 
@@ -377,25 +660,143 @@ map(object({
 
 Default: `{}`
 
+### <a name="input_storage_accounts"></a> [storage\_accounts](#input\_storage\_accounts)
+
+Description: Map of storage accounts to create. The map key is used as a reference key
+(e.g. by flowlog\_configuration.flow\_logs.storage\_account\_key).
+
+Uses: Azure/avm-res-storage-storageaccount/azurerm v0.6.7  
+See:  https://registry.terraform.io/modules/Azure/avm-res-storage-storageaccount/azurerm
+
+- name:                          Storage account name (must be globally unique).
+- resource\_group\_key:            Key in resource\_groups map for placement.
+- location:                      Azure region. Defaults to var.location.
+- account\_tier:                  Tier. Default: "Standard".
+- account\_replication\_type:      Replication. Default: "ZRS".
+- account\_kind:                  Kind. Default: "StorageV2".
+- access\_tier:                   Access tier. Default: "Hot".
+- shared\_access\_key\_enabled:     Default: false (Entra-only auth).
+- public\_network\_access\_enabled: Default: false (secure-by-default).
+- network\_rules:                 Network ACL configuration. Default: bypass AzureServices, deny.
+- managed\_identities:            System/user-assigned identity configuration.
+- containers:                    Map of blob containers.
+- private\_endpoints:             Private endpoint configurations.
+- role\_assignments:              Per-storage RBAC assignments.
+- lock:                          Resource lock. Overrides var.lock.
+- tags:                          Per-storage tags, merged with var.tags.
+- diagnostic\_settings:           Per-storage-account diagnostic settings. Each entry can send  
+                                 logs/metrics to a Log Analytics workspace, storage account,  
+                                 Event Hub, or partner solution. workspace\_resource\_id defaults  
+                                 to the pattern's LAW (BYO or auto-created) but can be  
+                                 overridden per entry. Storage account supports key-based  
+                                 reference (from storage\_accounts map) or direct resource\_id.
+
+Type:
+
+```hcl
+map(object({
+    name                            = string
+    resource_group_key              = string
+    location                        = optional(string)
+    account_tier                    = optional(string, "Standard")
+    account_replication_type        = optional(string, "ZRS")
+    account_kind                    = optional(string, "StorageV2")
+    access_tier                     = optional(string, "Hot")
+    shared_access_key_enabled       = optional(bool, false)
+    public_network_access_enabled   = optional(bool, false)
+    https_traffic_only_enabled      = optional(bool, true)
+    min_tls_version                 = optional(string, "TLS1_2")
+    allow_nested_items_to_be_public = optional(bool, false)
+    network_rules = optional(object({
+      bypass                     = optional(set(string), ["AzureServices"])
+      default_action             = optional(string, "Deny")
+      ip_rules                   = optional(set(string), [])
+      virtual_network_subnet_ids = optional(set(string), [])
+    }), {})
+    managed_identities = optional(object({
+      system_assigned            = optional(bool, false)
+      user_assigned_resource_ids = optional(set(string), [])
+    }), {})
+    containers = optional(map(object({
+      name          = string
+      public_access = optional(string, "None")
+      metadata      = optional(map(string))
+    })), {})
+    private_endpoints = optional(map(object({
+      name = optional(string, null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      subresource_name = string
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      tags = optional(map(string), null)
+    })), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    lock = optional(object({
+      kind = string
+      name = optional(string, null)
+    }))
+    tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                           = optional(string, null)
+      log_categories                 = optional(set(string), [])
+      log_groups                     = optional(set(string), ["allLogs"])
+      metric_categories              = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type = optional(string, "Dedicated")
+      workspace_resource_id          = optional(string, null)
+      storage_account = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
+  }))
+```
+
+Default: `{}`
+
 ### <a name="input_tags"></a> [tags](#input\_tags)
 
-Description: Common tags applied to all resources that support tagging. Per-resource tags are merged on top of these. Note: vHub connections (azurerm\_virtual\_hub\_connection) do not support tags; this variable is not passed to the vWAN connection submodule.
+Description: Common tags applied to all resources that support tagging. Per-resource tags are merged on top  
+of these.
+
+Note: vHub connections (azurerm\_virtual\_hub\_connection) do not support tags; this variable is  
+not passed to the vWAN connection submodule.
 
 Type: `map(string)`
 
 Default: `{}`
 
-### <a name="input_use_random_suffix"></a> [use\_random\_suffix](#input\_use\_random\_suffix)
-
-Description: When true, globally-unique resources (e.g., Key Vault) receive a random suffix. Default: false (CAF names only).
-
-Type: `bool`
-
-Default: `false`
-
 ### <a name="input_vhub_connectivity_definitions"></a> [vhub\_connectivity\_definitions](#input\_vhub\_connectivity\_definitions)
 
-Description: Map of vWAN hub connections. Each entry links a spoke VNet to a vWAN hub. Reference the VNet by key (from virtual\_networks map) or by resource ID. Empty map = no vWAN connections (implicit toggle). Default internet\_security\_enabled = true (secure-by-default, routes internet traffic through the hub firewall).
+Description: Map of vWAN hub connections. Each entry links a spoke VNet to a vWAN hub.
+
+Uses: Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm//modules/virtual-network-connection v0.13.5  
+See:  https://registry.terraform.io/modules/Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm
+
+- vhub\_resource\_id:        Resource ID of the target Virtual Hub.
+- virtual\_network:         Reference the spoke VNet by key (from virtual\_networks map) or by  
+                           resource ID. Exactly one of key or resource\_id must be set.
+- internet\_security\_enabled: Route internet traffic through hub firewall. Default: true
+                           (secure-by-default).
+
+Empty map = no vWAN connections (implicit toggle).
 
 Type:
 
@@ -403,8 +804,8 @@ Type:
 map(object({
     vhub_resource_id = string
     virtual_network = object({
-      key = optional(string)
-      id  = optional(string)
+      key         = optional(string)
+      resource_id = optional(string)
     })
     internet_security_enabled = optional(bool, true)
   }))
@@ -414,7 +815,31 @@ Default: `{}`
 
 ### <a name="input_virtual_networks"></a> [virtual\_networks](#input\_virtual\_networks)
 
-Description: Map of spoke virtual networks. Each entry creates a VNet with optional subnets and optional hub peerings via the AVM VNet module's peerings interface. Peerings follow the implicit map-based toggle pattern (empty map = no peering). Subnets reference NSGs and route tables by map key.
+Description: Map of spoke virtual networks. Each entry creates a VNet with optional subnets and optional hub  
+peerings via the AVM VNet module's peerings interface.
+
+Uses: Azure/avm-res-network-virtualnetwork/azurerm v0.17.1  
+See:  https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm
+
+- name:               VNet name.
+- address\_space:      Set of CIDR ranges for the virtual network.
+- resource\_group\_key: Key in resource\_groups map for placement.
+- location:           Azure region. Defaults to var.location.
+- dns\_servers:        Custom DNS servers. Null uses Azure-provided DNS.
+- ddos\_protection\_plan: DDoS Protection Plan configuration.
+- encryption:         VNet encryption settings.
+- tags:               Per-VNet tags, merged with var.tags.
+- peerings:           Map of VNet peerings. Empty map = no peering (implicit toggle).
+- subnets:            Map of subnets. Each can reference NSG and route table by key.  
+                      Subnets support their own role\_assignments.
+- role\_assignments:   VNet-level RBAC assignments.  
+                      See AVM module variable: role\_assignments.
+- diagnostic\_settings: Per-VNet diagnostic settings. Each entry can send logs/metrics to a  
+                      Log Analytics workspace, storage account, Event Hub, or partner solution.  
+                      workspace\_resource\_id defaults to the pattern's Log Analytics workspace
+                      (BYO or auto-created) but can be overridden per entry. Storage account  
+                      supports key-based reference (from storage\_accounts map) or direct  
+                      resource\_id.
 
 Type:
 
@@ -426,8 +851,8 @@ map(object({
     location           = optional(string)
     dns_servers        = optional(list(string))
     ddos_protection_plan = optional(object({
-      id     = string
-      enable = bool
+      resource_id = string
+      enable      = bool
     }))
     encryption = optional(object({
       enabled     = bool
@@ -474,6 +899,31 @@ map(object({
         principal_type                         = optional(string, null)
       })), {})
     })), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    diagnostic_settings = optional(map(object({
+      name                           = optional(string, null)
+      log_categories                 = optional(set(string), [])
+      log_groups                     = optional(set(string), ["allLogs"])
+      metric_categories              = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type = optional(string, "Dedicated")
+      workspace_resource_id          = optional(string, null)
+      storage_account = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
   }))
 ```
 
@@ -483,9 +933,9 @@ Default: `{}`
 
 The following outputs are exported:
 
-### <a name="output_bastion"></a> [bastion](#output\_bastion)
+### <a name="output_bastion_hosts"></a> [bastion\_hosts](#output\_bastion\_hosts)
 
-Description: Bastion host resource ID and name. Null when Bastion is not enabled.
+Description: Map of Bastion host resource IDs and names, keyed by bastion\_hosts map key. Empty map when no Bastion hosts are deployed.
 
 ### <a name="output_key_vaults"></a> [key\_vaults](#output\_key\_vaults)
 
@@ -523,6 +973,10 @@ Description: Map of standalone role assignment keys to their resource IDs. Empty
 
 Description: Map of route table keys to their resource IDs and names.
 
+### <a name="output_storage_accounts"></a> [storage\_accounts](#output\_storage\_accounts)
+
+Description: Map of storage account keys to their resource IDs and names.
+
 ### <a name="output_vhub_connections"></a> [vhub\_connections](#output\_vhub\_connections)
 
 Description: Map of Virtual Hub VNet connections, keyed by vhub\_connectivity\_definitions map key. Empty map when no vWAN connections are configured.
@@ -558,12 +1012,6 @@ Version: 0.5.1
 Source: Azure/avm-res-managedidentity-userassignedidentity/azurerm
 
 Version: 0.4.0
-
-### <a name="module_naming"></a> [naming](#module\_naming)
-
-Source: Azure/naming/azurerm
-
-Version: 0.4.3
 
 ### <a name="module_network_security_group"></a> [network\_security\_group](#module\_network\_security\_group)
 
@@ -601,6 +1049,12 @@ Source: Azure/avm-res-network-routetable/azurerm
 
 Version: 0.5.0
 
+### <a name="module_storage_account"></a> [storage\_account](#module\_storage\_account)
+
+Source: Azure/avm-res-storage-storageaccount/azurerm
+
+Version: 0.6.7
+
 ### <a name="module_virtual_network"></a> [virtual\_network](#module\_virtual\_network)
 
 Source: Azure/avm-res-network-virtualnetwork/azurerm
@@ -625,7 +1079,7 @@ This pattern module follows a strict set of conventions to ensure consistency an
 - **Tag merging** — Every module block merges `var.tags` with per-resource tags: `merge(var.tags, each.value.tags)`.
 - **Location defaulting** — Per-resource location falls back to `var.location` via `coalesce(each.value.location, var.location)`.
 - **Cross-variable validation** — Use `terraform_data` with `lifecycle.precondition` blocks for validations that reference multiple variables, and `variable` validation blocks for single-variable rules.
-- **Naming** — Resource names are generated by the [Azure naming module](https://registry.terraform.io/modules/Azure/naming/azurerm) with optional random suffix controlled by `use_random_suffix`.
+- **Naming** — Resources with globally unique name requirements (e.g. Log Analytics workspaces, Bastion hosts) must be named explicitly by the pattern consumer. The pattern module does not generate names internally.
 
 ### Adding a New Feature
 

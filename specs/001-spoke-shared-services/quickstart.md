@@ -13,7 +13,7 @@
    Or: `az account set --subscription "<your-subscription-id>"`
 4. **Terraform backend** configured (recommended: Azure Storage Account with state locking)
 5. **Existing hub VNet** or **Virtual WAN Hub** resource ID (if connectivity is needed)
-6. **Existing Private DNS Zones** resource IDs (if DNS zone links are needed)
+6. **Existing Private DNS Zones** resource IDs (if BYO DNS zone links are needed), or use the `private_dns_zones` variable to create zones within the pattern
 
 ## Step 1: Clone and Configure
 
@@ -173,12 +173,43 @@ Expected output: **"No changes. Your infrastructure matches the configuration."*
 
 ## Common Scenarios
 
-### Adding Private DNS Zone Links
+### Adding Private DNS Zones (Created by Pattern)
 
-Add to `terraform.tfvars`:
+Create Private DNS Zones as part of the pattern module and optionally link them to spoke VNets:
 
 ```hcl
-private_dns_zone_links = {
+private_dns_zones = {
+  "blob" = {
+    domain_name        = "privatelink.blob.core.windows.net"
+    resource_group_key = "rg-networking"
+    virtual_network_links = {
+      "link-spoke" = {
+        name                 = "link-blob-to-spoke"
+        virtual_network_key  = "vnet-spoke"
+        registration_enabled = false
+        # resolution_policy  = "Default"  # optional — "Default" or "NxDomainRedirect"
+      }
+    }
+  }
+  "sql" = {
+    domain_name        = "privatelink.database.windows.net"
+    resource_group_key = "rg-networking"
+    virtual_network_links = {
+      "link-spoke" = {
+        name                = "link-sql-to-spoke"
+        virtual_network_key = "vnet-spoke"
+      }
+    }
+  }
+}
+```
+
+### Adding BYO Private DNS Zone Links
+
+Link existing (externally managed) Private DNS Zones to the spoke VNet:
+
+```hcl
+byo_private_dns_zone_links = {
   "blob" = {
     private_dns_zone_id  = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
     virtual_network_key  = "vnet-spoke"
@@ -212,12 +243,14 @@ virtual_networks = {
   }
 }
 
-bastion_configuration = {
-  name               = "bas-spoke-01"
-  resource_group_key = "rg-networking"
-  sku                = "Standard"  # "Basic", "Standard", "Developer", or "Premium"
-  ip_configuration = {
-    subnet_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/AzureBastionSubnet"
+bastion_hosts = {
+  bastion_spoke_01 = {
+    name               = "bas-spoke-01"
+    resource_group_key = "rg-networking"
+    sku                = "Standard"  # "Basic", "Standard", "Developer", or "Premium"
+    ip_configuration = {
+      subnet_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/AzureBastionSubnet"
+    }
   }
 }
 ```
@@ -322,14 +355,6 @@ By default, the module auto-creates a Log Analytics workspace. To use a shared e
 ```hcl
 # Point to an existing workspace — skips auto-creation
 log_analytics_workspace_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>"
-```
-
-### Enabling Random Suffixes for Globally-Unique Names
-
-Append a random suffix to globally-unique resources (e.g., Key Vault) to avoid name collisions:
-
-```hcl
-use_random_suffix = true  # default: false
 ```
 
 ### Enabling Resource Locks

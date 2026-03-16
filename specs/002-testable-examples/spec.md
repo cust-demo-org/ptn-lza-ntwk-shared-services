@@ -61,13 +61,13 @@ Each example deploys the absolute minimum set of supporting Azure resources (e.g
 
 **Why this priority**: Deploying heavyweight or unnecessary dependencies makes examples slow, expensive, and brittle. Minimal dependencies follow the AVM convention and keep test costs low.
 
-**Independent Test**: Review each example's `main.tf`. Confirm that only essential resources outside the pattern module are declared, and that they use `azurerm_*` resource blocks (not additional external modules beyond naming/utility).
+**Independent Test**: Review each example's `main.tf`. Confirm that only essential resources outside the pattern module are declared, and that they use `azurerm_*` resource blocks (not additional external modules).
 
 **Acceptance Scenarios**:
 
-1. **Given** the `examples/minimal/` example, **When** reviewing dependencies, **Then** only the naming module and pattern module call are present — no inline `azurerm_*` resources (resource groups are created by the pattern module via the `resource_groups` variable).
-2. **Given** the `examples/vnet_hub/` example, **When** reviewing dependencies, **Then** only a resource group, a hub VNet (to peer with), and naming module are created outside the pattern module call.
-3. **Given** the `examples/vwan_hub/` example, **When** reviewing dependencies, **Then** only a resource group, vWAN, vHub, and naming module are created outside the pattern module call.
+1. **Given** the `examples/minimal/` example, **When** reviewing dependencies, **Then** only the pattern module call is present — no inline `azurerm_*` resources (resource groups are created by the pattern module via the `resource_groups` variable).
+2. **Given** the `examples/vnet_hub/` example, **When** reviewing dependencies, **Then** only a resource group and a hub VNet (to peer with) are created outside the pattern module call.
+3. **Given** the `examples/vwan_hub/` example, **When** reviewing dependencies, **Then** only a resource group, vWAN, and vHub are created outside the pattern module call.
 4. **Given** any example, **When** counting resources outside the module call, **Then** the count is the bare minimum required for the scenario (no luxury extras).
 
 ---
@@ -95,8 +95,8 @@ Examples should run with zero required input variables. All variables declared i
 - What about the vnet_hub example's hub VNet dependency? — The vnet_hub example deploys its own `azurerm_virtual_network` (hub VNet) inline for the spoke to peer with.
 - What about the vwan_hub example's dependency on a vHub? — The vwan_hub example deploys its own `azurerm_virtual_wan` and `azurerm_virtual_hub` resources inline before calling the module.
 - What about `flowlog_configuration` which references an external Network Watcher and storage? — The full example deploys an `azurerm_network_watcher` and an `azurerm_storage_account` inline to satisfy the flow log dependencies.
-- What about `bastion_configuration` which needs a public IP and subnet? — The full example deploys the AzureBastionSubnet within the VNet and an `azurerm_public_ip` inline.
-- What about `private_dns_zone_links` which reference external Private DNS Zones? — The example deploys an `azurerm_private_dns_zone` inline to satisfy the reference.
+- What about `bastion_hosts` which needs a public IP and subnet? — The full example deploys the AzureBastionSubnet within the VNet and an `azurerm_public_ip` inline.
+- What about `byo_private_dns_zone_links` which reference external Private DNS Zones? — The example deploys an `azurerm_private_dns_zone` inline to satisfy the reference.
 - Should `.terraform.lock.hcl` files be committed in examples? — No. Lock files are gitignored in example directories. Exact provider version pins (FR-018) provide version reproducibility; lock file hash verification adds cross-platform friction without meaningful benefit.
 
 ## Clarifications
@@ -115,6 +115,36 @@ Examples should run with zero required input variables. All variables declared i
 - Q: Should variable descriptions be improved? → A: Yes (NEW requirement). Root module variable descriptions must use multi-line heredoc format referencing individual AVM module variable descriptions.
 - Q: Should all AVM module variables be passed through? → A: Yes (NEW requirement). Audit all 13 AVM modules and ensure every user-configurable variable is exposed in the root module variable types (e.g., `lock` and `role_assignments` missing from `resource_groups`).
 
+### Session (Implementation Stage — Key-Based References)
+
+- Q: Should bastion_hosts use the same key-based `network_configuration` pattern as private endpoints? → A: Yes — `ip_configuration.network_configuration` uses `{ subnet_resource_id, vnet_key, subnet_key }`, identical to the PE shape. This replaces the flat `subnet_id` field.
+- Q: Should bastion's `virtual_network_id` become an object? → A: Yes — `virtual_network = object({ resource_id, key })` matches the `vhub_connectivity_definitions.virtual_network` pattern. Provide either a direct `resource_id` or a `key` to resolve from `virtual_networks` map.
+- Q: Should `module.virtual_network[...]` references be centralised? → A: Yes — `vnet_resource_ids` and `subnet_resource_ids` lookup maps added to `locals.tf`, following the same pattern as `nsg_resource_ids` and `rt_resource_ids`. All 6 references in `main.tf`/`locals.tf` now go through these locals for cleaner code.
+
+### Session (Implementation Stage — Storage Account Module & Flow Log Storage Reference)
+
+- Q: Should storage accounts be creatable within the pattern module? → A: Yes — `var.storage_accounts` (map of objects) backed by AVM storage module v0.6.7. Secure defaults: `shared_access_key_enabled = false`, `public_network_access_enabled = false`.
+- Q: How should flow logs reference a storage account created by the pattern module? → A: Via nested `storage_account = object({ resource_id, key })` — same pattern as bastion `virtual_network` and vHub `virtual_network`. Provide either a direct `resource_id` or a `key` referencing `var.storage_accounts`.
+- Q: Should the old flat `storage_account_id` field remain? → A: No — replaced entirely by the nested `storage_account` object for consistency with established key-based patterns.
+- Q: What diagnostic settings variable name does the AVM storage module use? → A: `diagnostic_settings_storage_account` (not `diagnostic_settings`). Each sub-resource (blob, file, queue, table) has its own diagnostic settings variable.
+- Q: Should the full example create the flow-log storage account inline or via the pattern module? → A: Via the pattern module's `storage_accounts` variable. The `full/` example uses `storage_accounts = { sa_flowlog = { ... } }` in tfvars and references it in flow logs via `storage_account = { key = "sa_flowlog" }`. This exercises the key-based storage reference feature end-to-end.
+
+### Session (Implementation Stage — Flow Log VNet Key Reference)
+
+- Q: Should flow logs accept an arbitrary `target_resource_id` or a key-based reference? → A: Key-based only (`vnet_key`). Flow logs in this pattern module always target VNets created by the module, so `target_resource_id` is replaced with `vnet_key` (resolved via `local.vnet_resource_ids`).
+- Q: Does the `full/` example still need `spoke_vnet_id` / `spoke_vnet_name` / `spoke_bastion_subnet_id` locals? → A: No — these were only used to merge `target_resource_id` into flow log config. With `vnet_key`, the pattern module resolves VNet IDs internally. Dead locals removed.
+
+### Session (Implementation Stage — Optional Network Watcher Fields)
+
+- Q: Should `flowlog_configuration.network_watcher_id`, `network_watcher_name`, and `resource_group_name` be required or optional? → A: Optional. Azure auto-creates `NetworkWatcherRG` and `NetworkWatcher_<region>` when VNets are deployed, so the vast majority of deployments use these standard resources. The pattern module now computes defaults via `coalesce`, allowing callers to override for non-standard setups.
+- Q: Does the `full/` example still need `nw_rg_name`, `nw_name`, `nw_id` locals? → A: No — the pattern module computes these internally. The locals and their merge overrides were removed from `main.tf`.
+
+### Session (Implementation Stage — BYO LAW & Auto-Resolved Traffic Analytics)
+
+- Q: Should `log_analytics_workspace_id` remain a flat string or become a richer object? → A: Replaced with `byo_log_analytics_workspace = { resource_id, location }` object. The `location` field is needed to resolve `traffic_analytics.workspace_region` without a data source.
+- Q: Should `traffic_analytics.workspace_id`, `workspace_region`, `workspace_resource_id` remain required? → A: Made optional. The pattern module auto-resolves them from the Log Analytics workspace. For BYO workspaces, a `data "azurerm_log_analytics_workspace"` retrieves the GUID; for internal workspaces, values come from `module.log_analytics_workspace[0].resource`.
+- Q: Does the `full/` example still need `law_rg_name`, `law_name`, `law_resource_id` locals? → A: No — the pattern module resolves all traffic analytics workspace fields internally. Removed the locals and the `workspace_resource_id` merge override.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -125,7 +155,7 @@ Examples should run with zero required input variables. All variables declared i
 - **FR-004**: Each example MUST call the pattern module using `source = "../.."`.
 - **FR-005**: Each example MUST deploy all mandatory dependent resources (e.g., resource group) inline using `azurerm_*` resource blocks so that `terraform plan` succeeds without pre-existing infrastructure.
 - **FR-006**: Each example MUST have zero required input variables — all variables in `variables.tf` MUST have default values so that `terraform plan` works with no flags. Scenario-specific values are provided via `terraform.tfvars` which overrides the defaults.
-- **FR-007**: Each example MUST use the naming module (`Azure/naming/azurerm`) pinned to an exact version (e.g., `0.4.3`) to generate unique resource names, ensuring parallel deployments do not collide.
+- **FR-007**: Each example MUST supply explicit, unique resource names via `terraform.tfvars` to ensure parallel deployments do not collide. The pattern module does not generate names internally.
 - **FR-008**: Each example MUST pass `terraform fmt -check` and `terraform validate` cleanly.
 - **FR-009**: Each example's `terraform.tfvars` serves as the primary value source for that scenario, providing the concrete values that override `variables.tf` defaults.
 - **FR-010**: Each example SHOULD include a `_header.md` file describing what the example demonstrates, following the AVM documentation convention.
@@ -165,8 +195,8 @@ Examples should run with zero required input variables. All variables declared i
 
 - The repository has been merged to `main` with the `001-spoke-shared-services` feature complete (all 15 root module variables, 13 AVM module blocks).
 - Provider version constraints in examples will use exact pins (e.g., `= 4.63.0`, `= 2.8.0`, `= 3.8.1`) for reproducibility, matching the latest versions at time of authoring.
-- The naming module (`Azure/naming/azurerm`) is an acceptable dependency inside examples (consistent with AVM conventions).
-- For features requiring external resources that are impractical to deploy inline (e.g., existing Private DNS Zones for the `private_dns_zone_links` variable), examples will deploy a minimal `azurerm_private_dns_zone` inline.
+- Resource naming is the responsibility of pattern consumers; examples supply explicit names via `terraform.tfvars`.
+- For features requiring external resources that are impractical to deploy inline (e.g., existing Private DNS Zones for the `byo_private_dns_zone_links` variable), examples will deploy a minimal `azurerm_private_dns_zone` inline.
 - Examples are not CI-automated in this feature — CI integration would be a follow-up concern. This feature focuses on making examples locally runnable.
 - The `vhub_connectivity_definitions` feature requires a vWAN + vHub, which are relatively expensive and slow to deploy. The vwan_hub example accepts this cost as a trade-off for testability.
 - Each example's `variables.tf` mirrors the root module's variable interface (all 17 variables, some with expanded type definitions per FR-021, all with defaults). `terraform.tfvars` provides the scenario-specific overrides. This enables both `terraform plan` with no flags (defaults) and realistic deployments (via tfvars).

@@ -66,15 +66,30 @@ output "route_tables" {
 
 ---
 
-## Private DNS Zone Link Outputs
+## Private DNS Zone Outputs
 
 ```hcl
-output "private_dns_zone_links" {
-  value       = { for key, mod in module.private_dns_zone_link : key => {
+output "private_dns_zones" {
+  value       = { for key, mod in module.private_dns_zone : key => {
+    resource_id          = mod.resource_id
+    name                 = mod.name
+    virtual_network_links = mod.virtual_network_links
+  }}
+  description = "Map of Private DNS Zone keys to their resource IDs, names, and VNet link details."
+}
+```
+
+---
+
+## BYO Private DNS Zone Link Outputs
+
+```hcl
+output "byo_private_dns_zone_links" {
+  value       = { for key, mod in module.byo_private_dns_zone_link : key => {
     resource_id = mod.resource_id
     name        = mod.resource.name
   }}
-  description = "Map of Private DNS Zone VNet link keys to their resource IDs and names."
+  description = "Map of BYO Private DNS Zone VNet link keys to their resource IDs and names."
 }
 ```
 
@@ -114,12 +129,14 @@ output "key_vaults" {
 ## Bastion Outputs
 
 ```hcl
-output "bastion" {
-  value = var.bastion_configuration != null ? {
-    resource_id = module.bastion_host[0].resource_id
-    name        = module.bastion_host[0].name
-  } : null
-  description = "Bastion host resource ID and name. Null when Bastion is not enabled."
+output "bastion_hosts" {
+  value = {
+    for k, v in module.bastion_host : k => {
+      resource_id = v.resource_id
+      name        = v.name
+    }
+  }
+  description = "Map of Bastion host resource IDs and names, keyed by bastion_hosts map key. Empty map when no Bastion hosts are deployed."
 }
 ```
 

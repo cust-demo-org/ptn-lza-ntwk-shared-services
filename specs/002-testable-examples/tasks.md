@@ -38,7 +38,7 @@
 - [X] T006 [P] Add `role_assignments` field to `log_analytics_workspace_configuration` variable type in `variables.tf`
 - [X] T007 [P] Add `role_assignments` field to `network_security_groups` variable type in `variables.tf`
 - [X] T008 [P] Add `role_assignments` field to `managed_identities` variable type in `variables.tf`
-- [X] T009 [P] Add `role_assignments` field to `bastion_configuration` variable type in `variables.tf`
+- [X] T009 [P] Add `role_assignments` field to `bastion_hosts` variable type in `variables.tf`
 - [X] T010 [P] Add `role_assignments` field (VNet-level) to `virtual_networks` variable type in `variables.tf`
 - [X] T011 [P] Add `private_endpoints` field to `log_analytics_workspace_configuration` variable type in `variables.tf`
 - [X] T012 Update `module "resource_group"` call in `main.tf` to pass `lock` and `role_assignments` from the expanded variable type
@@ -61,7 +61,7 @@
 - [X] T026 [P] Convert `key_vaults` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T027 [P] Convert `role_assignments` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T028 [P] Convert `vhub_connectivity_definitions` variable description to heredoc format with AVM module reference in `variables.tf`
-- [X] T029 [P] Convert `bastion_configuration` variable description to heredoc format with AVM module reference in `variables.tf`
+- [X] T029 [P] Convert `bastion_hosts` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T030 [P] Convert `flowlog_configuration` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T031 [P] Convert `location`, `tags`, `use_random_suffix`, `lock`, and `log_analytics_workspace_id` variable descriptions to heredoc format in `variables.tf`
 - [X] T032 Run `terraform fmt -write=true` on root `variables.tf` to ensure formatting compliance
@@ -110,7 +110,7 @@
 - [X] T046 [P] [US1] Create `examples/full/terraform.tf` with exact provider pins per contracts/example-layout.md
 - [X] T047 [P] [US1] Create `examples/full/variables.tf` declaring all 17 pattern module variables with descriptions and defaults appropriate for full-feature scenario
 - [X] T048 [US1] Create `examples/full/main.tf` with naming module, inline `azurerm_resource_group` (hub RG), inline `azurerm_virtual_network` (hub VNet), inline `azurerm_private_dns_zone`, inline `azurerm_network_watcher`, inline `azurerm_public_ip` (Bastion), inline `azurerm_storage_account` (flow logs), and pattern module call (`source = "../.."`, `depends_on` on all inline resources) passing all variables. Use locals to merge computed resource IDs into variable values for peering, DNS links, Bastion, and flow log configuration
-- [X] T049 [US1] Update `examples/full/terraform.tfvars` with scenario-specific overrides exercising ALL pattern features (resource_groups, LAW, NSGs, route_tables, virtual_networks with peering, private_dns_zone_links, managed_identities, key_vaults, role_assignments, bastion_configuration, flowlog_configuration)
+- [X] T049 [US1] Update `examples/full/terraform.tfvars` with scenario-specific overrides exercising ALL pattern features (resource_groups, LAW, NSGs, route_tables, virtual_networks with peering, private_dns_zone_links, managed_identities, key_vaults, role_assignments, bastion_hosts, flowlog_configuration)
 
 ### Validation
 
@@ -174,9 +174,9 @@
 - [ ] T072 [US2] Run `terraform apply -auto-approve` in `examples/vnet_hub/` — verify successful deployment
 - [ ] T073 [US2] Run second `terraform apply` in `examples/vnet_hub/` — verify 0 changes
 - [ ] T074 [US2] Run `terraform destroy -auto-approve` in `examples/vnet_hub/` — verify clean removal
-- [ ] T075 [US2] Run `terraform apply -auto-approve` in `examples/vwan_hub/` — verify successful deployment
-- [ ] T076 [US2] Run second `terraform apply` in `examples/vwan_hub/` — verify 0 changes
-- [ ] T077 [US2] Run `terraform destroy -auto-approve` in `examples/vwan_hub/` — verify clean removal
+- [X] T075 [US2] Run `terraform apply -auto-approve` in `examples/vwan_hub/` — verify successful deployment
+- [X] T076 [US2] Run second `terraform apply` in `examples/vwan_hub/` — verify 0 changes
+- [X] T077 [US2] Run `terraform destroy -auto-approve` in `examples/vwan_hub/` — verify clean removal
 - [ ] T078 [US2] Run `terraform apply -auto-approve` in `examples/full/` — verify successful deployment
 - [ ] T079 [US2] Run second `terraform apply` in `examples/full/` — verify 0 changes
 - [ ] T080 [US2] Run `terraform destroy -auto-approve` in `examples/full/` — verify clean removal
@@ -189,17 +189,17 @@
 
 **Purpose**: Documentation, formatting, and final validation
 
-- [ ] T081 [P] Create `examples/minimal/_header.md` describing the minimal example per contract template (features tested: resource groups, LAW, NSGs, route tables, VNets without peering)
-- [ ] T082 [P] Create `examples/vnet_hub/_header.md` describing the VNet hub peering example (features tested: all minimal + VNet-to-VNet hub peering)
-- [ ] T083 [P] Create `examples/vwan_hub/_header.md` describing the vWAN hub connectivity example (features tested: all minimal + vhub_connectivity_definitions)
-- [ ] T084 [P] Create `examples/full/_header.md` describing the full example (features tested: ALL pattern features including Bastion, Key Vault, managed identities, role assignments, flow logs, DNS links, peering)
-- [ ] T085 Generate `examples/minimal/README.md` via `terraform-docs markdown table --output-file README.md --output-mode inject .` in `examples/minimal/`
-- [ ] T086 [P] Generate `examples/vnet_hub/README.md` via terraform-docs in `examples/vnet_hub/`
-- [ ] T087 [P] Generate `examples/vwan_hub/README.md` via terraform-docs in `examples/vwan_hub/`
-- [ ] T088 [P] Generate `examples/full/README.md` via terraform-docs in `examples/full/`
-- [ ] T089 Regenerate root module README.md via terraform-docs (reflects updated variable descriptions from FR-020)
-- [ ] T090 Run `terraform fmt -check -recursive` from repository root — verify exit 0 (SC-006)
-- [ ] T091 Final review: verify SC-005 — all example directories contain `terraform.tf`, `main.tf`, `variables.tf`, `terraform.tfvars`, `_header.md`, and `README.md`
+- [X] T081 [P] Create `examples/minimal/_header.md` describing the minimal example per contract template (features tested: resource groups, LAW, NSGs, route tables, VNets without peering)
+- [X] T082 [P] Create `examples/vnet_hub/_header.md` describing the VNet hub peering example (features tested: all minimal + VNet-to-VNet hub peering)
+- [X] T083 [P] Create `examples/vwan_hub/_header.md` describing the vWAN hub connectivity example (features tested: all minimal + vhub_connectivity_definitions)
+- [X] T084 [P] Create `examples/full/_header.md` describing the full example (features tested: ALL pattern features including Bastion, Key Vault, managed identities, role assignments, flow logs, DNS links, peering)
+- [X] T085 Generate `examples/minimal/README.md` via `terraform-docs markdown table --output-file README.md --output-mode replace .` in `examples/minimal/`
+- [X] T086 [P] Generate `examples/vnet_hub/README.md` via terraform-docs in `examples/vnet_hub/`
+- [X] T087 [P] Generate `examples/vwan_hub/README.md` via terraform-docs in `examples/vwan_hub/`
+- [X] T088 [P] Generate `examples/full/README.md` via terraform-docs in `examples/full/`
+- [X] T089 Regenerate root module README.md via terraform-docs (reflects updated variable descriptions from FR-020)
+- [X] T090 Run `terraform fmt -check -recursive` from repository root — verify exit 0 (SC-006)
+- [X] T091 Final review: verify SC-005 — all example directories contain `terraform.tf`, `main.tf`, `variables.tf`, `terraform.tfvars`, `_header.md`, and `README.md`
 
 **Checkpoint**: All success criteria (SC-001 through SC-008) verified. Feature complete.
 

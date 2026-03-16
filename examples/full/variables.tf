@@ -10,12 +10,6 @@ variable "tags" {
   description = "Tags applied to all resources. Refer to the main pattern module variable descriptions for complete details."
 }
 
-variable "use_random_suffix" {
-  type        = bool
-  default     = false
-  description = "When true, globally-unique resources receive a random suffix. Refer to the main pattern module variable descriptions for complete details."
-}
-
 variable "lock" {
   type = object({
     kind = string
@@ -49,10 +43,13 @@ variable "resource_groups" {
   description = "Map of resource groups to create. Refer to the main pattern module variable descriptions for complete details."
 }
 
-variable "log_analytics_workspace_id" {
-  type        = string
+variable "byo_log_analytics_workspace" {
+  type = object({
+    resource_id = string
+    location    = string
+  })
   default     = null
-  description = "Resource ID of an existing Log Analytics workspace. Null auto-creates one. Refer to the main pattern module variable descriptions for complete details."
+  description = "Bring-your-own Log Analytics workspace. Null auto-creates one. Refer to the main pattern module variable descriptions for complete details."
 }
 
 variable "log_analytics_workspace_configuration" {
@@ -74,10 +71,17 @@ variable "log_analytics_workspace_configuration" {
       principal_type                         = optional(string, null)
     })), {})
     private_endpoints = optional(map(object({
-      name                          = optional(string, null)
-      subnet_resource_id            = string
-      private_dns_zone_resource_ids = optional(set(string), [])
-      tags                          = optional(map(string), null)
+      name = optional(string, null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      tags = optional(map(string), null)
     })), {})
   })
   default     = null
@@ -118,6 +122,18 @@ variable "network_security_groups" {
       delegated_managed_identity_resource_id = optional(string, null)
       principal_type                         = optional(string, null)
     })), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
   }))
   default     = {}
   description = "Map of Network Security Groups. Refer to the main pattern module variable descriptions for complete details."
@@ -149,8 +165,8 @@ variable "virtual_networks" {
     location           = optional(string)
     dns_servers        = optional(list(string))
     ddos_protection_plan = optional(object({
-      id     = string
-      enable = bool
+      resource_id = string
+      enable      = bool
     }))
     encryption = optional(object({
       enabled     = bool
@@ -207,12 +223,41 @@ variable "virtual_networks" {
       delegated_managed_identity_resource_id = optional(string, null)
       principal_type                         = optional(string, null)
     })), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
   }))
   default     = {}
   description = "Map of spoke virtual networks with subnets and optional peerings. Refer to the main pattern module variable descriptions for complete details."
 }
 
-variable "private_dns_zone_links" {
+variable "private_dns_zones" {
+  type = map(object({
+    domain_name        = string
+    resource_group_key = string
+    virtual_network_links = optional(map(object({
+      name                 = string
+      virtual_network_key  = string
+      registration_enabled = optional(bool, false)
+      resolution_policy    = optional(string, "Default")
+      tags                 = optional(map(string), {})
+    })), {})
+    tags = optional(map(string), {})
+  }))
+  default     = {}
+  description = "Map of Private DNS Zones to create. Refer to the main pattern module variable descriptions for complete details."
+}
+
+variable "byo_private_dns_zone_links" {
   type = map(object({
     name                 = string
     private_dns_zone_id  = string
@@ -222,7 +267,7 @@ variable "private_dns_zone_links" {
     tags                 = optional(map(string), {})
   }))
   default     = {}
-  description = "Map of Private DNS Zone VNet links. Refer to the main pattern module variable descriptions for complete details."
+  description = "Map of BYO Private DNS Zone VNet links. Refer to the main pattern module variable descriptions for complete details."
 }
 
 variable "managed_identities" {
@@ -268,12 +313,31 @@ variable "key_vaults" {
       principal_type             = optional(string, null)
     })), {})
     private_endpoints = optional(map(object({
-      name                          = optional(string, null)
-      subnet_resource_id            = string
-      private_dns_zone_resource_ids = optional(set(string), [])
-      tags                          = optional(map(string), null)
+      name = optional(string, null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      tags = optional(map(string), null)
     })), {})
     tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
   }))
   default     = {}
   description = "Map of Key Vaults. Refer to the main pattern module variable descriptions for complete details."
@@ -296,32 +360,51 @@ variable "vhub_connectivity_definitions" {
   type = map(object({
     vhub_resource_id = string
     virtual_network = object({
-      key = optional(string)
-      id  = optional(string)
+      key         = optional(string)
+      resource_id = optional(string)
     })
     internet_security_enabled = optional(bool, true)
+    routing = optional(object({
+      associated_route_table_id = string
+      propagated_route_table = optional(object({
+        route_table_ids = optional(list(string), [])
+        labels          = optional(list(string), [])
+      }))
+      static_vnet_route = optional(object({
+        name                = optional(string)
+        address_prefixes    = optional(list(string), [])
+        next_hop_ip_address = optional(string)
+      }))
+    }))
   }))
   default     = {}
   description = "Map of vWAN hub connections linking spoke VNets to a Virtual Hub. Refer to the main pattern module variable descriptions for complete details."
 }
 
-variable "bastion_configuration" {
-  type = object({
+variable "bastion_hosts" {
+  type = map(object({
     name               = optional(string)
     resource_group_key = string
     location           = optional(string)
     sku                = optional(string, "Standard")
     zones              = optional(set(string), ["1", "2", "3"])
     ip_configuration = optional(object({
-      name                             = optional(string)
-      subnet_id                        = string
+      name = optional(string)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
       create_public_ip                 = optional(bool, true)
       public_ip_tags                   = optional(map(string), null)
       public_ip_merge_with_module_tags = optional(bool, true)
       public_ip_address_name           = optional(string, null)
       public_ip_address_id             = optional(string, null)
     }))
-    virtual_network_id        = optional(string)
+    virtual_network = optional(object({
+      resource_id = optional(string)
+      key         = optional(string)
+    }))
     copy_paste_enabled        = optional(bool, true)
     file_copy_enabled         = optional(bool, false)
     ip_connect_enabled        = optional(bool, false)
@@ -342,32 +425,47 @@ variable "bastion_configuration" {
       delegated_managed_identity_resource_id = optional(string, null)
       principal_type                         = optional(string, null)
     })), {})
-  })
-  default     = null
-  description = "Bastion host configuration. Null disables Bastion. Refer to the main pattern module variable descriptions for complete details."
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
+  }))
+  default     = {}
+  description = "Map of Bastion host configurations. Empty map disables Bastion. Refer to the main pattern module variable descriptions for complete details."
 }
 
 variable "flowlog_configuration" {
   type = object({
-    network_watcher_id   = string
-    network_watcher_name = string
-    resource_group_name  = string
+    network_watcher_id   = optional(string)
+    network_watcher_name = optional(string)
+    resource_group_name  = optional(string)
     location             = optional(string)
     flow_logs = optional(map(object({
-      enabled            = bool
-      name               = string
-      target_resource_id = string
+      enabled  = bool
+      name     = string
+      vnet_key = string
       retention_policy = object({
         days    = number
         enabled = bool
       })
-      storage_account_id = string
+      storage_account = object({
+        resource_id = optional(string)
+        key         = optional(string)
+      })
       traffic_analytics = optional(object({
         enabled               = bool
         interval_in_minutes   = optional(number)
-        workspace_id          = string
-        workspace_region      = string
-        workspace_resource_id = string
+        workspace_id          = optional(string)
+        workspace_region      = optional(string)
+        workspace_resource_id = optional(string)
       }))
       version = optional(number)
     })), null)
@@ -375,4 +473,79 @@ variable "flowlog_configuration" {
   })
   default     = null
   description = "Network Watcher flow log configuration. Null disables flow logs. Refer to the main pattern module variable descriptions for complete details."
+}
+
+variable "storage_accounts" {
+  type = map(object({
+    name                            = string
+    resource_group_key              = string
+    location                        = optional(string)
+    account_tier                    = optional(string, "Standard")
+    account_replication_type        = optional(string, "ZRS")
+    account_kind                    = optional(string, "StorageV2")
+    access_tier                     = optional(string, "Hot")
+    shared_access_key_enabled       = optional(bool, false)
+    public_network_access_enabled   = optional(bool, false)
+    https_traffic_only_enabled      = optional(bool, true)
+    min_tls_version                 = optional(string, "TLS1_2")
+    allow_nested_items_to_be_public = optional(bool, false)
+    network_rules = optional(object({
+      bypass                     = optional(set(string), ["AzureServices"])
+      default_action             = optional(string, "Deny")
+      ip_rules                   = optional(set(string), [])
+      virtual_network_subnet_ids = optional(set(string), [])
+    }), {})
+    managed_identities = optional(object({
+      system_assigned            = optional(bool, false)
+      user_assigned_resource_ids = optional(set(string), [])
+    }), {})
+    containers = optional(map(object({
+      name          = string
+      public_access = optional(string, "None")
+      metadata      = optional(map(string))
+    })), {})
+    private_endpoints = optional(map(object({
+      name = optional(string, null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      subresource_name = string
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      tags = optional(map(string), null)
+    })), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    lock = optional(object({
+      kind = string
+      name = optional(string, null)
+    }))
+    tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+    })), {})
+  }))
+  default     = {}
+  description = "Map of storage accounts to create. Refer to the main pattern module variable descriptions for complete details."
 }

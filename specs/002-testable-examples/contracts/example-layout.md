@@ -21,10 +21,6 @@ terraform {
       source  = "azure/azapi"
       version = "= 2.8.0"   # Exact pin
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "= 3.8.1"   # Exact pin
-    }
   }
 }
 
@@ -36,16 +32,10 @@ provider "azurerm" {
 ### main.tf
 
 Structure:
-1. Naming module call (for unique names)
-2. Inline dependent resources (scenario-specific)
-3. Pattern module call with variable pass-through
+1. Inline dependent resources (scenario-specific)
+2. Pattern module call with variable pass-through
 
 ```hcl
-module "naming" {
-  source  = "Azure/naming/azurerm"
-  version = "0.4.3"
-}
-
 # ... inline dependencies (scenario-specific) ...
 
 module "pattern" {
@@ -53,20 +43,20 @@ module "pattern" {
 
   location                              = var.location
   tags                                  = var.tags
-  use_random_suffix                     = var.use_random_suffix
   lock                                  = var.lock
   resource_groups                       = var.resource_groups
-  log_analytics_workspace_id            = var.log_analytics_workspace_id
+  byo_log_analytics_workspace           = var.byo_log_analytics_workspace
   log_analytics_workspace_configuration = var.log_analytics_workspace_configuration
   network_security_groups               = var.network_security_groups
   route_tables                          = var.route_tables
   virtual_networks                      = var.virtual_networks
-  private_dns_zone_links                = var.private_dns_zone_links
+  private_dns_zones                    = var.private_dns_zones
+  byo_private_dns_zone_links            = var.byo_private_dns_zone_links
   managed_identities                    = var.managed_identities
   key_vaults                            = var.key_vaults
   role_assignments                      = var.role_assignments
   vhub_connectivity_definitions         = var.vhub_connectivity_definitions
-  bastion_configuration                 = var.bastion_configuration
+  bastion_hosts                         = var.bastion_hosts
   flowlog_configuration                 = var.flowlog_configuration
 
   # Examples with inline dependencies MUST include depends_on
@@ -79,6 +69,8 @@ module "pattern" {
 **Important**: Variables referencing inline dependencies (e.g., peering targets, vHub IDs, subnet IDs for Bastion) use computed resource attributes from inline resources declared above the module call. These are passed into the variable values in `terraform.tfvars` only when they can be literal strings, or overridden in `main.tf` using locals/resource references when they must be dynamic.
 
 **Design decision**: When a variable value must reference a computed inline resource ID (e.g., hub VNet ID for peering, vHub ID for connectivity), the `terraform.tfvars` provides the base configuration and the `main.tf` constructs the full value using locals that merge tfvars values with computed references. This avoids hardcoded placeholder IDs.
+
+**PE key-based references**: Private endpoint configurations (`log_analytics_workspace_configuration.private_endpoints`, `key_vaults[].private_endpoints`) use the key-based reference pattern. Callers specify `network_configuration.vnet_key`/`subnet_key` (referencing keys in `virtual_networks`) and `private_dns_zone.keys` (referencing keys in `byo_private_dns_zone_links`) instead of computed resource IDs. The pattern module resolves these keys internally, so examples do NOT need a local block to merge computed subnet/DNS zone IDs into PE configs. The `full/` example's `terraform.tfvars` sets PE config entirely via keys — no `key_vaults` local is needed in `main.tf`.
 
 ### variables.tf
 
@@ -103,7 +95,7 @@ variable "tags" {
 
 **Default strategy**:
 - Simple types: sensible defaults (`"australiaeast"`, `false`, `null`, `{}`)
-- Complex object variables: `null` (for optional features like bastion) or `{}` (for map variables)
+- Complex object variables: `null` (for optional features like flowlog) or `{}` (for map variables like bastion_hosts)
 - Variables with validation blocks: defaults must pass validation
 
 ### terraform.tfvars
@@ -145,3 +137,44 @@ Every example MUST pass:
 4. `terraform apply -auto-approve` — exit 0 (manual, against live Azure)
 5. Second `terraform apply` — 0 changes (idempotency)
 6. `terraform destroy -auto-approve` — exit 0, clean removal
+
+## PE Variable Shape Reference
+
+Both `log_analytics_workspace_configuration.private_endpoints` and `key_vaults[].private_endpoints` use this type:
+
+```hcl
+private_endpoints = optional(map(object({
+  name = optional(string, null)
+  network_configuration = object({
+    subnet_resource_id = optional(string)   # Direct ID, OR:
+    vnet_key           = optional(string)   # Key in virtual_networks map
+    subnet_key         = optional(string)   # Key in VNet's subnets map
+  })
+  private_dns_zone = optional(object({
+    resource_ids = optional(set(string))     # Direct IDs, OR:
+    keys         = optional(set(string))     # Keys in byo_private_dns_zone_links map
+  }))
+  tags = optional(map(string), null)
+})), {})
+```
+
+**full/ example usage** (in `terraform.tfvars`):
+```hcl
+private_endpoints = {
+  pe_kv = {
+    name = "pe-kv-shared-full"
+    network_configuration = {
+      vnet_key   = "vnet_spoke"
+      subnet_key = "snet_pe"
+    }
+    private_dns_zone = {
+      keys = ["link_kv"]
+    }
+  }
+}
+```
+
+## Field Renames
+
+- `vhub_connectivity_definitions.virtual_network.id` → `.resource_id`
+- `ddos_protection_plan.id` → `.resource_id`

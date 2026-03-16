@@ -7,7 +7,7 @@
 ### Phase A: Root Module Variable Improvements (prerequisite)
 
 1. **Expand variable types (FR-021)**:
-   - Add `role_assignments` to: `resource_groups`, `log_analytics_workspace_configuration`, `network_security_groups`, `managed_identities`, `bastion_configuration`, `virtual_networks` (VNet-level)
+   - Add `role_assignments` to: `resource_groups`, `log_analytics_workspace_configuration`, `network_security_groups`, `managed_identities`, `bastion_hosts`, `virtual_networks` (VNet-level)
    - Add `lock` override to `resource_groups`
    - Update `main.tf` module calls to pass new fields through
    - Run `terraform validate` to confirm no regressions
@@ -62,6 +62,6 @@ terraform destroy -auto-approve
 
 1. **Variable pass-through**: `main.tf` passes ALL variables from `variables.tf` to the pattern module call
 2. **Inline deps only for external resources**: Pattern module creates its own RGs, VNets, NSGs, etc. via variables. Examples only create resources the pattern does NOT create (hub VNet, vWAN, vHub, DNS zones, etc.)
-3. **No placeholder IDs**: When variables reference inline dependency IDs, use computed references via locals, not hardcoded fake IDs
+3. **No placeholder IDs**: When variables reference inline dependency IDs, use computed references via locals, not hardcoded fake IDs. **Exception**: Private endpoint configs use the key-based reference pattern (`vnet_key`/`subnet_key`, `private_dns_zone.keys`) — the pattern module resolves keys internally, so no locals are needed for PE subnet/DNS zone IDs
 4. **Exact provider pins**: Examples use `= X.Y.Z`, root module keeps `~> X.0`
 5. **terraform-docs**: Run `terraform-docs markdown table --output-file README.md --output-mode inject .` in each example

@@ -68,7 +68,7 @@ No separate peering AVM module exists. The VNet module handles peering natively,
 
 ### Rationale
 
-Aligns with the FR-032 implicit map-based toggle pattern used by other optional features (`private_dns_zone_links`, `managed_identities`, `key_vaults`). Eliminates the `connectivity_mode` enum and its associated standalone variables (`hub_virtual_network_id`, `enable_hub_side_peering`, `hub_peering_options`, `virtual_hub_id`). Per-VNet peering configuration is more flexible — different VNets can peer to different hubs. The `vhub_connectivity_definitions` variable supports multi-hub vWAN scenarios.
+Aligns with the FR-032 implicit map-based toggle pattern used by other optional features (`private_dns_zones`, `byo_private_dns_zone_links`, `managed_identities`, `key_vaults`). Eliminates the `connectivity_mode` enum and its associated standalone variables (`hub_virtual_network_id`, `enable_hub_side_peering`, `hub_peering_options`, `virtual_hub_id`). Per-VNet peering configuration is more flexible — different VNets can peer to different hubs. The `vhub_connectivity_definitions` variable supports multi-hub vWAN scenarios.
 
 ### Alternatives considered
 
@@ -77,11 +77,11 @@ Aligns with the FR-032 implicit map-based toggle pattern used by other optional 
 
 ---
 
-## 4. Private DNS Zone VNet Links on Existing Zones
+## 4. BYO Private DNS Zone VNet Links on Existing Zones
 
 ### Decision: Use AVM submodule `private_dns_virtual_network_link` from `avm-res-network-privatednszone`
 
-Each entry in a `private_dns_zone_links` map variable will create an instance of the `private_dns_virtual_network_link` submodule from `Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link`.
+Each entry in a `byo_private_dns_zone_links` map variable will create an instance of the `private_dns_virtual_network_link` submodule from `Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link`.
 
 The submodule accepts:
 - `parent_id` — the existing Private DNS Zone resource ID (e.g., `/subscriptions/.../privateDnsZones/privatelink.blob.core.windows.net`)
@@ -93,7 +93,7 @@ The submodule accepts:
 
 The input shape remains:
 ```hcl
-private_dns_zone_links = {
+byo_private_dns_zone_links = {
   "blob" = {
     private_dns_zone_id    = "/subscriptions/.../privateDnsZones/privatelink.blob.core.windows.net"
     registration_enabled   = false

@@ -28,16 +28,6 @@ variable "tags" {
 }
 ```
 
-### `use_random_suffix`
-
-```hcl
-variable "use_random_suffix" {
-  type        = bool
-  default     = false
-  description = "When true, globally-unique resources (e.g., Key Vault) receive a random suffix. Default: false (CAF names only)."
-}
-```
-
 ### `lock`
 
 ```hcl
@@ -234,12 +224,37 @@ variable "route_tables" {
 
 ---
 
-## Private DNS Zone Link Variables
+## Private DNS Zone Variables
 
-### `private_dns_zone_links`
+### `private_dns_zones`
 
 ```hcl
-variable "private_dns_zone_links" {
+variable "private_dns_zones" {
+  type = map(object({
+    domain_name        = string
+    resource_group_key = string
+    virtual_network_links = optional(map(object({
+      name                 = string
+      virtual_network_key  = string
+      registration_enabled = optional(bool, false)
+      resolution_policy    = optional(string, "Default")
+      tags                 = optional(map(string), {})
+    })), {})
+    tags = optional(map(string), {})
+  }))
+  default     = {}
+  description = "Map of Private DNS Zones to create and optionally link to VNets. For BYO zones, use byo_private_dns_zone_links."
+}
+```
+
+---
+
+## BYO Private DNS Zone Link Variables
+
+### `byo_private_dns_zone_links`
+
+```hcl
+variable "byo_private_dns_zone_links" {
   type = map(object({
     private_dns_zone_id  = string
     virtual_network_key  = string
@@ -248,7 +263,7 @@ variable "private_dns_zone_links" {
     tags                 = optional(map(string), {})
   }))
   default     = {}
-  description = "Map of Private DNS Zone VNet links. Each links an existing DNS zone (by resource ID) to a spoke VNet (by map key). Uses avm-res-network-privatednszone submodule private_dns_virtual_network_link."
+  description = "Map of BYO (Bring Your Own) Private DNS Zone VNet links. Each links an existing DNS zone (by resource ID) to a spoke VNet (by map key). Uses avm-res-network-privatednszone submodule private_dns_virtual_network_link. For creating new DNS zones, use private_dns_zones instead."
 }
 ```
 
@@ -320,26 +335,33 @@ variable "key_vaults" {
 
 ## Bastion Variables
 
-### `bastion_configuration`
+### `bastion_hosts`
 
 ```hcl
-variable "bastion_configuration" {
-  type = object({
-    name               = optional(string)
+variable "bastion_hosts" {
+  type = map(object({
+    name               = string
     resource_group_key = string
     location           = optional(string)
     sku                = optional(string, "Standard")
     zones              = optional(set(string), ["1", "2", "3"])
     ip_configuration = optional(object({
-      name                             = optional(string)
-      subnet_id                        = string
+      name = optional(string)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
       create_public_ip                 = optional(bool, true)
       public_ip_tags                   = optional(map(string), null)
       public_ip_merge_with_module_tags = optional(bool, true)
       public_ip_address_name           = optional(string, null)
       public_ip_address_id             = optional(string, null)
     }))
-    virtual_network_id        = optional(string)
+    virtual_network = optional(object({
+      resource_id = optional(string)
+      key         = optional(string)
+    }))
     copy_paste_enabled        = optional(bool, true)
     file_copy_enabled         = optional(bool, false)
     ip_connect_enabled        = optional(bool, false)
@@ -350,13 +372,24 @@ variable "bastion_configuration" {
     shareable_link_enabled    = optional(bool, false)
     tunneling_enabled         = optional(bool, false)
     tags                      = optional(map(string), {})
-  })
-  default     = null
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = string
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+  }))
+  default     = {}
   description = <<-EOT
-    Bastion host configuration. When non-null, deploys an Azure Bastion Host (implicit toggle — null = no Bastion).
+    Map of Azure Bastion Host configurations, keyed by a user-chosen identifier.
+    Empty map = no Bastion hosts deployed.
     All AVM bastion module variables are exposed — see https://registry.terraform.io/modules/Azure/avm-res-network-bastionhost/azurerm.
-    For non-Developer SKUs, ip_configuration is required with subnet_id pointing to an AzureBastionSubnet (minimum /26).
-    For Developer SKU, set virtual_network_id instead and omit ip_configuration.
+    For non-Developer SKUs, ip_configuration is required with subnet via network_configuration (direct ID or vnet_key/subnet_key referencing an AzureBastionSubnet, minimum /26).
+    For Developer SKU, set virtual_network instead and omit ip_configuration.
     SKU defaults to 'Standard'. Zones default to ["1","2","3"] (zone-redundant).
   EOT
 }
@@ -472,13 +505,14 @@ variable "role_assignments" {
 | Variable | Rule | Error Message |
 |---|---|---|
 | `vhub_connectivity_definitions[*]` | Each entry must set exactly one of `virtual_network.key` or `virtual_network.id` | "Each vhub_connectivity_definition must set exactly one of virtual_network.key or virtual_network.id." |
-| _(removed — `enable_bastion` eliminated; `bastion_configuration != null` is the implicit toggle)_ | | |
+| _(removed — `enable_bastion` eliminated; `bastion_hosts` non-empty map is the implicit toggle)_ | | |
 | `lock.kind` | Must be `CanNotDelete` or `ReadOnly` | Variable validation block |
 | Key Vault `role_assignments` | Exactly one of `principal_id` or `managed_identity_key` must be set | Precondition |
 | `virtual_networks[*].subnets[*]` | Exactly one of `address_prefix` or `address_prefixes` must be set (mutually exclusive) | "Each subnet must define exactly one of address_prefix or address_prefixes, not both." |
-| `bastion_configuration.ip_configuration.subnet_id` | For non-Developer SKUs, `ip_configuration` must be provided with a valid AzureBastionSubnet ID (minimum /26). For Developer SKU, `virtual_network_id` must be provided instead. | AVM module built-in validation |
+| `bastion_hosts[*].ip_configuration.subnet_id` | For non-Developer SKUs, `ip_configuration` must be provided with a valid AzureBastionSubnet ID (minimum /26). For Developer SKU, `virtual_network_id` must be provided instead. | AVM module built-in validation |
 | `log_analytics_workspace_id` + `log_analytics_workspace_configuration` | When `log_analytics_workspace_id` is null, `log_analytics_workspace_configuration` must be non-null (FR-028) | "log_analytics_workspace_configuration must be provided when log_analytics_workspace_id is null, so that a Log Analytics workspace can be auto-created." |
 | Standalone `role_assignments[*]` | Exactly one of `principal_id` or `managed_identity_key` must be set | "Each standalone role assignment must set exactly one of principal_id or managed_identity_key." |
 | Standalone `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Standalone role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
 | Key Vault `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Key Vault role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
-| `private_dns_zone_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |
+| `private_dns_zones[*].virtual_network_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "DNS zone virtual_network_link references virtual_network_key '{key}' which does not exist in virtual_networks." |
+| `byo_private_dns_zone_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "BYO DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |
