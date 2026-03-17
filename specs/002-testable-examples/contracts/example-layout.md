@@ -1,0 +1,179 @@
+# Contract: Example Directory Layout
+
+**Feature**: 002-testable-examples | **Date**: 2026-03-10
+
+## File Contract per Example
+
+Every example directory under `examples/` MUST contain:
+
+### terraform.tf
+
+```hcl
+terraform {
+  required_version = ">= 1.13, < 2.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "= 4.63.0"  # Exact pin
+    }
+    azapi = {
+      source  = "azure/azapi"
+      version = "= 2.8.0"   # Exact pin
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+```
+
+### main.tf
+
+Structure:
+1. Inline dependent resources (scenario-specific)
+2. Pattern module call with variable pass-through
+
+```hcl
+# ... inline dependencies (scenario-specific) ...
+
+module "pattern" {
+  source = "../.."
+
+  location                              = var.location
+  tags                                  = var.tags
+  resource_groups                       = var.resource_groups
+  byo_log_analytics_workspace           = var.byo_log_analytics_workspace
+  log_analytics_workspace_configuration = var.log_analytics_workspace_configuration
+  network_security_groups               = var.network_security_groups
+  route_tables                          = var.route_tables
+  virtual_networks                      = var.virtual_networks
+  private_dns_zones                    = var.private_dns_zones
+  byo_private_dns_zone_links            = var.byo_private_dns_zone_links
+  managed_identities                    = var.managed_identities
+  key_vaults                            = var.key_vaults
+  role_assignments                      = var.role_assignments
+  vhub_connectivity_definitions         = var.vhub_connectivity_definitions
+  bastion_hosts                         = var.bastion_hosts
+  flowlog_configuration                 = var.flowlog_configuration
+
+  # Examples with inline dependencies MUST include depends_on
+  # to ensure inline resources are created before the pattern module.
+  # Example: depends_on = [ azurerm_virtual_network.hub ]
+  # The minimal/ example has no inline deps and omits depends_on.
+}
+```
+
+**Important**: Variables referencing inline dependencies (e.g., peering targets, vHub IDs, subnet IDs for Bastion) use computed resource attributes from inline resources declared above the module call. These are passed into the variable values in `terraform.tfvars` only when they can be literal strings, or overridden in `main.tf` using locals/resource references when they must be dynamic.
+
+**Design decision**: When a variable value must reference a computed inline resource ID (e.g., hub VNet ID for peering, vHub ID for connectivity), the `terraform.tfvars` provides the base configuration and the `main.tf` constructs the full value using locals that merge tfvars values with computed references. This avoids hardcoded placeholder IDs.
+
+**PE key-based references**: Private endpoint configurations (`log_analytics_workspace_configuration.private_endpoints`, `key_vaults[].private_endpoints`) use the key-based reference pattern. Callers specify `network_configuration.vnet_key`/`subnet_key` (referencing keys in `virtual_networks`) and `private_dns_zone.keys` (referencing keys in `private_dns_zones` OR `byo_private_dns_zone_links`) instead of computed resource IDs. The pattern module resolves these keys internally via `pe_dns_zone_ids` which merges both sources. The `full/` example demonstrates both approaches: blob DNS zone is pattern-managed (via `private_dns_zones`), while KV DNS zone is BYO (inline `azurerm_private_dns_zone` linked via `byo_private_dns_zone_links`). No `key_vaults` local is needed in `main.tf`.
+
+### variables.tf
+
+Declares ALL pattern module variables with defaults. Must mirror root module variable types exactly (post FR-021 expansion). Every variable MUST include a `description` attribute (may abbreviate the root module description) per Constitution Principles III and VI.
+
+```hcl
+variable "location" {
+  type        = string
+  default     = "australiaeast"
+  description = "Azure region for all resources."
+}
+
+variable "tags" {
+  type        = map(string)
+  default     = {}
+  description = "Tags to apply to all resources."
+}
+}
+
+# ... all 17 variables with appropriate defaults and descriptions ...
+```
+
+**Default strategy**:
+- Simple types: sensible defaults (`"australiaeast"`, `false`, `null`, `{}`)
+- Complex object variables: `null` (for optional features like flowlog) or `{}` (for map variables like bastion_hosts)
+- Variables with validation blocks: defaults must pass validation
+
+### terraform.tfvars
+
+Scenario-specific overrides. Only sets values that differ from defaults for this example scenario.
+
+### _header.md
+
+```markdown
+# <Example Name> Example
+
+<1-2 sentence description of what this example demonstrates.>
+
+## Features Tested
+
+- <bullet list of pattern features exercised>
+
+## Prerequisites
+
+- Terraform >= 1.13
+- Azure CLI authenticated
+- <any scenario-specific prerequisites>
+```
+
+### README.md
+
+Auto-generated by terraform-docs. Contains _header.md content followed by:
+```
+<!-- BEGIN_TF_DOCS -->
+<!-- END_TF_DOCS -->
+```
+
+## Validation Contract
+
+Every example MUST pass:
+1. `terraform fmt -check` — exit 0
+2. `terraform validate` — exit 0, no warnings
+3. `terraform plan` — exit 0, non-empty plan (with no -var or -var-file flags)
+4. `terraform apply -auto-approve` — exit 0 (manual, against live Azure)
+5. Second `terraform apply` — 0 changes (idempotency)
+6. `terraform destroy -auto-approve` — exit 0, clean removal
+
+## PE Variable Shape Reference
+
+Both `log_analytics_workspace_configuration.private_endpoints` and `key_vaults[].private_endpoints` use this type:
+
+```hcl
+private_endpoints = optional(map(object({
+  name = optional(string, null)
+  network_configuration = object({
+    subnet_resource_id = optional(string)   # Direct ID, OR:
+    vnet_key           = optional(string)   # Key in virtual_networks map
+    subnet_key         = optional(string)   # Key in VNet's subnets map
+  })
+  private_dns_zone = optional(object({
+    resource_ids = optional(set(string))     # Direct IDs, OR:
+    keys         = optional(set(string))     # Keys in private_dns_zones OR byo_private_dns_zone_links map
+  }))
+  tags = optional(map(string), null)
+})), {})
+```
+
+**full/ example usage** (in `terraform.tfvars`):
+```hcl
+private_endpoints = {
+  pe_kv = {
+    name = "pe-kv-shared-full"
+    network_configuration = {
+      vnet_key   = "vnet_spoke"
+      subnet_key = "snet_pe"
+    }
+    private_dns_zone = {
+      keys = ["link_kv_to_spoke"]
+    }
+  }
+}
+```
+
+## Field Renames
+
+- `vhub_connectivity_definitions.virtual_network.id` → `.resource_id`
+- `ddos_protection_plan.id` → `.resource_id`

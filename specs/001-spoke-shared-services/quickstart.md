@@ -13,7 +13,7 @@
    Or: `az account set --subscription "<your-subscription-id>"`
 4. **Terraform backend** configured (recommended: Azure Storage Account with state locking)
 5. **Existing hub VNet** or **Virtual WAN Hub** resource ID (if connectivity is needed)
-6. **Existing Private DNS Zones** resource IDs (if DNS zone links are needed)
+6. **Existing Private DNS Zones** resource IDs (if BYO DNS zone links are needed), or use the `private_dns_zones` variable to create zones within the pattern
 
 ## Step 1: Clone and Configure
 
@@ -173,12 +173,43 @@ Expected output: **"No changes. Your infrastructure matches the configuration."*
 
 ## Common Scenarios
 
-### Adding Private DNS Zone Links
+### Adding Private DNS Zones (Created by Pattern)
 
-Add to `terraform.tfvars`:
+Create Private DNS Zones as part of the pattern module and optionally link them to spoke VNets:
 
 ```hcl
-private_dns_zone_links = {
+private_dns_zones = {
+  "blob" = {
+    domain_name        = "privatelink.blob.core.windows.net"
+    resource_group_key = "rg-networking"
+    virtual_network_links = {
+      "link-spoke" = {
+        name                 = "link-blob-to-spoke"
+        virtual_network_key  = "vnet-spoke"
+        registration_enabled = false
+        # resolution_policy  = "Default"  # optional — "Default" or "NxDomainRedirect"
+      }
+    }
+  }
+  "sql" = {
+    domain_name        = "privatelink.database.windows.net"
+    resource_group_key = "rg-networking"
+    virtual_network_links = {
+      "link-spoke" = {
+        name                = "link-sql-to-spoke"
+        virtual_network_key = "vnet-spoke"
+      }
+    }
+  }
+}
+```
+
+### Adding BYO Private DNS Zone Links
+
+Link existing (externally managed) Private DNS Zones to the spoke VNet:
+
+```hcl
+byo_private_dns_zone_links = {
   "blob" = {
     private_dns_zone_id  = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
     virtual_network_key  = "vnet-spoke"
@@ -212,12 +243,14 @@ virtual_networks = {
   }
 }
 
-bastion_configuration = {
-  name               = "bas-spoke-01"
-  resource_group_key = "rg-networking"
-  sku                = "Standard"  # "Basic", "Standard", "Developer", or "Premium"
-  ip_configuration = {
-    subnet_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/AzureBastionSubnet"
+bastion_hosts = {
+  bastion_spoke_01 = {
+    name               = "bas-spoke-01"
+    resource_group_key = "rg-networking"
+    sku                = "Standard"  # "Basic", "Standard", "Developer", or "Premium"
+    ip_configuration = {
+      subnet_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/AzureBastionSubnet"
+    }
   }
 }
 ```
@@ -236,6 +269,18 @@ vhub_connectivity_definitions = {
       # id = "/subscriptions/..."  # alternative — use for VNets not managed by this module
     }
     internet_security_enabled = true  # default: true — routes internet traffic through hub firewall
+    # routing = {                     # optional — configure vHub routing
+    #   associated_route_table_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualHubs/<hub>/hubRouteTables/defaultRouteTable"
+    #   propagated_route_table = {
+    #     route_table_ids = []        # list of route table resource IDs to propagate to
+    #     labels          = ["default"]
+    #   }
+    #   static_vnet_route = {
+    #     name                = "to-firewall"
+    #     address_prefixes    = ["0.0.0.0/0"]
+    #     next_hop_ip_address = "10.0.1.4"
+    #   }
+    # }
   }
 }
 ```
@@ -324,24 +369,35 @@ By default, the module auto-creates a Log Analytics workspace. To use a shared e
 log_analytics_workspace_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>"
 ```
 
-### Enabling Random Suffixes for Globally-Unique Names
-
-Append a random suffix to globally-unique resources (e.g., Key Vault) to avoid name collisions:
-
-```hcl
-use_random_suffix = true  # default: false
-```
-
 ### Enabling Resource Locks
 
-Apply a lock to all root-level AVM-managed resources (does not apply to submodule resources like DNS links or vHub connections):
+Lock is configured per-resource via the `lock` field on each resource variable. There is no global lock — set lock individually on each resource that needs it:
 
 ```hcl
-lock = {
-  kind = "CanNotDelete"  # "CanNotDelete" or "ReadOnly"
-  name = "lock-spoke-networking"
+resource_groups = {
+  rg_spoke = {
+    name     = "rg-spoke-networking"
+    location = "australiaeast"
+    lock = {
+      kind = "CanNotDelete"
+      name = "lock-rg-spoke"
+    }
+  }
+}
+
+key_vaults = {
+  kv_main = {
+    name               = "kv-spoke-main"
+    resource_group_key = "rg_spoke"
+    lock = {
+      kind = "CanNotDelete"
+      name = "lock-kv-main"
+    }
+  }
 }
 ```
+
+Set `lock = null` (or omit the field) on any resource to disable locking. Does not apply to submodule resources like DNS links or vHub connections.
 
 ## Quality Gates (CI)
 

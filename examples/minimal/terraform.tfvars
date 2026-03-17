@@ -1,29 +1,31 @@
-# Minimal Spoke VNet with Hub Peering
+# Minimal Spoke VNet
 # This example deploys a single spoke VNet with two subnets, NSGs, a route table,
-# and peering to a hub VNet.
+# and a Log Analytics workspace. No peering — see vnet_hub/ or vwan_hub/ examples.
 
-location = "australiaeast"
+location = "southeastasia"
 
 tags = {
   Environment = "dev"
   Project     = "spoke-shared-services"
   ManagedBy   = "terraform"
+  Example     = "minimal"
 }
 
 resource_groups = {
   rg_spoke = {
-    name = "rg-spoke-shared-dev-aue"
+    name = "rg-spoke-shared-min"
   }
 }
 
 # Auto-create a Log Analytics workspace for diagnostic settings
 log_analytics_workspace_configuration = {
+  name               = "law-spoke-shared-min"
   resource_group_key = "rg_spoke"
 }
 
 network_security_groups = {
   nsg_app = {
-    name               = "nsg-app-dev-aue"
+    name               = "nsg-app-min"
     resource_group_key = "rg_spoke"
     security_rules = {
       allow_https_inbound = {
@@ -40,7 +42,7 @@ network_security_groups = {
     }
   }
   nsg_data = {
-    name               = "nsg-data-dev-aue"
+    name               = "nsg-data-min"
     resource_group_key = "rg_spoke"
     # Empty security_rules — only Azure built-in default rules apply
   }
@@ -48,7 +50,7 @@ network_security_groups = {
 
 route_tables = {
   rt_default = {
-    name               = "rt-default-dev-aue"
+    name               = "rt-default-min"
     resource_group_key = "rg_spoke"
     routes = {
       to_firewall = {
@@ -63,7 +65,7 @@ route_tables = {
 
 virtual_networks = {
   vnet_spoke = {
-    name               = "vnet-spoke-dev-aue"
+    name               = "vnet-spoke-min"
     address_space      = ["10.1.0.0/16"]
     resource_group_key = "rg_spoke"
 
@@ -82,17 +84,6 @@ virtual_networks = {
       }
     }
 
-    peerings = {
-      to_hub = {
-        name                               = "spoke-to-hub"
-        remote_virtual_network_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-hub/providers/Microsoft.Network/virtualNetworks/vnet-hub" # Replace with your hub VNet resource ID
-        allow_forwarded_traffic            = true
-        allow_gateway_transit              = false
-        use_remote_gateways                = false
-        create_reverse_peering             = true
-        reverse_allow_forwarded_traffic    = true
-        reverse_allow_gateway_transit      = false
-      }
-    }
+    # No peerings — minimal example; see vnet_hub/ for peering
   }
 }

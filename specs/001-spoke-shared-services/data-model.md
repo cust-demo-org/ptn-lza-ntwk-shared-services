@@ -9,12 +9,14 @@ Resource Group 1───* Virtual Network
 Virtual Network 1───* Subnet
 Virtual Network 1───0..* VNet Peering (via peerings map)
 Virtual Network 1───0..* Virtual Hub Connection (via vhub_connectivity_definitions)
-Virtual Network 1───* Private DNS Zone Link
+Virtual Network 1───* Private DNS Zone Link (via byo_private_dns_zone_links)
+Virtual Network 1───* Private DNS Zone VNet Link (via private_dns_zones[*].virtual_network_links)
+Resource Group 1───* Private DNS Zone (via private_dns_zones)
 Subnet *───1 Network Security Group
 Subnet *───0..1 Route Table
 Resource Group 1───* Key Vault
 Resource Group 1───* User-Assigned Managed Identity
-Resource Group 1───0..1 Azure Bastion
+Resource Group 1───0..* Azure Bastion
 Resource Group 1───0..1 Log Analytics Workspace (auto-created)
 Key Vault 1───* Role Assignment (via AVM interface)
 User-Assigned Managed Identity ───* Role Assignment (via AVM interface or standalone)
@@ -147,7 +149,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | virtual_hub_id | `string` | Yes | From `vhub_connectivity_definitions[*].vhub_resource_id` | Virtual Hub resource ID. |
 | remote_virtual_network_id | `string` | Yes | Resolved from VNet (via `virtual_network.key` or `virtual_network.id`) | Spoke VNet resource ID. |
 | internet_security_enabled | `bool` | No | `true` | Enable internet security (route through hub firewall). Pattern overrides submodule default of `false`. |
-| routing | `object(...)` | No | `null` | Optional routing config (associated route table, propagated routes, static routes). |
+| routing | `object(...)` | No | `null` | Optional routing config. Contains: `associated_route_table_id` (string, required within routing), `propagated_route_table` (optional: `route_table_ids` list, `labels` list), `static_vnet_route` (optional: `name`, `address_prefixes`, `next_hop_ip_address`). |
 
 **AVM Module**: `Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm//modules/virtual-network-connection` v0.13.5 (submodule).
 **Condition**: Only created when `vhub_connectivity_definitions` is non-empty.
@@ -156,7 +158,22 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 
 ---
 
-### Private DNS Zone Link
+### Private DNS Zone
+
+| Field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| domain_name | `string` | Yes | — | DNS zone domain name (e.g., `privatelink.blob.core.windows.net`). |
+| resource_group_key | `string` | Yes | — | Map key referencing a resource group. |
+| virtual_network_links | `map(object)` | No | `{}` | Map of VNet links to create within this zone. Each entry links the zone to a VNet. |
+| tags | `map(string)` | No | `{}` | Tags. |
+
+**AVM Module**: `Azure/avm-res-network-privatednszone/azurerm` v0.5.0
+**Map Key**: User-defined key in `private_dns_zones` input variable.
+**Dependencies**: Resource Group, Virtual Network (for VNet links).
+
+---
+
+### Private DNS Zone Link (BYO)
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -168,7 +185,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | tags | `map(string)` | No | `{}` | Tags. |
 
 **AVM Module**: `Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link` v0.5.0 (submodule).
-**Map Key**: User-defined key in `private_dns_zone_links` input variable.
+**Map Key**: User-defined key in `byo_private_dns_zone_links` input variable.
 **Dependencies**: Virtual Network.
 
 ---
@@ -228,7 +245,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | role_assignments | `map(object)` | No | `{}` | Via AVM interface. |
 
 **AVM Module**: `Azure/avm-res-network-bastionhost/azurerm` v0.9.0
-**Condition**: Only created when `bastion_configuration != null`.
+**Condition**: Created for each entry in the `bastion_hosts` map. Empty map = no Bastion hosts deployed.
 **Dependencies**: Virtual Network (AzureBastionSubnet must exist), Resource Group.
 **Validation**: `AzureBastionSubnet` CIDR must be provided when Bastion is enabled.
 
@@ -287,17 +304,17 @@ resolved_id = coalesce(ref.id, local.resource_map[ref.key].resource_id)
 ## Deployment Order
 
 ```
-1. Naming module (no Azure calls — pure computation)
-2. Resource Groups
-3. Log Analytics Workspace (if auto-created)
-4. Network Security Groups
-5. Route Tables
-6. Virtual Networks (with subnets referencing NSG/RT IDs, and peering config)
-7. Virtual Hub VNet Connection (depends on VNet, if vhub_connectivity_definitions is non-empty)
-8. Private DNS Zone Links (depends on VNet)
+1. Resource Groups
+2. Log Analytics Workspace (if auto-created)
+3. Network Security Groups
+4. Route Tables
+5. Virtual Networks (with subnets referencing NSG/RT IDs, and peering config)
+6. Virtual Hub VNet Connection (depends on VNet, if vhub_connectivity_definitions is non-empty)
+7. Private DNS Zones (depends on Resource Group and VNet for links)
+8. BYO Private DNS Zone Links (depends on VNet)
 9. Network Watcher flow logs (optional, if flowlog_configuration is non-null)
-10. User-Assigned Managed Identities
-11. Key Vaults (with role assignments referencing identity principal IDs)
+9. User-Assigned Managed Identities
+10. Key Vaults (with role assignments referencing identity principal IDs)
 12. Azure Bastion (depends on VNet AzureBastionSubnet)
 13. Standalone Role Assignments (if any)
 ```

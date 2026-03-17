@@ -12,7 +12,11 @@ This Terraform root module provisions Azure Application Landing Zone (ALZ) spoke
 - Network Watcher VNet flow logs (optional)
 - Log Analytics workspace (auto-created or externally provided)
 - Resource locks, diagnostic settings, and common tagging on all resources
-- CAF-compliant naming via the Azure naming module
+- Storage accounts with sub-resource diagnostic settings (blob, file, queue, table)
+
+## Diagram
+
+![1773737313168](image/diagram.png)
 
 ## Usage
 
@@ -20,9 +24,10 @@ All configuration is driven through `terraform.tfvars`. See the `examples/` dire
 
 | Example | Description |
 |---------|-------------|
-| [examples/minimal](examples/minimal/) | Minimal spoke VNet with hub peering |
+| [examples/minimal](examples/minimal/) | Minimal spoke VNet with NSGs, Key Vault, and Bastion |
+| [examples/vnet_hub](examples/vnet_hub/) | Hub VNet peering connectivity |
+| [examples/vwan_hub](examples/vwan_hub/) | vWAN hub connectivity |
 | [examples/full](examples/full/) | All features enabled |
-| [examples/vwan](examples/vwan/) | vWAN hub connectivity |
 
 ## Quick Start
 

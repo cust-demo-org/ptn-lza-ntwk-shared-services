@@ -34,7 +34,7 @@
 ## Requirement Completeness — Bastion Example
 
 - [x] CHK013 - Does the Bastion example's `AzureBastionSubnet` intentionally omit `network_security_group_key` and `route_table_key`, and is this omission explained (Bastion manages its own NSG)? [Clarity, Quickstart §Enabling Azure Bastion vs Spec §FR-007]
-- [x] CHK014 - Does the Bastion example show all required fields in `bastion_configuration` per the variable contract (`virtual_network_key`, `resource_group_key`)? [Completeness, Contracts §bastion_configuration]
+- [x] CHK014 - Does the Bastion example show all required fields in `bastion_hosts` per the variable contract (`virtual_network_key`, `resource_group_key`)? [Completeness, Contracts §bastion_hosts]
 
 ## Requirement Consistency — Cross-Example Alignment
 
@@ -52,7 +52,7 @@
 - [x] CHK020 - Is there an example scenario showing a spoke VNet with **no connectivity** (no peering, no vWAN) — the isolated VNet edge case documented in the spec? [Coverage, Spec §Edge Cases / Clarifications §connectivity]
 - [x] CHK021 - Is there an example scenario showing standalone role assignments via the `role_assignments` variable? [Coverage, Contracts §role_assignments / Spec §US3]
 - [x] CHK022 - Is there an example showing the `log_analytics_workspace_id` variable to use an existing workspace (vs auto-create)? [Coverage, Contracts §log_analytics_workspace_id / Spec §FR-028]
-- [x] CHK023 - Is there an example showing `use_random_suffix = true` for globally-unique resource names? [Coverage, Contracts §use_random_suffix / Spec §FR-025]
+- [x] CHK023 - ~~Is there an example showing `use_random_suffix = true` for globally-unique resource names?~~ **SUPERSEDED**: `use_random_suffix` removed; naming is now the responsibility of pattern consumers. [Coverage, Contracts §use_random_suffix / Spec §FR-025]
 - [x] CHK024 - Is there an example showing the `lock` variable for resource locks? [Coverage, Contracts §lock / Spec §Research §7]
 
 ## Scenario Coverage — Plan Project Structure

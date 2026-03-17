@@ -8,8 +8,8 @@ output "resource_groups" {
 
 output "log_analytics_workspace" {
   value = {
-    resource_id = local.log_analytics_workspace_id
-    name        = split("/", local.log_analytics_workspace_id)[length(split("/", local.log_analytics_workspace_id)) - 1]
+    resource_id = local.default_log_analytics_workspace_resource_id
+    name        = split("/", local.default_log_analytics_workspace_resource_id)[length(split("/", local.default_log_analytics_workspace_resource_id)) - 1]
   }
   description = "Log Analytics workspace resource ID and name (auto-created or externally provided). Name is derived from the resource ID."
 }
@@ -41,12 +41,20 @@ output "virtual_networks" {
   description = "Map of VNet keys to their resource IDs, names, address spaces, subnet details, and peering details."
 }
 
-output "private_dns_zone_links" {
+output "private_dns_zones" {
+  value = { for key, mod in module.private_dns_zone : key => {
+    resource_id = mod.resource_id
+    name        = mod.resource.name
+  } }
+  description = "Map of Private DNS Zone keys to their resource IDs and names. Empty map when no private_dns_zones are configured."
+}
+
+output "byo_private_dns_zone_links" {
   value = { for key, mod in module.private_dns_zone_link : key => {
     resource_id = mod.resource_id
     name        = mod.resource.name
   } }
-  description = "Map of Private DNS Zone VNet link keys to their resource IDs and names."
+  description = "Map of BYO Private DNS Zone VNet link keys to their resource IDs and names."
 }
 
 output "managed_identities" {
@@ -79,19 +87,21 @@ output "role_assignments" {
 
 output "vhub_connections" {
   value = {
-    for k, v in module.vnet_conn : k => {
+    for k, v in module.vhub_vnet_connection : k => {
       resource_id = v.resource_object[k].id
     }
   }
   description = "Map of Virtual Hub VNet connections, keyed by vhub_connectivity_definitions map key. Empty map when no vWAN connections are configured."
 }
 
-output "bastion" {
-  value = var.bastion_configuration != null ? {
-    resource_id = module.bastion_host[0].resource_id
-    name        = module.bastion_host[0].name
-  } : null
-  description = "Bastion host resource ID and name. Null when Bastion is not enabled."
+output "bastion_hosts" {
+  value = {
+    for k, v in module.bastion_host : k => {
+      resource_id = v.resource_id
+      name        = v.name
+    }
+  }
+  description = "Map of Bastion host resource IDs and names, keyed by bastion_hosts map key. Empty map when no Bastion hosts are deployed."
 }
 
 output "network_watcher" {
@@ -100,4 +110,12 @@ output "network_watcher" {
     flow_logs   = module.network_watcher[0].resource_flow_log
   } : null
   description = "Network Watcher resource ID and flow log details. Null when flowlog_configuration is not provided."
+}
+
+output "storage_accounts" {
+  value = { for key, mod in module.storage_account : key => {
+    resource_id = mod.resource_id
+    name        = mod.name
+  } }
+  description = "Map of storage account keys to their resource IDs and names."
 }
