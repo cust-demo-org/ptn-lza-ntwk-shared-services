@@ -836,34 +836,32 @@ map(object({
         max_age_in_seconds = number
       })), [])
     }))
-    queue_properties = optional(object({
-      logging = optional(object({
-        delete                = optional(bool, false)
-        read                  = optional(bool, false)
-        version               = optional(string)
-        write                 = optional(bool, false)
-        retention_policy_days = optional(number)
-      }))
-      hour_metrics = optional(object({
-        enabled               = bool
-        version               = optional(string)
-        include_apis          = optional(bool)
-        retention_policy_days = optional(number)
-      }))
-      minute_metrics = optional(object({
-        enabled               = bool
-        version               = optional(string)
-        include_apis          = optional(bool)
-        retention_policy_days = optional(number)
-      }))
-      cors_rule = optional(list(object({
+    queue_properties = optional(map(object({
+      cors_rule = optional(map(object({
         allowed_headers    = list(string)
         allowed_methods    = list(string)
         allowed_origins    = list(string)
         exposed_headers    = list(string)
         max_age_in_seconds = number
-      })), [])
-    }))
+      })), {})
+      logging = optional(object({
+        delete                = bool
+        read                  = bool
+        version               = string
+        write                 = bool
+        retention_policy_days = optional(number)
+      }))
+      hour_metrics = optional(object({
+        include_apis          = optional(bool)
+        retention_policy_days = optional(number)
+        version               = string
+      }))
+      minute_metrics = optional(object({
+        include_apis          = optional(bool)
+        retention_policy_days = optional(number)
+        version               = string
+      }))
+    })), {})
     azure_files_authentication = optional(object({
       directory_type                 = optional(string)
       default_share_level_permission = optional(string)

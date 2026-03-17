@@ -14,7 +14,11 @@ This Terraform root module provisions Azure Application Landing Zone (ALZ) spoke
 - Network Watcher VNet flow logs (optional)
 - Log Analytics workspace (auto-created or externally provided)
 - Resource locks, diagnostic settings, and common tagging on all resources
-- CAF-compliant naming via the Azure naming module
+- Storage accounts with sub-resource diagnostic settings (blob, file, queue, table)
+
+## Diagram
+
+![1773737313168](image/diagram.png)
 
 ## Usage
 
@@ -22,9 +26,10 @@ All configuration is driven through `terraform.tfvars`. See the `examples/` dire
 
 | Example | Description |
 |---------|-------------|
-| [examples/minimal](examples/minimal/) | Minimal spoke VNet with hub peering |
+| [examples/minimal](examples/minimal/) | Minimal spoke VNet with NSGs, Key Vault, and Bastion |
+| [examples/vnet\_hub](examples/vnet\_hub/) | Hub VNet peering connectivity |
+| [examples/vwan\_hub](examples/vwan\_hub/) | vWAN hub connectivity |
 | [examples/full](examples/full/) | All features enabled |
-| [examples/vwan](examples/vwan/) | vWAN hub connectivity |
 
 ## Quick Start
 
@@ -1053,34 +1058,32 @@ map(object({
         max_age_in_seconds = number
       })), [])
     }))
-    queue_properties = optional(object({
-      logging = optional(object({
-        delete                = optional(bool, false)
-        read                  = optional(bool, false)
-        version               = optional(string)
-        write                 = optional(bool, false)
-        retention_policy_days = optional(number)
-      }))
-      hour_metrics = optional(object({
-        enabled               = bool
-        version               = optional(string)
-        include_apis          = optional(bool)
-        retention_policy_days = optional(number)
-      }))
-      minute_metrics = optional(object({
-        enabled               = bool
-        version               = optional(string)
-        include_apis          = optional(bool)
-        retention_policy_days = optional(number)
-      }))
-      cors_rule = optional(list(object({
+    queue_properties = optional(map(object({
+      cors_rule = optional(map(object({
         allowed_headers    = list(string)
         allowed_methods    = list(string)
         allowed_origins    = list(string)
         exposed_headers    = list(string)
         max_age_in_seconds = number
-      })), [])
-    }))
+      })), {})
+      logging = optional(object({
+        delete                = bool
+        read                  = bool
+        version               = string
+        write                 = bool
+        retention_policy_days = optional(number)
+      }))
+      hour_metrics = optional(object({
+        include_apis          = optional(bool)
+        retention_policy_days = optional(number)
+        version               = string
+      }))
+      minute_metrics = optional(object({
+        include_apis          = optional(bool)
+        retention_policy_days = optional(number)
+        version               = string
+      }))
+    })), {})
     azure_files_authentication = optional(object({
       directory_type                 = optional(string)
       default_share_level_permission = optional(string)

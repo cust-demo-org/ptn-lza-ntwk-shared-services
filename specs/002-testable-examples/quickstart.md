@@ -25,7 +25,6 @@ For each example (`minimal/`, `vnet_hub/`, `vwan_hub/`, `full/`):
 1. Create `terraform.tf` with exact provider pins
 2. Create `variables.tf` with all pattern module variables + defaults
 3. Create `main.tf` with:
-   - Naming module
    - Inline dependencies (scenario-specific)
    - Pattern module call passing all variables
    - `depends_on` on pattern module referencing inline dependencies (when applicable)
