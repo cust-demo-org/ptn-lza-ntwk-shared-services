@@ -8,7 +8,7 @@
 
 1. **Expand variable types (FR-021)**:
    - Add `role_assignments` to: `resource_groups`, `log_analytics_workspace_configuration`, `network_security_groups`, `managed_identities`, `bastion_hosts`, `virtual_networks` (VNet-level)
-   - Add `lock` override to `resource_groups`
+   - Add per-resource `lock` field to `resource_groups` (and other resource variables)
    - Update `main.tf` module calls to pass new fields through
    - Run `terraform validate` to confirm no regressions
 

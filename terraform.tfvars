@@ -19,13 +19,6 @@ tags = {
   ManagedBy   = "Terraform"
 }
 
-# (Optional) Resource lock applied to all AVM root-module resources.
-# Set to null to disable.  kind: "CanNotDelete" | "ReadOnly"
-# lock = {
-#   kind = "CanNotDelete"
-#   name = "spoke-lock"
-# }
-
 # ─── Resource Groups ────────────────────────────────────────
 
 # (Required) At least one resource group is needed.

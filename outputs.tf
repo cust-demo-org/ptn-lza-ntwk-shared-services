@@ -8,8 +8,8 @@ output "resource_groups" {
 
 output "log_analytics_workspace" {
   value = {
-    resource_id = local.log_analytics_workspace_resource_id
-    name        = split("/", local.log_analytics_workspace_resource_id)[length(split("/", local.log_analytics_workspace_resource_id)) - 1]
+    resource_id = local.default_log_analytics_workspace_resource_id
+    name        = split("/", local.default_log_analytics_workspace_resource_id)[length(split("/", local.default_log_analytics_workspace_resource_id)) - 1]
   }
   description = "Log Analytics workspace resource ID and name (auto-created or externally provided). Name is derived from the resource ID."
 }

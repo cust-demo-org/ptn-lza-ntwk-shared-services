@@ -166,7 +166,7 @@ Using the built-in interface ensures compatibility and avoids creating separate 
 
 ## 7. Resource Lock Pattern
 
-### Decision: Use each AVM module's built-in `lock` interface
+### Decision: Use each AVM module's built-in `lock` interface (per-resource)
 
 Every AVM module in scope exposes a `lock` object input:
 ```hcl
@@ -176,11 +176,11 @@ lock = {
 }
 ```
 
-A pattern-level `lock` variable is passed through to each module. When `null`, no locks are applied.
+Lock is configured per-resource via the `lock` field on each individual resource variable (e.g., `resource_groups`, `virtual_networks`, `key_vaults`, etc.). There is no global `lock` variable. Each resource's `lock` field defaults to `null` (no lock). This gives consumers fine-grained control — different resources can have different lock policies.
 
 ### Rationale
 
-Per user requirement, resource locks must use the AVM built-in interface, never direct `Microsoft.Authorization/locks` resources.
+Per user requirement, resource locks must use the AVM built-in interface, never direct `Microsoft.Authorization/locks` resources. Per-resource lock configuration (instead of a single global lock) allows different lock policies per resource (e.g., `CanNotDelete` on production Key Vaults but no lock on dev resource groups).
 
 ---
 

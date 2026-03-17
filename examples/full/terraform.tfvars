@@ -35,6 +35,13 @@ log_analytics_workspace_configuration = {
   resource_group_key = "rg_shared"
   sku                = "PerGB2018"
   retention_in_days  = 90
+
+  diagnostic_settings = {
+    to_law = {
+      name              = "law-diag-to-self"
+      metric_categories = ["AllMetrics"]
+    }
+  }
 }
 
 # ─── NSGs ────────────────────────────────────────────────────
@@ -43,6 +50,14 @@ network_security_groups = {
   nsg_app = {
     name               = "nsg-app-full"
     resource_group_key = "rg_networking"
+
+    diagnostic_settings = {
+      to_law = {
+        name       = "nsg-app-diag"
+        log_groups = ["allLogs"]
+      }
+    }
+
     security_rules = {
       allow_https_inbound = {
         name                       = "AllowHTTPSInbound"
@@ -72,10 +87,25 @@ network_security_groups = {
     name               = "nsg-pe-full"
     resource_group_key = "rg_networking"
     security_rules     = {}
+
+    diagnostic_settings = {
+      to_law = {
+        name       = "nsg-pe-diag"
+        log_groups = ["allLogs"]
+      }
+    }
   }
   nsg_bastion = {
     name               = "nsg-bastion-full"
     resource_group_key = "rg_networking"
+
+    diagnostic_settings = {
+      to_law = {
+        name       = "nsg-bastion-diag"
+        log_groups = ["allLogs"]
+      }
+    }
+
     security_rules = {
       allow_gateway_manager_inbound = {
         name                       = "AllowGatewayManager"
@@ -151,6 +181,14 @@ virtual_networks = {
     address_space      = ["10.1.0.0/16"]
     resource_group_key = "rg_networking"
 
+    diagnostic_settings = {
+      to_law = {
+        name              = "vnet-spoke-diag"
+        log_groups        = ["allLogs"]
+        metric_categories = ["AllMetrics"]
+      }
+    }
+
     subnets = {
       snet_app = {
         name                       = "snet-app"
@@ -188,15 +226,13 @@ private_dns_zones = {
       }
     }
   }
-  dns_kv = {
-    domain_name        = "privatelink.vaultcore.azure.net"
-    resource_group_key = "rg_networking"
-    virtual_network_links = {
-      link_to_spoke = {
-        name                = "link-kv-to-spoke"
-        virtual_network_key = "vnet_spoke"
-      }
-    }
+}
+
+byo_private_dns_zone_links = {
+  link_kv_to_spoke = {
+    name                = "link-kv-to-spoke"
+    private_dns_zone_id = "placeholder" # overridden in main.tf with computed azurerm_private_dns_zone.kv.id
+    virtual_network_key = "vnet_spoke"
   }
 }
 
@@ -219,6 +255,14 @@ key_vaults = {
     resource_group_key = "rg_shared"
     sku_name           = "premium"
 
+    diagnostic_settings = {
+      to_law = {
+        name              = "kv-shared-diag"
+        log_groups        = ["allLogs"]
+        metric_categories = ["AllMetrics"]
+      }
+    }
+
     role_assignments = {
       kv_secrets_user = {
         role_definition_id_or_name = "Key Vault Secrets User"
@@ -234,7 +278,7 @@ key_vaults = {
           subnet_key = "snet_pe"
         }
         private_dns_zone = {
-          keys = ["dns_kv"]
+          keys = ["link_kv_to_spoke"]
         }
       }
     }
@@ -245,9 +289,9 @@ key_vaults = {
 # scope is overridden in main.tf locals with computed spoke RG ID.
 
 role_assignments = {
-  ra_spoke_reader = {
+  ra_spoke_rg_reader = {
     role_definition_id_or_name = "Reader"
-    scope                      = "overridden-in-main-tf"
+    scope                      = "placeholder" # overridden in main.tf with computed spoke RG ID
     managed_identity_key       = "mi_app"
   }
 }
@@ -262,6 +306,14 @@ bastion_hosts = {
     resource_group_key = "rg_networking"
     sku                = "Standard"
     zones              = []
+
+    diagnostic_settings = {
+      to_law = {
+        name              = "bastion-diag"
+        log_groups        = ["allLogs"]
+        metric_categories = ["AllMetrics"]
+      }
+    }
 
     ip_configuration = {
       network_configuration = {
@@ -289,6 +341,45 @@ storage_accounts = {
     account_replication_type      = "LRS"
     shared_access_key_enabled     = false
     public_network_access_enabled = true
+
+    diagnostic_settings = {
+      to_law = {
+        name              = "sa-flowlog-diag"
+        metric_categories = ["Transaction"]
+      }
+    }
+
+    diagnostic_settings_blob = {
+      to_law = {
+        name              = "sa-blob-diag"
+        log_groups        = ["allLogs"]
+        metric_categories = ["Capacity", "Transaction"]
+      }
+    }
+
+    diagnostic_settings_file = {
+      to_law = {
+        name              = "sa-file-diag"
+        log_groups        = ["allLogs"]
+        metric_categories = ["Capacity", "Transaction"]
+      }
+    }
+
+    diagnostic_settings_queue = {
+      to_law = {
+        name              = "sa-queue-diag"
+        log_groups        = ["allLogs"]
+        metric_categories = ["Capacity", "Transaction"]
+      }
+    }
+
+    diagnostic_settings_table = {
+      to_law = {
+        name              = "sa-table-diag"
+        log_groups        = ["allLogs"]
+        metric_categories = ["Capacity", "Transaction"]
+      }
+    }
   }
 }
 

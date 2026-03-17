@@ -194,7 +194,7 @@ variable "resource_groups" {
     - name:             Resource group name.
     - location:         Azure region. Defaults to var.location if not specified.
     - tags:             Per-resource-group tags, merged with var.tags.
-    - lock:             Per-resource-group lock override. Defaults to var.lock.
+    - lock:             Per-resource-group lock configuration.
                         See AVM module variable: lock.
     - role_assignments: Per-resource-group RBAC assignments.
                         See AVM module variable: role_assignments.
@@ -300,7 +300,7 @@ variable "resource_groups" {
 **Resolution**:
 - `byo_log_analytics_workspace` provides both `resource_id` and `location` when an external workspace is used. A `data "azurerm_log_analytics_workspace" "external"` data source (count-gated) retrieves the workspace GUID for the external case.
 - Three new locals in `locals.tf`:
-  - `log_analytics_workspace_resource_id` — coalesce of BYO resource_id and internal module resource_id (renamed from `log_analytics_workspace_id` for clarity)
+  - `default_log_analytics_workspace_resource_id` — coalesce of BYO resource_id and internal module resource_id (renamed from `log_analytics_workspace_id` for clarity)
   - `law_workspace_id` — GUID from data source (BYO) or `module.log_analytics_workspace[0].resource.workspace_id` (internal)
   - `law_workspace_region` — from `byo_log_analytics_workspace.location` (BYO) or `coalesce(config.location, var.location)` (internal)
 - `traffic_analytics` fields in the network_watcher module call use `coalesce(fl.traffic_analytics.<field>, local.<resolved>)` so callers can optionally override.
@@ -310,3 +310,14 @@ variable "resource_groups" {
 **Alternatives considered**:
 - Keep `log_analytics_workspace_id` as a flat string — Rejected: doesn't provide `location` needed for `workspace_region`; callers must manually construct 3 traffic analytics fields.
 - Always use a data source for the internal LAW — Rejected: the internal module already exposes `.resource.workspace_id` directly, no need for a redundant data source lookup.
+
+## R16: Diagnostic Settings — use_default_log_analytics Flag
+
+**Decision**: Add `use_default_log_analytics = optional(bool, true)` to all 9 `diagnostic_settings` type blocks (NSG, VNet, KV, Bastion, SA account + blob/file/queue/table). When `true` (default), the pattern auto-fills `workspace_resource_id` with `local.default_log_analytics_workspace_resource_id`. When `false`, `workspace_resource_id` passes through as-is — if left `null`, diagnostics are not sent to LAW, enabling scenarios where logs go only to a storage account or Event Hub.
+
+**Resolution**:
+- Previous pattern used `coalesce(dv.workspace_resource_id, local.log_analytics_workspace_resource_id)` which always fell back to LAW because `workspace_resource_id` defaults to `null`, making it impossible to opt out of LAW.
+- New pattern: `dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id`
+- Renamed local from `log_analytics_workspace_resource_id` to `default_log_analytics_workspace_resource_id` for clarity.
+- LAW module's own `diagnostic_settings` is unaffected — it passes through directly to AVM without the flag (LAW diagnostics are inherently self-referential or external).
+- Backwards compatible: all existing configurations default to `true`, preserving the auto-fill behaviour.

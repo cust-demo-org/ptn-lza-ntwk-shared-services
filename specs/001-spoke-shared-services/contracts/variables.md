@@ -28,23 +28,9 @@ variable "tags" {
 }
 ```
 
-### `lock`
+~~`lock` (global) — **REMOVED**~~
 
-```hcl
-variable "lock" {
-  type = object({
-    kind = string
-    name = optional(string, null)
-  })
-  default     = null
-  description = "Resource lock applied to AVM root-module resources that expose the lock interface (resource group, VNet, NSG, route table, Key Vault, Bastion, Log Analytics workspace, managed identity). Does not apply to AVM submodule resources (DNS zone VNet links, vHub connections) as those submodules do not implement the lock interface. Set to null to disable. Possible kind values: 'CanNotDelete', 'ReadOnly'."
-
-  validation {
-    condition     = var.lock == null || contains(["CanNotDelete", "ReadOnly"], var.lock.kind)
-    error_message = "lock.kind must be 'CanNotDelete' or 'ReadOnly'."
-  }
-}
-```
+The global `lock` variable has been removed. Lock is now configured per-resource via the `lock` field on each individual resource variable (`resource_groups`, `log_analytics_workspace_configuration`, `network_security_groups`, `route_tables`, `virtual_networks`, `private_dns_zones`, `managed_identities`, `key_vaults`, `storage_accounts`, `bastion_hosts`, `flowlog_configuration`). Each resource variable accepts an optional `lock` object with `kind` (string) and `name` (optional string). Set to `null` (or omit) to disable locking on a specific resource.
 
 ---
 
@@ -63,9 +49,21 @@ variable "vhub_connectivity_definitions" {
       id  = optional(string)
     })
     internet_security_enabled = optional(bool, true)
+    routing = optional(object({
+      associated_route_table_id = string
+      propagated_route_table = optional(object({
+        route_table_ids = optional(list(string), [])
+        labels          = optional(list(string), [])
+      }))
+      static_vnet_route = optional(object({
+        name                 = optional(string)
+        address_prefixes     = optional(list(string), [])
+        next_hop_ip_address  = optional(string)
+      }))
+    }))
   }))
   default     = {}
-  description = "Map of vWAN hub connections. Each entry links a spoke VNet to a vWAN hub. Reference the VNet by key (from virtual_networks map) or by resource ID. Empty map = no vWAN connections (implicit toggle). Default internet_security_enabled = true (secure-by-default, routes internet traffic through the hub firewall)."
+  description = "Map of vWAN hub connections. Each entry links a spoke VNet to a vWAN hub. Reference the VNet by key (from virtual_networks map) or by resource ID. Empty map = no vWAN connections (implicit toggle). Default internet_security_enabled = true (secure-by-default, routes internet traffic through the hub firewall). Optional routing object configures associated route table, propagated route tables, and static VNet routes."
 
   validation {
     condition     = alltrue([for k, v in var.vhub_connectivity_definitions : (v.virtual_network.key != null) != (v.virtual_network.id != null)])
@@ -506,7 +504,7 @@ variable "role_assignments" {
 |---|---|---|
 | `vhub_connectivity_definitions[*]` | Each entry must set exactly one of `virtual_network.key` or `virtual_network.id` | "Each vhub_connectivity_definition must set exactly one of virtual_network.key or virtual_network.id." |
 | _(removed — `enable_bastion` eliminated; `bastion_hosts` non-empty map is the implicit toggle)_ | | |
-| `lock.kind` | Must be `CanNotDelete` or `ReadOnly` | Variable validation block |
+| _(removed — global `lock` variable eliminated; lock is now per-resource via each resource variable's `lock` field)_ | | |
 | Key Vault `role_assignments` | Exactly one of `principal_id` or `managed_identity_key` must be set | Precondition |
 | `virtual_networks[*].subnets[*]` | Exactly one of `address_prefix` or `address_prefixes` must be set (mutually exclusive) | "Each subnet must define exactly one of address_prefix or address_prefixes, not both." |
 | `bastion_hosts[*].ip_configuration.subnet_id` | For non-Developer SKUs, `ip_configuration` must be provided with a valid AzureBastionSubnet ID (minimum /26). For Developer SKU, `virtual_network_id` must be provided instead. | AVM module built-in validation |

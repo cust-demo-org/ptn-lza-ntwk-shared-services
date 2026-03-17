@@ -79,7 +79,7 @@ module "resource_group" {
   name             = each.value.name
   location         = coalesce(each.value.location, var.location)
   tags             = merge(var.tags, each.value.tags)
-  lock             = each.value.lock != null ? each.value.lock : var.lock
+  lock             = each.value.lock
   role_assignments = each.value.role_assignments
 }
 
@@ -89,19 +89,36 @@ module "log_analytics_workspace" {
 
   count = var.byo_log_analytics_workspace == null ? 1 : 0
 
-  name                                      = var.log_analytics_workspace_configuration.name
-  location                                  = coalesce(var.log_analytics_workspace_configuration.location, var.location)
-  resource_group_name                       = local.resource_group_names[var.log_analytics_workspace_configuration.resource_group_key]
-  log_analytics_workspace_sku               = var.log_analytics_workspace_configuration.sku
-  log_analytics_workspace_retention_in_days = var.log_analytics_workspace_configuration.retention_in_days
-  tags                                      = merge(var.tags, var.log_analytics_workspace_configuration.tags)
-  lock                                      = var.lock
-  role_assignments                          = var.log_analytics_workspace_configuration.role_assignments
+  name                                                       = var.log_analytics_workspace_configuration.name
+  location                                                   = coalesce(var.log_analytics_workspace_configuration.location, var.location)
+  resource_group_name                                        = local.resource_group_names[var.log_analytics_workspace_configuration.resource_group_key]
+  log_analytics_workspace_sku                                = var.log_analytics_workspace_configuration.sku
+  log_analytics_workspace_retention_in_days                  = var.log_analytics_workspace_configuration.retention_in_days
+  log_analytics_workspace_daily_quota_gb                     = var.log_analytics_workspace_configuration.daily_quota_gb
+  log_analytics_workspace_internet_ingestion_enabled         = var.log_analytics_workspace_configuration.internet_ingestion_enabled
+  log_analytics_workspace_internet_query_enabled             = var.log_analytics_workspace_configuration.internet_query_enabled
+  log_analytics_workspace_local_authentication_enabled       = var.log_analytics_workspace_configuration.local_authentication_enabled
+  log_analytics_workspace_allow_resource_only_permissions    = var.log_analytics_workspace_configuration.allow_resource_only_permissions
+  log_analytics_workspace_cmk_for_query_forced               = var.log_analytics_workspace_configuration.cmk_for_query_forced
+  log_analytics_workspace_dedicated_cluster_resource_id      = var.log_analytics_workspace_configuration.dedicated_cluster_resource_id
+  log_analytics_workspace_reservation_capacity_in_gb_per_day = var.log_analytics_workspace_configuration.reservation_capacity_in_gb_per_day
+  log_analytics_workspace_identity                           = var.log_analytics_workspace_configuration.identity
+  customer_managed_key                                       = var.log_analytics_workspace_configuration.customer_managed_key
+  log_analytics_workspace_data_exports                       = var.log_analytics_workspace_configuration.data_exports
+  log_analytics_workspace_linked_storage_accounts            = var.log_analytics_workspace_configuration.linked_storage_accounts
+  log_analytics_workspace_tables                             = var.log_analytics_workspace_configuration.tables
+  tags                                                       = merge(var.tags, var.log_analytics_workspace_configuration.tags)
+  lock                                                       = var.log_analytics_workspace_configuration.lock
+  role_assignments                                           = var.log_analytics_workspace_configuration.role_assignments
+
+  diagnostic_settings = var.log_analytics_workspace_configuration.diagnostic_settings
 
   private_endpoints = {
     for pe_k, pe in var.log_analytics_workspace_configuration.private_endpoints : pe_k => {
-      name = pe.name
-      tags = pe.tags
+      name             = pe.name
+      role_assignments = pe.role_assignments
+      lock             = pe.lock
+      tags             = pe.tags
       subnet_resource_id = coalesce(
         pe.network_configuration.subnet_resource_id,
         try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
@@ -110,6 +127,13 @@ module "log_analytics_workspace" {
         coalesce(try(pe.private_dns_zone.resource_ids, null), toset([])),
         toset([for k in coalesce(try(pe.private_dns_zone.keys, null), toset([])) : local.pe_dns_zone_ids[k]])
       )
+      private_dns_zone_group_name             = pe.private_dns_zone_group_name
+      application_security_group_associations = pe.application_security_group_associations
+      private_service_connection_name         = pe.private_service_connection_name
+      network_interface_name                  = pe.network_interface_name
+      location                                = pe.location
+      resource_group_name                     = pe.resource_group_name
+      ip_configurations                       = pe.ip_configurations
     }
   }
 }
@@ -131,14 +155,14 @@ module "network_security_group" {
       log_groups                               = dv.log_groups
       metric_categories                        = dv.metric_categories
       log_analytics_destination_type           = dv.log_analytics_destination_type
-      workspace_resource_id                    = coalesce(dv.workspace_resource_id, local.log_analytics_workspace_resource_id)
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
       storage_account_resource_id              = dv.storage_account_resource_id
       event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
       event_hub_name                           = dv.event_hub_name
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock             = var.lock
+  lock             = each.value.lock
   tags             = merge(var.tags, each.value.tags)
   role_assignments = each.value.role_assignments
 }
@@ -154,7 +178,8 @@ module "route_table" {
   location                      = coalesce(each.value.location, var.location)
   bgp_route_propagation_enabled = each.value.bgp_route_propagation_enabled
   routes                        = each.value.routes
-  lock                          = var.lock
+  lock                          = each.value.lock
+  role_assignments              = each.value.role_assignments
   tags                          = merge(var.tags, each.value.tags)
 }
 
@@ -174,7 +199,11 @@ module "virtual_network" {
     id     = each.value.ddos_protection_plan.resource_id
     enable = each.value.ddos_protection_plan.enable
   } : null
-  encryption = each.value.encryption
+  encryption              = each.value.encryption
+  bgp_community           = each.value.bgp_community
+  enable_vm_protection    = each.value.enable_vm_protection
+  flow_timeout_in_minutes = each.value.flow_timeout_in_minutes
+  ipam_pools              = each.value.ipam_pools
 
   subnets = {
     for sk, sv in each.value.subnets : sk => merge(sv, {
@@ -195,14 +224,14 @@ module "virtual_network" {
       log_groups                               = dv.log_groups
       metric_categories                        = dv.metric_categories
       log_analytics_destination_type           = dv.log_analytics_destination_type
-      workspace_resource_id                    = coalesce(dv.workspace_resource_id, local.log_analytics_workspace_resource_id)
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
       storage_account_resource_id              = dv.storage_account_resource_id
       event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
       event_hub_name                           = dv.event_hub_name
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock             = var.lock
+  lock             = each.value.lock
   tags             = merge(var.tags, each.value.tags)
   role_assignments = each.value.role_assignments
 }
@@ -217,15 +246,17 @@ module "private_dns_zone" {
   parent_id   = local.resource_group_resource_ids[each.value.resource_group_key]
   virtual_network_links = {
     for vnl_k, vnl in each.value.virtual_network_links : vnl_k => {
-      name                 = vnl.name
-      virtual_network_id   = local.vnet_resource_ids[vnl.virtual_network_key]
-      registration_enabled = vnl.registration_enabled
-      resolution_policy    = vnl.resolution_policy
-      tags                 = merge(var.tags, vnl.tags)
+      name                                   = vnl.name
+      virtual_network_id                     = local.vnet_resource_ids[vnl.virtual_network_key]
+      registration_enabled                   = vnl.registration_enabled
+      resolution_policy                      = vnl.resolution_policy
+      private_dns_zone_supports_private_link = vnl.private_dns_zone_supports_private_link
+      tags                                   = merge(var.tags, vnl.tags)
     }
   }
-  lock = var.lock
-  tags = merge(var.tags, each.value.tags)
+  lock             = each.value.lock
+  tags             = merge(var.tags, each.value.tags)
+  role_assignments = each.value.role_assignments
 }
 
 module "private_dns_zone_link" {
@@ -234,12 +265,13 @@ module "private_dns_zone_link" {
 
   for_each = var.byo_private_dns_zone_links
 
-  name                 = each.value.name
-  parent_id            = each.value.private_dns_zone_id
-  virtual_network_id   = local.vnet_resource_ids[each.value.virtual_network_key]
-  registration_enabled = each.value.registration_enabled
-  resolution_policy    = each.value.resolution_policy
-  tags                 = merge(var.tags, each.value.tags)
+  name                                   = each.value.name
+  parent_id                              = each.value.private_dns_zone_id
+  virtual_network_id                     = local.vnet_resource_ids[each.value.virtual_network_key]
+  registration_enabled                   = each.value.registration_enabled
+  resolution_policy                      = each.value.resolution_policy
+  private_dns_zone_supports_private_link = each.value.private_dns_zone_supports_private_link
+  tags                                   = merge(var.tags, each.value.tags)
 }
 
 module "managed_identity" {
@@ -248,12 +280,13 @@ module "managed_identity" {
 
   for_each = var.managed_identities
 
-  name                = each.value.name
-  location            = coalesce(each.value.location, var.location)
-  resource_group_name = local.resource_group_names[each.value.resource_group_key]
-  lock                = var.lock
-  tags                = merge(var.tags, each.value.tags)
-  role_assignments    = each.value.role_assignments
+  name                           = each.value.name
+  location                       = coalesce(each.value.location, var.location)
+  resource_group_name            = local.resource_group_names[each.value.resource_group_key]
+  lock                           = each.value.lock
+  tags                           = merge(var.tags, each.value.tags)
+  role_assignments               = each.value.role_assignments
+  federated_identity_credentials = each.value.federated_identity_credentials
 }
 
 module "key_vault" {
@@ -262,15 +295,24 @@ module "key_vault" {
 
   for_each = var.key_vaults
 
-  name                          = each.value.name
-  location                      = coalesce(each.value.location, var.location)
-  resource_group_name           = local.resource_group_names[each.value.resource_group_key]
-  tenant_id                     = data.azurerm_client_config.current.tenant_id
-  sku_name                      = each.value.sku_name
-  public_network_access_enabled = each.value.public_network_access_enabled
-  purge_protection_enabled      = each.value.purge_protection_enabled
-  soft_delete_retention_days    = each.value.soft_delete_retention_days
-  network_acls                  = each.value.network_acls
+  name                                    = each.value.name
+  location                                = coalesce(each.value.location, var.location)
+  resource_group_name                     = local.resource_group_names[each.value.resource_group_key]
+  tenant_id                               = data.azurerm_client_config.current.tenant_id
+  sku_name                                = each.value.sku_name
+  public_network_access_enabled           = each.value.public_network_access_enabled
+  purge_protection_enabled                = each.value.purge_protection_enabled
+  soft_delete_retention_days              = each.value.soft_delete_retention_days
+  enabled_for_deployment                  = each.value.enabled_for_deployment
+  enabled_for_disk_encryption             = each.value.enabled_for_disk_encryption
+  enabled_for_template_deployment         = each.value.enabled_for_template_deployment
+  network_acls                            = each.value.network_acls
+  contacts                                = each.value.contacts
+  keys                                    = each.value.keys
+  secrets                                 = each.value.secrets
+  wait_for_rbac_before_key_operations     = each.value.wait_for_rbac_before_key_operations
+  wait_for_rbac_before_secret_operations  = each.value.wait_for_rbac_before_secret_operations
+  wait_for_rbac_before_contact_operations = each.value.wait_for_rbac_before_contact_operations
   diagnostic_settings = {
     for dk, dv in each.value.diagnostic_settings : dk => {
       name                                     = dv.name
@@ -278,29 +320,35 @@ module "key_vault" {
       log_groups                               = dv.log_groups
       metric_categories                        = dv.metric_categories
       log_analytics_destination_type           = dv.log_analytics_destination_type
-      workspace_resource_id                    = coalesce(dv.workspace_resource_id, local.log_analytics_workspace_resource_id)
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
       storage_account_resource_id              = dv.storage_account_resource_id
       event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
       event_hub_name                           = dv.event_hub_name
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock = var.lock
+  lock = each.value.lock
   tags = merge(var.tags, each.value.tags)
 
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
-      role_definition_id_or_name = ra.role_definition_id_or_name
-      principal_id               = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
-      description                = ra.description
-      principal_type             = ra.principal_type
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
     }
   }
 
   private_endpoints = {
     for pe_k, pe in each.value.private_endpoints : pe_k => {
-      name = pe.name
-      tags = pe.tags
+      name             = pe.name
+      role_assignments = pe.role_assignments
+      lock             = pe.lock
+      tags             = pe.tags
       subnet_resource_id = coalesce(
         pe.network_configuration.subnet_resource_id,
         try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
@@ -309,6 +357,13 @@ module "key_vault" {
         coalesce(try(pe.private_dns_zone.resource_ids, null), toset([])),
         toset([for k in coalesce(try(pe.private_dns_zone.keys, null), toset([])) : local.pe_dns_zone_ids[k]])
       )
+      private_dns_zone_group_name             = pe.private_dns_zone_group_name
+      application_security_group_associations = pe.application_security_group_associations
+      private_service_connection_name         = pe.private_service_connection_name
+      network_interface_name                  = pe.network_interface_name
+      location                                = pe.location
+      resource_group_name                     = pe.resource_group_name
+      ip_configurations                       = pe.ip_configurations
     }
   }
 }
@@ -319,23 +374,46 @@ module "storage_account" {
 
   for_each = var.storage_accounts
 
-  name                            = each.value.name
-  resource_group_name             = local.resource_group_names[each.value.resource_group_key]
-  location                        = coalesce(each.value.location, var.location)
-  account_tier                    = each.value.account_tier
-  account_replication_type        = each.value.account_replication_type
-  account_kind                    = each.value.account_kind
-  access_tier                     = each.value.access_tier
-  shared_access_key_enabled       = each.value.shared_access_key_enabled
-  public_network_access_enabled   = each.value.public_network_access_enabled
-  https_traffic_only_enabled      = each.value.https_traffic_only_enabled
-  min_tls_version                 = each.value.min_tls_version
-  allow_nested_items_to_be_public = each.value.allow_nested_items_to_be_public
-  network_rules                   = each.value.network_rules
-  managed_identities              = each.value.managed_identities
-  containers                      = each.value.containers
-  role_assignments                = each.value.role_assignments
-  lock                            = each.value.lock != null ? each.value.lock : var.lock
+  name                              = each.value.name
+  resource_group_name               = local.resource_group_names[each.value.resource_group_key]
+  location                          = coalesce(each.value.location, var.location)
+  account_tier                      = each.value.account_tier
+  account_replication_type          = each.value.account_replication_type
+  account_kind                      = each.value.account_kind
+  access_tier                       = each.value.access_tier
+  shared_access_key_enabled         = each.value.shared_access_key_enabled
+  public_network_access_enabled     = each.value.public_network_access_enabled
+  https_traffic_only_enabled        = each.value.https_traffic_only_enabled
+  min_tls_version                   = each.value.min_tls_version
+  allow_nested_items_to_be_public   = each.value.allow_nested_items_to_be_public
+  allowed_copy_scope                = each.value.allowed_copy_scope
+  cross_tenant_replication_enabled  = each.value.cross_tenant_replication_enabled
+  default_to_oauth_authentication   = each.value.default_to_oauth_authentication
+  infrastructure_encryption_enabled = each.value.infrastructure_encryption_enabled
+  nfsv3_enabled                     = each.value.nfsv3_enabled
+  sftp_enabled                      = each.value.sftp_enabled
+  is_hns_enabled                    = each.value.is_hns_enabled
+  large_file_share_enabled          = each.value.large_file_share_enabled
+  customer_managed_key              = each.value.customer_managed_key
+  sas_policy                        = each.value.sas_policy
+  immutability_policy               = each.value.immutability_policy
+  blob_properties                   = each.value.blob_properties
+  share_properties                  = each.value.share_properties
+  queue_properties                  = each.value.queue_properties
+  azure_files_authentication        = each.value.azure_files_authentication
+  routing                           = each.value.routing
+  custom_domain                     = each.value.custom_domain
+  queues                            = each.value.queues
+  tables                            = each.value.tables
+  shares                            = each.value.shares
+  queue_encryption_key_type         = each.value.queue_encryption_key_type
+  table_encryption_key_type         = each.value.table_encryption_key_type
+  storage_management_policy_rule    = each.value.storage_management_policy_rule
+  network_rules                     = each.value.network_rules
+  managed_identities                = each.value.managed_identities
+  containers                        = each.value.containers
+  role_assignments                  = each.value.role_assignments
+  lock                              = each.value.lock
   diagnostic_settings_storage_account = {
     for dk, dv in each.value.diagnostic_settings : dk => {
       name                                     = dv.name
@@ -343,7 +421,63 @@ module "storage_account" {
       log_groups                               = dv.log_groups
       metric_categories                        = dv.metric_categories
       log_analytics_destination_type           = dv.log_analytics_destination_type
-      workspace_resource_id                    = coalesce(dv.workspace_resource_id, local.log_analytics_workspace_resource_id)
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
+      storage_account_resource_id              = dv.storage_account_resource_id
+      event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
+      event_hub_name                           = dv.event_hub_name
+      marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
+    }
+  }
+  diagnostic_settings_blob = {
+    for dk, dv in each.value.diagnostic_settings_blob : dk => {
+      name                                     = dv.name
+      log_categories                           = dv.log_categories
+      log_groups                               = dv.log_groups
+      metric_categories                        = dv.metric_categories
+      log_analytics_destination_type           = dv.log_analytics_destination_type
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
+      storage_account_resource_id              = dv.storage_account_resource_id
+      event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
+      event_hub_name                           = dv.event_hub_name
+      marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
+    }
+  }
+  diagnostic_settings_file = {
+    for dk, dv in each.value.diagnostic_settings_file : dk => {
+      name                                     = dv.name
+      log_categories                           = dv.log_categories
+      log_groups                               = dv.log_groups
+      metric_categories                        = dv.metric_categories
+      log_analytics_destination_type           = dv.log_analytics_destination_type
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
+      storage_account_resource_id              = dv.storage_account_resource_id
+      event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
+      event_hub_name                           = dv.event_hub_name
+      marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
+    }
+  }
+  diagnostic_settings_queue = {
+    for dk, dv in each.value.diagnostic_settings_queue : dk => {
+      name                                     = dv.name
+      log_categories                           = dv.log_categories
+      log_groups                               = dv.log_groups
+      metric_categories                        = dv.metric_categories
+      log_analytics_destination_type           = dv.log_analytics_destination_type
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
+      storage_account_resource_id              = dv.storage_account_resource_id
+      event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
+      event_hub_name                           = dv.event_hub_name
+      marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
+    }
+  }
+  diagnostic_settings_table = {
+    for dk, dv in each.value.diagnostic_settings_table : dk => {
+      name                                     = dv.name
+      log_categories                           = dv.log_categories
+      log_groups                               = dv.log_groups
+      metric_categories                        = dv.metric_categories
+      log_analytics_destination_type           = dv.log_analytics_destination_type
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
       storage_account_resource_id              = dv.storage_account_resource_id
       event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
       event_hub_name                           = dv.event_hub_name
@@ -355,8 +489,10 @@ module "storage_account" {
 
   private_endpoints = {
     for pe_k, pe in each.value.private_endpoints : pe_k => {
-      name = pe.name
-      tags = pe.tags
+      name             = pe.name
+      role_assignments = pe.role_assignments
+      lock             = pe.lock
+      tags             = pe.tags
       subnet_resource_id = coalesce(
         pe.network_configuration.subnet_resource_id,
         try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
@@ -366,6 +502,13 @@ module "storage_account" {
         coalesce(try(pe.private_dns_zone.resource_ids, null), toset([])),
         toset([for k in coalesce(try(pe.private_dns_zone.keys, null), toset([])) : local.pe_dns_zone_ids[k]])
       )
+      private_dns_zone_group_name             = pe.private_dns_zone_group_name
+      application_security_group_associations = pe.application_security_group_associations
+      private_service_connection_name         = pe.private_service_connection_name
+      network_interface_name                  = pe.network_interface_name
+      location                                = pe.location
+      resource_group_name                     = pe.resource_group_name
+      ip_configurations                       = pe.ip_configurations
     }
   }
 }
@@ -447,14 +590,14 @@ module "bastion_host" {
       log_groups                               = dv.log_groups
       metric_categories                        = dv.metric_categories
       log_analytics_destination_type           = dv.log_analytics_destination_type
-      workspace_resource_id                    = coalesce(dv.workspace_resource_id, local.log_analytics_workspace_resource_id)
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
       storage_account_resource_id              = dv.storage_account_resource_id
       event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
       event_hub_name                           = dv.event_hub_name
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock             = var.lock
+  lock             = each.value.lock
   tags             = merge(var.tags, each.value.tags)
   role_assignments = each.value.role_assignments
 }
@@ -488,11 +631,12 @@ module "network_watcher" {
         interval_in_minutes   = fl.traffic_analytics.interval_in_minutes
         workspace_id          = coalesce(fl.traffic_analytics.workspace_id, local.law_workspace_id)
         workspace_region      = coalesce(fl.traffic_analytics.workspace_region, local.law_workspace_region)
-        workspace_resource_id = coalesce(fl.traffic_analytics.workspace_resource_id, local.log_analytics_workspace_resource_id)
+        workspace_resource_id = coalesce(fl.traffic_analytics.workspace_resource_id, local.default_log_analytics_workspace_resource_id)
       } : null
       version = fl.version
     }
   } : null
-  lock = var.lock
-  tags = merge(var.tags, var.flowlog_configuration.tags)
+  lock             = var.flowlog_configuration.lock
+  role_assignments = var.flowlog_configuration.role_assignments
+  tags             = merge(var.tags, var.flowlog_configuration.tags)
 }

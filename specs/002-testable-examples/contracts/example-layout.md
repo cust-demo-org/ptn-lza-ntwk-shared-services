@@ -43,7 +43,6 @@ module "pattern" {
 
   location                              = var.location
   tags                                  = var.tags
-  lock                                  = var.lock
   resource_groups                       = var.resource_groups
   byo_log_analytics_workspace           = var.byo_log_analytics_workspace
   log_analytics_workspace_configuration = var.log_analytics_workspace_configuration
@@ -70,7 +69,7 @@ module "pattern" {
 
 **Design decision**: When a variable value must reference a computed inline resource ID (e.g., hub VNet ID for peering, vHub ID for connectivity), the `terraform.tfvars` provides the base configuration and the `main.tf` constructs the full value using locals that merge tfvars values with computed references. This avoids hardcoded placeholder IDs.
 
-**PE key-based references**: Private endpoint configurations (`log_analytics_workspace_configuration.private_endpoints`, `key_vaults[].private_endpoints`) use the key-based reference pattern. Callers specify `network_configuration.vnet_key`/`subnet_key` (referencing keys in `virtual_networks`) and `private_dns_zone.keys` (referencing keys in `byo_private_dns_zone_links`) instead of computed resource IDs. The pattern module resolves these keys internally, so examples do NOT need a local block to merge computed subnet/DNS zone IDs into PE configs. The `full/` example's `terraform.tfvars` sets PE config entirely via keys — no `key_vaults` local is needed in `main.tf`.
+**PE key-based references**: Private endpoint configurations (`log_analytics_workspace_configuration.private_endpoints`, `key_vaults[].private_endpoints`) use the key-based reference pattern. Callers specify `network_configuration.vnet_key`/`subnet_key` (referencing keys in `virtual_networks`) and `private_dns_zone.keys` (referencing keys in `private_dns_zones` OR `byo_private_dns_zone_links`) instead of computed resource IDs. The pattern module resolves these keys internally via `pe_dns_zone_ids` which merges both sources. The `full/` example demonstrates both approaches: blob DNS zone is pattern-managed (via `private_dns_zones`), while KV DNS zone is BYO (inline `azurerm_private_dns_zone` linked via `byo_private_dns_zone_links`). No `key_vaults` local is needed in `main.tf`.
 
 ### variables.tf
 
@@ -152,7 +151,7 @@ private_endpoints = optional(map(object({
   })
   private_dns_zone = optional(object({
     resource_ids = optional(set(string))     # Direct IDs, OR:
-    keys         = optional(set(string))     # Keys in byo_private_dns_zone_links map
+    keys         = optional(set(string))     # Keys in private_dns_zones OR byo_private_dns_zone_links map
   }))
   tags = optional(map(string), null)
 })), {})
@@ -168,7 +167,7 @@ private_endpoints = {
       subnet_key = "snet_pe"
     }
     private_dns_zone = {
-      keys = ["link_kv"]
+      keys = ["link_kv_to_spoke"]
     }
   }
 }

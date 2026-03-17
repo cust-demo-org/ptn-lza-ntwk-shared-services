@@ -28,19 +28,17 @@ resource "azurerm_virtual_network" "hub" {
   tags                = var.tags
 }
 
+resource "azurerm_private_dns_zone" "kv" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.hub.name
+  tags                = var.tags
+}
+
 # ---------------------------------------------------------------------------
 # Construct computed references for spoke resources created by pattern module
 # ---------------------------------------------------------------------------
 
 locals {
-  subscription_id = data.azurerm_client_config.current.subscription_id
-
-  # Spoke resource names (from terraform.tfvars)
-  spoke_rg_name = var.resource_groups["rg_networking"].name
-
-  # Construct IDs for spoke resources that the pattern module will create
-  spoke_rg_id = "/subscriptions/${local.subscription_id}/resourceGroups/${local.spoke_rg_name}"
-
   # ---------------------------------------------------------------------------
   # Merge computed IDs into variable values
   # ---------------------------------------------------------------------------
@@ -60,24 +58,18 @@ locals {
     })
   }
 
-  # Flow log configuration with computed storage and VNet IDs
-  flowlog_configuration = var.flowlog_configuration != null ? merge(var.flowlog_configuration, {
-    flow_logs = var.flowlog_configuration.flow_logs != null ? {
-      for k, v in var.flowlog_configuration.flow_logs : k => merge(v, {
-        vnet_key = "vnet_spoke"
-        storage_account = {
-          key = "sa_flowlog"
-        }
-        traffic_analytics = v.traffic_analytics
-      })
-    } : null
-  }) : null
+  # BYO DNS zone links with computed private DNS zone ID
+  byo_private_dns_zone_links = merge(var.byo_private_dns_zone_links, {
+    link_kv_to_spoke = merge(var.byo_private_dns_zone_links.link_kv_to_spoke, {
+      private_dns_zone_id = azurerm_private_dns_zone.kv.id
+    })
+  })
 
   # Standalone role assignments with computed spoke RG scope
   role_assignments = {
-    for k, v in var.role_assignments : k => merge(v, {
-      scope = local.spoke_rg_id
-    })
+    for k, v in var.role_assignments : k => merge(v, k == "ra_spoke_rg_reader" ? {
+      scope = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_groups["rg_networking"].name}"
+    } : {})
   }
 }
 
@@ -90,7 +82,6 @@ module "pattern" {
 
   location                              = var.location
   tags                                  = var.tags
-  lock                                  = var.lock
   resource_groups                       = var.resource_groups
   byo_log_analytics_workspace           = var.byo_log_analytics_workspace
   log_analytics_workspace_configuration = var.log_analytics_workspace_configuration
@@ -98,14 +89,14 @@ module "pattern" {
   route_tables                          = var.route_tables
   virtual_networks                      = local.virtual_networks
   private_dns_zones                     = var.private_dns_zones
-  byo_private_dns_zone_links            = var.byo_private_dns_zone_links
+  byo_private_dns_zone_links            = local.byo_private_dns_zone_links
   managed_identities                    = var.managed_identities
   key_vaults                            = var.key_vaults
   role_assignments                      = local.role_assignments
   vhub_connectivity_definitions         = var.vhub_connectivity_definitions
   bastion_hosts                         = var.bastion_hosts
   storage_accounts                      = var.storage_accounts
-  flowlog_configuration                 = local.flowlog_configuration
+  flowlog_configuration                 = var.flowlog_configuration
 
-  depends_on = [azurerm_virtual_network.hub]
+  depends_on = [azurerm_virtual_network.hub, azurerm_private_dns_zone.kv]
 }

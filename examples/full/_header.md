@@ -1,6 +1,9 @@
 # Full Example
 
 This deploys every optional feature of the pattern module, exercising the complete interface end-to-end.
+It demonstrates both pattern-managed and BYO (Bring Your Own) Private DNS zones:
+blob DNS zone is created by the pattern module via `private_dns_zones`, while
+Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_links`.
 
 ## Features Tested
 
@@ -9,19 +12,21 @@ This deploys every optional feature of the pattern module, exercising the comple
 - Network Security Groups with security rules
 - Route tables with routes
 - Virtual networks with subnets and VNet-to-VNet hub peering
-- Private DNS Zone VNet links
+- Private DNS Zones (pattern-managed for blob, BYO for Key Vault)
+- BYO Private DNS Zone VNet links with computed zone IDs
 - Managed identities
 - Key Vaults with RBAC role assignments and private endpoints (key-based references)
-- Standalone role assignments
-- Azure Bastion with key-based subnet and VNet references
+- Standalone role assignments with computed scope
+- Azure Bastion with key-based subnet/VNet references and auto-created public IP
 - Storage accounts (for flow log target)
-- Diagnostic settings to Log Analytics workspace
+- Diagnostic settings on all supported resources (LAW, NSGs, VNet, Key Vault, Bastion, Storage Account)
+- Storage account sub-resource diagnostic settings (blob, file, queue, table)
 
 ## Inline Dependencies
 
 - `azurerm_resource_group` — hub resource group
 - `azurerm_virtual_network` — hub VNet (peering target)
-- `azurerm_private_dns_zone` — Private DNS zones for private endpoint resolution
+- `azurerm_private_dns_zone` — Key Vault DNS zone (BYO, linked to spoke via `byo_private_dns_zone_links`)
 
 ## Usage
 

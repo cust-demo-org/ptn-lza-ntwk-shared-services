@@ -56,7 +56,6 @@ module "pattern" {
 
   location                              = var.location
   tags                                  = var.tags
-  lock                                  = var.lock
   resource_groups                       = var.resource_groups
   byo_log_analytics_workspace           = var.byo_log_analytics_workspace
   log_analytics_workspace_configuration = var.log_analytics_workspace_configuration

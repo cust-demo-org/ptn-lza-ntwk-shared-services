@@ -149,7 +149,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | virtual_hub_id | `string` | Yes | From `vhub_connectivity_definitions[*].vhub_resource_id` | Virtual Hub resource ID. |
 | remote_virtual_network_id | `string` | Yes | Resolved from VNet (via `virtual_network.key` or `virtual_network.id`) | Spoke VNet resource ID. |
 | internet_security_enabled | `bool` | No | `true` | Enable internet security (route through hub firewall). Pattern overrides submodule default of `false`. |
-| routing | `object(...)` | No | `null` | Optional routing config (associated route table, propagated routes, static routes). |
+| routing | `object(...)` | No | `null` | Optional routing config. Contains: `associated_route_table_id` (string, required within routing), `propagated_route_table` (optional: `route_table_ids` list, `labels` list), `static_vnet_route` (optional: `name`, `address_prefixes`, `next_hop_ip_address`). |
 
 **AVM Module**: `Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm//modules/virtual-network-connection` v0.13.5 (submodule).
 **Condition**: Only created when `vhub_connectivity_definitions` is non-empty.

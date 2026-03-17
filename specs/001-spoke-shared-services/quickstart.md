@@ -269,6 +269,18 @@ vhub_connectivity_definitions = {
       # id = "/subscriptions/..."  # alternative — use for VNets not managed by this module
     }
     internet_security_enabled = true  # default: true — routes internet traffic through hub firewall
+    # routing = {                     # optional — configure vHub routing
+    #   associated_route_table_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualHubs/<hub>/hubRouteTables/defaultRouteTable"
+    #   propagated_route_table = {
+    #     route_table_ids = []        # list of route table resource IDs to propagate to
+    #     labels          = ["default"]
+    #   }
+    #   static_vnet_route = {
+    #     name                = "to-firewall"
+    #     address_prefixes    = ["0.0.0.0/0"]
+    #     next_hop_ip_address = "10.0.1.4"
+    #   }
+    # }
   }
 }
 ```
@@ -359,14 +371,33 @@ log_analytics_workspace_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers
 
 ### Enabling Resource Locks
 
-Apply a lock to all root-level AVM-managed resources (does not apply to submodule resources like DNS links or vHub connections):
+Lock is configured per-resource via the `lock` field on each resource variable. There is no global lock — set lock individually on each resource that needs it:
 
 ```hcl
-lock = {
-  kind = "CanNotDelete"  # "CanNotDelete" or "ReadOnly"
-  name = "lock-spoke-networking"
+resource_groups = {
+  rg_spoke = {
+    name     = "rg-spoke-networking"
+    location = "australiaeast"
+    lock = {
+      kind = "CanNotDelete"
+      name = "lock-rg-spoke"
+    }
+  }
+}
+
+key_vaults = {
+  kv_main = {
+    name               = "kv-spoke-main"
+    resource_group_key = "rg_spoke"
+    lock = {
+      kind = "CanNotDelete"
+      name = "lock-kv-main"
+    }
+  }
 }
 ```
+
+Set `lock = null` (or omit the field) on any resource to disable locking. Does not apply to submodule resources like DNS links or vHub connections.
 
 ## Quality Gates (CI)
 

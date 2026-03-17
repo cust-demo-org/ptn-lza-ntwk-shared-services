@@ -33,7 +33,7 @@ Each example's `variables.tf` mirrors the root module's 17+ variables. All have 
 |----------|---------|----------|----------|------|----------------------|
 | `location` | ✅ | ✅ | ✅ | ✅ | `"australiaeast"` |
 | `tags` | ✅ | ✅ | ✅ | ✅ | `{}` |
-| `lock` | ❌ | ❌ | ❌ | ❌ | `null` |
+| ~~`lock`~~ | — | — | — | — | _(removed — lock is now per-resource, not a global variable)_ |
 | `resource_groups` | ✅ | ✅ | ✅ | ✅ | `{}` |
 | `byo_log_analytics_workspace` | ❌ | ❌ | ❌ | ❌ | `null` |
 | `log_analytics_workspace_configuration` | ✅ | ✅ | ✅ | ✅ | `null` |
@@ -81,10 +81,13 @@ module "pattern" — depends_on = [ azurerm_virtual_hub.main ]
 ```
 azurerm_resource_group — hub/connectivity RG
 azurerm_virtual_network — hub VNet (peering target)
-azurerm_private_dns_zone — for byo_private_dns_zone_links
-azurerm_public_ip — for Bastion
-module "pattern" — depends_on = [ azurerm_virtual_network.hub, azurerm_private_dns_zone.blob, azurerm_private_dns_zone.kv ]
+azurerm_private_dns_zone — KV DNS zone (BYO, linked via byo_private_dns_zone_links)
+module "pattern" — depends_on = [ azurerm_virtual_network.hub, azurerm_private_dns_zone.kv ]
 ```
+
+**Note**: The blob DNS zone is created by the pattern module via `private_dns_zones`. The KV DNS zone is BYO (created inline) and linked via `byo_private_dns_zone_links`. Bastion uses `create_public_ip = true` (no inline `azurerm_public_ip` needed).
+
+**Diagnostic settings**: Configured on all supported resources — `log_analytics_workspace_configuration`, `network_security_groups` (all 3 NSGs), `virtual_networks`, `key_vaults`, `bastion_hosts`, and `storage_accounts` (including sub-resource diagnostics: `diagnostic_settings_blob`, `diagnostic_settings_file`, `diagnostic_settings_queue`, `diagnostic_settings_table`). Each diagnostic_settings entry includes `use_default_log_analytics` (default: `true`) which auto-fills `workspace_resource_id` with the pattern's LAW (BYO or auto-created). Set to `false` to use `workspace_resource_id` as-is (`null` = not sent to LAW).
 
 **Note**: The hub resource group is created inline only for examples that need external dependencies (hub VNet, vWAN, etc.). The spoke's resource groups are created by the pattern module itself. The flow-log storage account is created by the pattern module via `storage_accounts` variable (key-based reference `sa_flowlog`).
 
@@ -155,7 +158,7 @@ private_endpoints = optional(map(object({
   })
   private_dns_zone = optional(object({
     resource_ids = optional(set(string))     # Direct IDs — OR use key-based:
-    keys         = optional(set(string))     # Keys in byo_private_dns_zone_links map
+    keys         = optional(set(string))     # Keys in private_dns_zones OR byo_private_dns_zone_links map
   }))
   tags = optional(map(string), null)
 })), {})
@@ -164,7 +167,7 @@ private_endpoints = optional(map(object({
 ### Resolution Logic (root main.tf, via locals)
 
 - **Subnet**: `coalesce(pe.network_configuration.subnet_resource_id, local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key])`
-- **DNS zones**: `setunion(pe.private_dns_zone.resource_ids, [for k in pe.private_dns_zone.keys : var.byo_private_dns_zone_links[k].private_dns_zone_id])`
+- **DNS zones**: `setunion(pe.private_dns_zone.resource_ids, [for k in pe.private_dns_zone.keys : local.pe_dns_zone_ids[k]])` — `pe_dns_zone_ids` merges keys from both `private_dns_zones` module outputs and `byo_private_dns_zone_links` variable
 
 ### Affected Variables
 
@@ -378,13 +381,13 @@ traffic_analytics = optional(object({
 ### Resolution Logic (root main.tf / locals.tf)
 ```hcl
 # locals.tf
-log_analytics_workspace_resource_id = coalesce(byo.resource_id, module.law[0].resource_id)
+default_log_analytics_workspace_resource_id = coalesce(byo.resource_id, module.law[0].resource_id)
 law_workspace_id     = byo != null ? data.azurerm_log_analytics_workspace.external[0].workspace_id : module.law[0].resource.workspace_id
 law_workspace_region = byo != null ? byo.location : coalesce(config.location, var.location)
 
 # main.tf — traffic_analytics resolution
 workspace_id          = coalesce(fl.traffic_analytics.workspace_id, local.law_workspace_id)
 workspace_region      = coalesce(fl.traffic_analytics.workspace_region, local.law_workspace_region)
-workspace_resource_id = coalesce(fl.traffic_analytics.workspace_resource_id, local.log_analytics_workspace_resource_id)
+workspace_resource_id = coalesce(fl.traffic_analytics.workspace_resource_id, local.default_log_analytics_workspace_resource_id)
 ```
 The `full/` example no longer needs `law_rg_name`, `law_name`, `law_resource_id` locals or the `workspace_resource_id` merge override.

@@ -288,7 +288,7 @@ With two developers:
 - **[Story]** label maps tasks to specific user stories for traceability
 - All module version pins are exact (e.g., v0.5.1 not ~> 0.5) per FR-003
 - All AVM module interface fields (diagnostic_settings, lock, role_assignments, tags) are passed through consistently per plan.md §AVM Module Interface Summary
-- `var.lock` is passed to all AVM root-module resources but NOT submodule resources (DNS links, vHub connections) per contracts/variables.md §lock description
+- Lock is configured per-resource via each resource variable's `lock` field (no global `var.lock`). Lock does NOT apply to submodule resources (DNS links, vHub connections) as those submodules do not implement the lock interface
 - `local.diagnostic_settings_default` is passed to all resources that support it, EXCEPT the auto-created Log Analytics workspace (exempt from self-diagnostics per FR-027)
 - Network Watcher (Phase 8) is entirely optional — skip if `flowlog_configuration` is not needed. The module uses `count` conditional, not `for_each`, since only one Network Watcher per configuration is expected
 - Commit after each task or logical group

@@ -190,7 +190,7 @@ output "log_analytics_workspace" {
 ```hcl
 output "vhub_connections" {
   value = {
-    for k, v in module.vnet_conn : k => {
+    for k, v in module.vhub_vnet_connection : k => {
       resource_id = v.resource_id
     }
   }
