@@ -1,9 +1,9 @@
 variable "location" {
   type        = string
   description = <<-EOT
-    The Azure region for all resources. Changing this forces recreation of all resources.
+    The Azure region where all resources will be deployed. Changing this forces recreation of all resources.
 
-    All AVM module calls default their location to this value when not overridden per-resource.
+    Each resource defaults to this location unless overridden by a per-resource `location` attribute.
   EOT
 }
 
@@ -11,11 +11,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
   description = <<-EOT
-    Common tags applied to all resources that support tagging. Per-resource tags are merged on top
-    of these.
+    Common tags applied to all resources that support tagging. Per-resource `tags` attributes are merged on top of these.
 
-    Note: vHub connections (azurerm_virtual_hub_connection) do not support tags; this variable is
-    not passed to the vWAN connection submodule.
+    > Note: vHub connections (`azurerm_virtual_hub_connection`) do not support tags; this variable is not passed to the vWAN connection submodule.
   EOT
 }
 
@@ -31,7 +29,8 @@ variable "resource_groups" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -41,17 +40,28 @@ variable "resource_groups" {
     })), {})
   }))
   description = <<-EOT
-    Map of resource groups to create. The map key is used as a reference key for other resources.
+  A map of resource groups to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-resources-resourcegroup/azurerm v0.2.2
-    See:  https://registry.terraform.io/modules/Azure/avm-res-resources-resourcegroup/azurerm
+  - `name` - (Required) The name of the resource group.
+  - `location` - (Optional) The Azure region for the resource group. Defaults to `null`.
+  - `tags` - (Optional) Tags to apply to this resource group. Defaults to `{}`.
+  - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+    - `kind` - (Required) The type of lock. Possible values are `\"CanNotDelete\"` and `\"ReadOnly\"`.
+    - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+  - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+    - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `description` - (Optional) The description of the role assignment.
+    - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+    - `condition` - (Optional) The condition which will be used to scope the role assignment.
+    - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+    - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+    - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - name:             Resource group name.
-    - location:         Azure region. Defaults to var.location if not specified.
-    - tags:             Per-resource-group tags, merged with var.tags.
-    - lock:             Per-resource-group lock. See AVM module variable: lock.
-    - role_assignments: Per-resource-group RBAC assignments.
-                        See AVM module variable: role_assignments.
+    > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+  > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
   EOT
 }
 
@@ -62,9 +72,12 @@ variable "byo_log_analytics_workspace" {
   })
   default     = null
   description = <<-EOT
-    Bring-your-own Log Analytics workspace. Provide the resource ID and location of an
-    existing workspace. If null, the pattern auto-creates one using
-    log_analytics_workspace_configuration.
+    Configuration for a bring-your-own Log Analytics workspace which will be set as default log analytics workspace for the pattern. The following attributes are supported:
+
+    - `resource_id` - (Required) The Azure resource ID of the existing Log Analytics workspace.
+    - `location` - (Required) The Azure region of the existing Log Analytics workspace.
+
+    > **Pattern note:** When `null` (the default), the pattern auto-creates a Log Analytics workspace using `log_analytics_workspace_configuration`.
   EOT
 }
 
@@ -140,7 +153,8 @@ variable "log_analytics_workspace_configuration" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -152,7 +166,8 @@ variable "log_analytics_workspace_configuration" {
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -188,24 +203,110 @@ variable "log_analytics_workspace_configuration" {
   })
   default     = null
   description = <<-EOT
-    Configuration for the auto-created Log Analytics workspace. Used only when
-    byo_log_analytics_workspace is null.
+    Configuration for the auto-created Log Analytics workspace which will be set as default log analytics workspace for the pattern. The following attributes are supported:
 
-    Uses: Azure/avm-res-operationalinsights-workspace/azurerm v0.5.1
-    See:  https://registry.terraform.io/modules/Azure/avm-res-operationalinsights-workspace/azurerm
+    - `name` - (Required) The name of the Log Analytics workspace.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this workspace will be deployed.
+    - `location` - (Optional) The Azure region for the workspace. Defaults to `null`.
+    - `sku` - (Optional) The pricing tier of the workspace. Defaults to `"PerGB2018"`.
+    - `retention_in_days` - (Optional) The number of days to retain data. Defaults to `30`.
+    - `daily_quota_gb` - (Optional) The daily ingestion quota in GB. Defaults to `null`.
+    - `internet_ingestion_enabled` - (Optional) Whether ingestion from the public internet is enabled. Defaults to `null`.
+    - `internet_query_enabled` - (Optional) Whether querying from the public internet is enabled. Defaults to `null`.
+    - `local_authentication_enabled` - (Optional) Whether local authentication methods are enabled. Defaults to `true`.
+    - `allow_resource_only_permissions` - (Optional) Whether access requires resource permissions only. Defaults to `null`.
+    - `cmk_for_query_forced` - (Optional) Whether CMK must be used for query. Defaults to `null`.
+    - `dedicated_cluster_resource_id` - (Optional) The resource ID of the dedicated cluster to link to. Defaults to `null`.
+    - `reservation_capacity_in_gb_per_day` - (Optional) The capacity reservation level in GB per day. Defaults to `null`.
+    - `identity` - (Optional) The managed identity configuration for the workspace.
+      - `type` - (Required) The type of managed identity. Possible values are `"SystemAssigned"` and `"UserAssigned"`.
+      - `identity_ids` - (Optional) A set of user-assigned managed identity resource IDs.
+    - `customer_managed_key` - (Optional) Customer managed key configuration.
+      - `key_vault_resource_id` - (Required) The resource ID of the Key Vault containing the key.
+      - `key_name` - (Required) The name of the key in the Key Vault.
+      - `key_version` - (Optional) The version of the key. Defaults to `null`.
+      - `user_assigned_identity` - (Optional) The user-assigned identity to use for accessing the key.
+        - `resource_id` - (Required) The resource ID of the user-assigned managed identity.
+    - `data_exports` - (Optional) A map of data export rules. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the data export rule.
+      - `table_names` - (Required) A list of table names to export.
+      - `destination_resource_id` - (Required) The resource ID of the destination.
+      - `enabled` - (Optional) Whether the data export is enabled. Defaults to `true`.
+      - `event_hub_name` - (Optional) The name of the Event Hub for the export. Defaults to `null`.
+    - `linked_storage_accounts` - (Optional) A map of linked storage account configurations. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `data_source_type` - (Required) The data source type for the linked storage account. Possible values are `"CustomLogs"`, `"AzureWatson"`, `"Query"`, `"Ingestion"` and `"Alerts"`.
+      - `storage_account_ids` - (Required) A list of storage account resource IDs.
+    - `tables` - (Optional) A map of custom table configurations. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the table.
+      - `resource_id` - (Optional) The resource ID of the table. Defaults to `null`.
+      - `retention_in_days` - (Optional) The number of days to retain data in this table. Defaults to `null`.
+      - `total_retention_in_days` - (Optional) The total number of days to retain data including archive. Defaults to `null`.
+      - `plan` - (Optional) The table plan. Possible values are `"Analytics"` and `"Basic"`. Defaults to `null`.
+      - `schema` - (Optional) The schema definition for the table.
+        - `name` - (Optional) The name of the schema.
+        - `description` - (Optional) A description of the schema.
+        - `columns` - (Optional) A list of column definitions. Defaults to `[]`.
+          - `name` - (Required) The name of the column.
+          - `type` - (Required) The data type of the column.
+    - `diagnostic_settings` - (Optional) A map of diagnostic settings to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `name` - (Optional) The name of the diagnostic setting. One will be generated if not set, however this will not be unique if you want to create multiple diagnostic setting resources.
+      - `log_categories` - (Optional) A set of log categories to send to the log analytics workspace. Defaults to `[]`.
+      - `log_groups` - (Optional) A set of log groups to send to the log analytics workspace. Defaults to `["allLogs"]`.
+      - `metric_categories` - (Optional) A set of metric categories to send to the log analytics workspace. Defaults to `["AllMetrics"]`.
+      - `log_analytics_destination_type` - (Optional) The destination type for the diagnostic setting. Possible values are `Dedicated` and `AzureDiagnostics`. Defaults to `Dedicated`.
+      - `workspace_resource_id` - (Optional) The resource ID of the log analytics workspace to send logs and metrics to.
+      - `storage_account_resource_id` - (Optional) The resource ID of the storage account to send logs and metrics to.
+      - `event_hub_authorization_rule_resource_id` - (Optional) The resource ID of the event hub authorization rule to send logs and metrics to.
+      - `event_hub_name` - (Optional) The name of the event hub. If none is specified, the default event hub will be selected.
+      - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
+    - `tags` - (Optional) Tags to apply to this workspace. Defaults to `{}`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - name:               Workspace name (required).
-    - resource_group_key: Key in resource_groups map for placement.
-    - location:           Azure region. Defaults to var.location.
-    - sku:                Pricing tier. Default: "PerGB2018".
-    - retention_in_days:  Data retention. Default: 30.
-    - tags:               Per-workspace tags, merged with var.tags.
-    - lock:               Resource lock for the workspace. See AVM module variable: lock.
-    - role_assignments:   Per-workspace RBAC assignments.
-                          See AVM module variable: role_assignments.
-    - private_endpoints:  Private endpoint configurations for the workspace.
-                          See AVM module variable: private_endpoints.
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+    - `private_endpoints` - (Optional) A map of private endpoints to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `name` - (Optional) The name of the private endpoint. One will be generated if not set. Defaults to `null`.
+      - `role_assignments` - (Optional) A map of role assignments to create on the private endpoint. Uses the same schema as top-level `role_assignments`.
+      - `lock` - (Optional) Controls the Resource Lock configuration for the private endpoint. Uses the same schema as top-level `lock`.
+      - `network_configuration` - (Required) Network placement for the private endpoint.
+        - `subnet_resource_id` - (Optional) The resource ID of the subnet. Mutually exclusive with `vnet_key`/`subnet_key`.
+        - `vnet_key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Used with `subnet_key`.
+        - `subnet_key` - (Optional) The key of the subnet within the virtual network identified by `vnet_key`.
+      - `private_dns_zone` - (Optional) Private DNS zone configuration for the endpoint.
+        - `resource_ids` - (Optional) A set of Private DNS Zone resource IDs.
+        - `keys` - (Optional) A set of keys from the `private_dns_zones` variable.
+      - `private_dns_zone_group_name` - (Optional) The name of the Private DNS Zone Group. Defaults to `"default"`.
+      - `application_security_group_associations` - (Optional) A map of application security group resource IDs. Defaults to `{}`.
+      - `private_service_connection_name` - (Optional) The name of the private service connection. Defaults to `null`.
+      - `network_interface_name` - (Optional) The name of the network interface. Defaults to `null`.
+      - `location` - (Optional) The Azure region for the private endpoint. Defaults to `null`.
+      - `resource_group_name` - (Optional) The resource group for the private endpoint. Defaults to `null`.
+      - `ip_configurations` - (Optional) A map of IP configurations for the private endpoint. Defaults to `{}`.
+        - `name` - (Required) The name of the IP configuration.
+        - `private_ip_address` - (Required) The private IP address of the IP configuration.
+      - `tags` - (Optional) Tags to apply to the private endpoint. Defaults to `null`.
+
+    > **Pattern note:** Used only when `byo_log_analytics_workspace` is `null`. If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. The `diagnostic_settings` block on this resource does NOT have `use_default_log_analytics` to avoid circular references (the workspace cannot send diagnostics to itself by default).
   EOT
+
+  validation {
+    condition = alltrue([
+      for ra_key, ra in var.log_analytics_workspace_configuration.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+    ])
+    error_message = "Each Log Analytics workspace role assignment must set exactly one of principal_id or managed_identity_key."
+  }
 }
 
 variable "network_security_groups" {
@@ -238,7 +339,8 @@ variable "network_security_groups" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -262,26 +364,69 @@ variable "network_security_groups" {
   }))
   default     = {}
   description = <<-EOT
-    Map of Network Security Groups. The map key is used as a reference key for subnet associations.
+    A map of network security groups to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-network-networksecuritygroup/azurerm v0.5.1
-    See:  https://registry.terraform.io/modules/Azure/avm-res-network-networksecuritygroup/azurerm
+    - `name` - (Required) The name of the network security group. Changing this forces the creation of a new resource.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this NSG will be deployed.
+    - `location` - (Optional) The Azure region for the NSG. Defaults to `null`.
+    - `security_rules` - (Optional) A map of user-defined security rules to create on the NSG. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. An empty map means only Azure built-in default rules apply. Defaults to `{}`.
+      - `name` - (Required) The name of the security rule.
+      - `priority` - (Required) The priority of the rule. The value can be between 100 and 4096.
+      - `direction` - (Required) The direction of the rule. Possible values are `Inbound` and `Outbound`.
+      - `access` - (Required) Whether network traffic is allowed or denied. Possible values are `Allow` and `Deny`.
+      - `protocol` - (Required) The network protocol this rule applies to. Possible values are `Tcp`, `Udp`, `Icmp`, `Esp`, `Ah` or `*`.
+      - `source_port_range` - (Optional) The source port or range. Use `*` for all ports.
+      - `source_port_ranges` - (Optional) A set of source port ranges.
+      - `destination_port_range` - (Optional) The destination port or range. Use `*` for all ports.
+      - `destination_port_ranges` - (Optional) A set of destination port ranges.
+      - `source_address_prefix` - (Optional) CIDR or source IP range, or `*` for all addresses.
+      - `source_address_prefixes` - (Optional) A set of source address prefixes.
+      - `destination_address_prefix` - (Optional) CIDR or destination IP range, or `*` for all addresses.
+      - `destination_address_prefixes` - (Optional) A set of destination address prefixes.
+      - `source_application_security_group_ids` - (Optional) A set of source application security group IDs.
+      - `destination_application_security_group_ids` - (Optional) A set of destination application security group IDs.
+      - `description` - (Optional) A description of the security rule.
+    - `tags` - (Optional) Tags to apply to this NSG. Defaults to `{}`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - name:               NSG name.
-    - resource_group_key: Key in resource_groups map for placement.
-    - location:           Azure region. Defaults to var.location.
-    - security_rules:     Map of user-defined security rules. An empty map means only Azure
-                          built-in default rules apply. No rules are auto-injected.
-    - tags:               Per-NSG tags, merged with var.tags.
-    - lock:               Resource lock for the NSG. See AVM module variable: lock.
-    - role_assignments:   Per-NSG RBAC assignments.
-                          See AVM module variable: role_assignments.
-    - diagnostic_settings: Per-NSG diagnostic settings. Each entry can send logs/metrics to a
-                          Log Analytics workspace, storage account, Event Hub, or partner solution.
-                          Set use_default_log_analytics = true (default) to auto-fill
-                          workspace_resource_id with the pattern's LAW (BYO or auto-created).
-                          Set to false to use workspace_resource_id as-is (null = not sent to LAW).
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+    - `diagnostic_settings` - (Optional) A map of diagnostic settings to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `name` - (Optional) The name of the diagnostic setting. One will be generated if not set, however this will not be unique if you want to create multiple diagnostic setting resources.
+      - `log_categories` - (Optional) A set of log categories to send to the log analytics workspace. Defaults to `[]`.
+      - `log_groups` - (Optional) A set of log groups to send to the log analytics workspace. Defaults to `["allLogs"]`.
+      - `metric_categories` - (Optional) A set of metric categories to send to the log analytics workspace. Defaults to `["AllMetrics"]`.
+      - `log_analytics_destination_type` - (Optional) The destination type for the diagnostic setting. Possible values are `Dedicated` and `AzureDiagnostics`. Defaults to `Dedicated`.
+      - `workspace_resource_id` - (Optional) The resource ID of the log analytics workspace to send logs and metrics to.
+      - `storage_account_resource_id` - (Optional) The resource ID of the storage account to send logs and metrics to.
+      - `event_hub_authorization_rule_resource_id` - (Optional) The resource ID of the event hub authorization rule to send logs and metrics to.
+      - `event_hub_name` - (Optional) The name of the event hub. If none is specified, the default event hub will be selected.
+      - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
+      - `use_default_log_analytics` - (Optional) When `true`, automatically sets the `workspace_resource_id` to the Log Analytics workspace created by this pattern. Defaults to `true`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
   EOT
+
+  validation {
+    condition = alltrue([
+      for nsg_key, nsg in var.network_security_groups : alltrue([
+        for ra_key, ra in nsg.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+      ])
+    ])
+    error_message = "Each network security group role assignment must set exactly one of principal_id or managed_identity_key."
+  }
 }
 
 variable "route_tables" {
@@ -302,7 +447,8 @@ variable "route_tables" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -314,20 +460,46 @@ variable "route_tables" {
   }))
   default     = {}
   description = <<-EOT
-    Map of route tables. Each can contain multiple routes. Associate to subnets via the subnet's
-    route_table_key.
+    A map of route tables to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-network-routetable/azurerm v0.5.0
-    See:  https://registry.terraform.io/modules/Azure/avm-res-network-routetable/azurerm
+    - `name` - (Required) The name of the route table. Changing this forces the creation of a new resource.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this route table will be deployed.
+    - `location` - (Optional) The Azure region for the route table. Defaults to `null`.
+    - `bgp_route_propagation_enabled` - (Optional) Boolean flag which controls propagation of routes learned by BGP on that route table. Defaults to `true`.
+    - `routes` - (Optional) A map of routes to create on the route table. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the route.
+      - `address_prefix` - (Required) The destination to which the route applies. Can be CIDR (such as `10.1.0.0/16`) or Azure Service Tag (such as `ApiManagement`, `AzureBackup` or `AzureMonitor`) format.
+      - `next_hop_type` - (Required) The type of Azure hop the packet should be sent to. Possible values are `VirtualNetworkGateway`, `VnetLocal`, `Internet`, `VirtualAppliance` and `None`.
+      - `next_hop_in_ip_address` - (Optional) Contains the IP address packets should be forwarded to. Next hop values are only allowed in routes where the next hop type is `VirtualAppliance`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - name:                          Route table name.
-    - resource_group_key:            Key in resource_groups map for placement.
-    - location:                      Azure region. Defaults to var.location.
-    - bgp_route_propagation_enabled: Enable BGP route propagation. Default: true.
-    - routes:                        Map of routes with address_prefix and next_hop_type.
-    - lock:                          Resource lock for the route table. See AVM module variable: lock.
-    - tags:                          Per-route-table tags, merged with var.tags.
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+    - `tags` - (Optional) Tags to apply to this route table. Defaults to `{}`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
   EOT
+
+  validation {
+    condition = alltrue([
+      for rt_key, rt in var.route_tables : alltrue([
+        for ra_key, ra in rt.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+      ])
+    ])
+    error_message = "Each route table role assignment must set exactly one of principal_id or managed_identity_key."
+  }
 }
 
 variable "virtual_networks" {
@@ -432,7 +604,8 @@ variable "virtual_networks" {
       private_endpoint_network_policies             = optional(string, "Enabled")
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -443,7 +616,8 @@ variable "virtual_networks" {
     })), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -471,31 +645,121 @@ variable "virtual_networks" {
   }))
   default     = {}
   description = <<-EOT
-    Map of spoke virtual networks. Each entry creates a VNet with optional subnets and optional hub
-    peerings via the AVM VNet module's peerings interface.
+    A map of spoke virtual networks to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-network-virtualnetwork/azurerm v0.17.1
-    See:  https://registry.terraform.io/modules/Azure/avm-res-network-virtualnetwork/azurerm
+    - `name` - (Required) The name of the virtual network.
+    - `address_space` - (Required) A set of CIDR ranges for the virtual network address space.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this VNet will be deployed.
+    - `location` - (Optional) The Azure region for the VNet. Defaults to `null`.
+    - `dns_servers` - (Optional) A list of custom DNS server IP addresses. Defaults to `null` (Azure-provided DNS).
+    - `ddos_protection_plan` - (Optional) DDoS Protection Plan configuration.
+      - `resource_id` - (Required) The resource ID of the DDoS Protection Plan.
+      - `enable` - (Required) Whether the DDoS Protection Plan is enabled.
+    - `encryption` - (Optional) VNet encryption configuration.
+      - `enabled` - (Required) Whether encryption is enabled.
+      - `enforcement` - (Required) The enforcement policy. Possible values are `"AllowUnencrypted"` and `"DropUnencrypted"`.
+    - `bgp_community` - (Optional) The BGP community attribute for the virtual network.
+    - `enable_vm_protection` - (Optional) Whether VM protection is enabled. Defaults to `false`.
+    - `flow_timeout_in_minutes` - (Optional) The flow timeout in minutes for the virtual network.
+    - `ipam_pools` - (Optional) A list of IPAM pool configurations for address allocation.
+      - `id` - (Required) The ID of the IPAM pool.
+      - `prefix_length` - (Required) The prefix length for the allocation.
+    - `tags` - (Optional) Tags to apply to this VNet. Defaults to `{}`.
+    - `peerings` - (Optional) A map of VNet peerings. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the peering.
+      - `remote_virtual_network_resource_id` - (Required) The resource ID of the remote virtual network.
+      - `allow_forwarded_traffic` - (Optional) Whether forwarded traffic is allowed. Defaults to `true`.
+      - `allow_gateway_transit` - (Optional) Whether gateway transit is allowed. Defaults to `false`.
+      - `allow_virtual_network_access` - (Optional) Whether virtual network access is allowed. Defaults to `true`.
+      - `do_not_verify_remote_gateways` - (Optional) Whether to skip verification of remote gateways. Defaults to `false`.
+      - `enable_only_ipv6_peering` - (Optional) Whether to enable only IPv6 peering. Defaults to `false`.
+      - `peer_complete_vnets` - (Optional) Whether to peer the complete VNets. Defaults to `true`.
+      - `local_peered_address_spaces` - (Optional) A list of local address spaces to peer.
+        - `address_prefix` - (Required) The address prefix.
+      - `remote_peered_address_spaces` - (Optional) A list of remote address spaces to peer.
+        - `address_prefix` - (Required) The address prefix.
+      - `local_peered_subnets` - (Optional) A list of local subnets to peer.
+        - `subnet_name` - (Required) The name of the subnet.
+      - `remote_peered_subnets` - (Optional) A list of remote subnets to peer.
+        - `subnet_name` - (Required) The name of the subnet.
+      - `use_remote_gateways` - (Optional) Whether to use remote gateways. Defaults to `false`.
+      - `create_reverse_peering` - (Optional) Whether to create a reverse peering on the remote VNet. Defaults to `false`.
+      - `reverse_name` - (Optional) The name of the reverse peering.
+      - `reverse_allow_forwarded_traffic` - (Optional) Whether forwarded traffic is allowed on the reverse peering. Defaults to `true`.
+      - `reverse_allow_gateway_transit` - (Optional) Whether gateway transit is allowed on the reverse peering. Defaults to `false`.
+      - `reverse_allow_virtual_network_access` - (Optional) Whether virtual network access is allowed on the reverse peering. Defaults to `true`.
+      - `reverse_do_not_verify_remote_gateways` - (Optional) Whether to skip verification of remote gateways on the reverse peering. Defaults to `false`.
+      - `reverse_enable_only_ipv6_peering` - (Optional) Whether to enable only IPv6 on the reverse peering. Defaults to `false`.
+      - `reverse_peer_complete_vnets` - (Optional) Whether to peer complete VNets on the reverse peering. Defaults to `true`.
+      - `reverse_local_peered_address_spaces` - (Optional) A list of local address spaces for the reverse peering.
+        - `address_prefix` - (Required) The address prefix.
+      - `reverse_remote_peered_address_spaces` - (Optional) A list of remote address spaces for the reverse peering.
+        - `address_prefix` - (Required) The address prefix.
+      - `reverse_local_peered_subnets` - (Optional) A list of local subnets for the reverse peering.
+        - `subnet_name` - (Required) The name of the subnet.
+      - `reverse_remote_peered_subnets` - (Optional) A list of remote subnets for the reverse peering.
+        - `subnet_name` - (Required) The name of the subnet.
+      - `reverse_use_remote_gateways` - (Optional) Whether to use remote gateways on the reverse peering. Defaults to `false`.
+      - `sync_remote_address_space_enabled` - (Optional) Whether remote address space sync is enabled. Defaults to `false`.
+      - `sync_remote_address_space_triggers` - (Optional) Triggers for syncing remote address space. Defaults to `null`.
+    - `subnets` - (Optional) A map of subnets for the VNet. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the subnet.
+      - `address_prefix` - (Optional) The CIDR address prefix for the subnet. Mutually exclusive with `address_prefixes`.
+      - `address_prefixes` - (Optional) A list of CIDR address prefixes for the subnet. Mutually exclusive with `address_prefix`.
+      - `network_security_group_key` - (Optional) The key of the NSG in the `network_security_groups` variable to associate with this subnet.
+      - `route_table_key` - (Optional) The key of the route table in the `route_tables` variable to associate with this subnet.
+      - `service_endpoints_with_location` - (Optional) A list of service endpoint configurations. Defaults to `[]`.
+        - `service` - (Required) The service endpoint type (e.g., `"Microsoft.Storage"`).
+        - `locations` - (Optional) A list of locations for the service endpoint. Defaults to `["*"]`.
+      - `delegations` - (Optional) A list of subnet delegations. Defaults to `[]`.
+        - `name` - (Required) The name of the delegation.
+        - `service_delegation` - (Required) The service delegation configuration.
+          - `name` - (Required) The name of the service to delegate to.
+      - `nat_gateway` - (Optional) NAT gateway configuration.
+        - `id` - (Required) The resource ID of the NAT gateway.
+      - `service_endpoint_policies` - (Optional) A map of service endpoint policy IDs.
+        - `id` - (Required) The resource ID of the service endpoint policy.
+      - `ipam_pools` - (Optional) A list of IPAM pool configurations for subnet address allocation.
+        - `pool_id` - (Required) The ID of the IPAM pool.
+        - `prefix_length` - (Optional) The prefix length for the allocation.
+        - `allocation_type` - (Optional) The allocation type. Defaults to `"Static"`.
+      - `sharing_scope` - (Optional) The sharing scope of the subnet.
+      - `private_link_service_network_policies_enabled` - (Optional) Whether private link service network policies are enabled. Defaults to `true`.
+      - `default_outbound_access_enabled` - (Optional) Whether default outbound access is enabled. Defaults to `false`.
+      - `private_endpoint_network_policies` - (Optional) The private endpoint network policies setting. Defaults to `"Enabled"`.
+      - `role_assignments` - (Optional) A map of role assignments to create on this subnet. Uses the same schema as VNet-level `role_assignments`.
+    - `role_assignments` - (Optional) A map of role assignments to create on this VNet. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - name:               VNet name.
-    - address_space:      Set of CIDR ranges for the virtual network.
-    - resource_group_key: Key in resource_groups map for placement.
-    - location:           Azure region. Defaults to var.location.
-    - dns_servers:        Custom DNS servers. Null uses Azure-provided DNS.
-    - ddos_protection_plan: DDoS Protection Plan configuration.
-    - encryption:         VNet encryption settings.
-    - tags:               Per-VNet tags, merged with var.tags.
-    - lock:               Resource lock for the VNet. See AVM module variable: lock.
-    - peerings:           Map of VNet peerings. Empty map = no peering (implicit toggle).
-    - subnets:            Map of subnets. Each can reference NSG and route table by key.
-                          Subnets support their own role_assignments.
-    - role_assignments:   VNet-level RBAC assignments.
-                          See AVM module variable: role_assignments.
-    - diagnostic_settings: Per-VNet diagnostic settings. Each entry can send logs/metrics to a
-                          Log Analytics workspace, storage account, Event Hub, or partner solution.
-                          Set use_default_log_analytics = true (default) to auto-fill
-                          workspace_resource_id with the pattern's LAW (BYO or auto-created).
-                          Set to false to use workspace_resource_id as-is (null = not sent to LAW).
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+    - `diagnostic_settings` - (Optional) A map of diagnostic settings to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `name` - (Optional) The name of the diagnostic setting. One will be generated if not set, however this will not be unique if you want to create multiple diagnostic setting resources.
+      - `log_categories` - (Optional) A set of log categories to send to the log analytics workspace. Defaults to `[]`.
+      - `log_groups` - (Optional) A set of log groups to send to the log analytics workspace. Defaults to `["allLogs"]`.
+      - `metric_categories` - (Optional) A set of metric categories to send to the log analytics workspace. Defaults to `["AllMetrics"]`.
+      - `log_analytics_destination_type` - (Optional) The destination type for the diagnostic setting. Possible values are `Dedicated` and `AzureDiagnostics`. Defaults to `Dedicated`.
+      - `workspace_resource_id` - (Optional) The resource ID of the log analytics workspace to send logs and metrics to.
+      - `storage_account_resource_id` - (Optional) The resource ID of the storage account to send logs and metrics to.
+      - `event_hub_authorization_rule_resource_id` - (Optional) The resource ID of the event hub authorization rule to send logs and metrics to.
+      - `event_hub_name` - (Optional) The name of the event hub. If none is specified, the default event hub will be selected.
+      - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
+      - `use_default_log_analytics` - (Optional) When `true`, automatically sets the `workspace_resource_id` to the Log Analytics workspace created by this pattern. Defaults to `true`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+
+    > Note: Each subnet must define exactly one of `address_prefix` or `address_prefixes`, not both.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
   EOT
 
   validation {
@@ -505,6 +769,15 @@ variable "virtual_networks" {
       ])
     ])
     error_message = "Each subnet must define exactly one of address_prefix or address_prefixes, not both."
+  }
+
+  validation {
+    condition = alltrue([
+      for vnet_key, vnet in var.virtual_networks : alltrue([
+        for ra_key, ra in vnet.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+      ])
+    ])
+    error_message = "Each virtual network role assignment must set exactly one of principal_id or managed_identity_key."
   }
 }
 
@@ -526,7 +799,8 @@ variable "private_dns_zones" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -538,24 +812,36 @@ variable "private_dns_zones" {
   }))
   default     = {}
   description = <<-EOT
-    Map of Private DNS Zones to create and optionally link to VNets created by this pattern.
+    A map of Private DNS Zones to create and optionally link to VNets created by this pattern. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-network-privatednszone/azurerm v0.5.0
-    See:  https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm
+    - `domain_name` - (Required) The domain name for the Private DNS Zone (e.g. `"privatelink.blob.core.windows.net"`).
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this DNS zone will be deployed.
+    - `virtual_network_links` - (Optional) A map of VNet links to create for this DNS zone. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the virtual network link.
+      - `virtual_network_key` - (Required) The key of the virtual network in the `virtual_networks` variable to link to this DNS zone.
+      - `registration_enabled` - (Optional) Whether auto-registration of VM DNS records is enabled for this link. Defaults to `false`.
+      - `resolution_policy` - (Optional) The resolution policy for the link. Defaults to `"Default"`.
+      - `private_dns_zone_supports_private_link` - (Optional) Whether the DNS zone supports private link resolution. Defaults to `false`.
+      - `tags` - (Optional) Tags to apply to this virtual network link. Defaults to `{}`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - domain_name:          Domain name for the Private DNS Zone (e.g. "privatelink.blob.core.windows.net").
-    - resource_group_key:   Key in resource_groups map for placement.
-    - virtual_network_links: Map of VNet links. Each references a VNet by key from virtual_networks map.
-      - name:                 Link name.
-      - virtual_network_key:  Key in virtual_networks map identifying the VNet to link.
-      - registration_enabled: Enable auto-registration of VM DNS records. Default: false.
-      - resolution_policy:    Resolution policy. Default: "Default".
-      - tags:                 Per-link tags, merged with var.tags.
-    - tags:                 Per-zone tags, merged with var.tags.
-    - lock:                 Resource lock for the DNS zone. See AVM module variable: lock.
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
 
-    For linking to existing (BYO) Private DNS Zones not managed by this pattern, use
-    byo_private_dns_zone_links instead.
+    - `tags` - (Optional) Tags to apply to this DNS zone. Defaults to `{}`.
+
+    > **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zone_links` instead.
   EOT
 }
 
@@ -571,20 +857,17 @@ variable "byo_private_dns_zone_links" {
   }))
   default     = {}
   description = <<-EOT
-    Map of VNet links to existing (BYO) Private DNS Zones. Each links an existing DNS zone (by
-    resource ID) to a VNet created by this pattern (by map key).
+    A map of VNet links to existing (bring-your-own) Private DNS Zones. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    For creating Private DNS Zones as part of this pattern, use private_dns_zones instead.
+    - `name` - (Required) The name of the virtual network link.
+    - `private_dns_zone_id` - (Required) The Azure resource ID of the existing Private DNS Zone to link.
+    - `virtual_network_key` - (Required) The key of the virtual network in the `virtual_networks` variable to link to the DNS zone.
+    - `registration_enabled` - (Optional) Whether auto-registration of DNS records is enabled for this link. Defaults to `false`.
+    - `resolution_policy` - (Optional) The resolution policy for the link. Defaults to `"Default"`.
+    - `private_dns_zone_supports_private_link` - (Optional) Whether the DNS zone supports private link resolution. Defaults to `false`.
+    - `tags` - (Optional) Tags to apply to this virtual network link. Defaults to `{}`.
 
-    Uses: Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link v0.5.0
-    See:  https://registry.terraform.io/modules/Azure/avm-res-network-privatednszone/azurerm
-
-    - name:                 Link name.
-    - private_dns_zone_id:  Resource ID of the existing Private DNS Zone to link.
-    - virtual_network_key:  Key in virtual_networks map identifying the VNet.
-    - registration_enabled: Enable auto-registration. Default: false.
-    - resolution_policy:    Resolution policy. Default: "Default".
-    - tags:                 Per-link tags, merged with var.tags.
+    > **Pattern note:** Use this variable for DNS zones NOT managed by this pattern. For creating DNS zones as part of this pattern, use `private_dns_zones` instead. Tags in `tags` are merged with `var.tags`.
   EOT
 }
 
@@ -616,18 +899,30 @@ variable "managed_identities" {
   }))
   default     = {}
   description = <<-EOT
-    Map of user-assigned managed identities to create.
+    A map of user-assigned managed identities to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-managedidentity-userassignedidentity/azurerm v0.4.0
-    See:  https://registry.terraform.io/modules/Azure/avm-res-managedidentity-userassignedidentity/azurerm
+    - `name` - (Required) The name of the managed identity. Must start with a letter or number, be between 3 and 128 characters long, and can only contain alphanumerics, hyphens, and underscores.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this identity will be deployed.
+    - `location` - (Optional) The Azure region for the managed identity. Defaults to `null`.
+    - `tags` - (Optional) Tags to apply to this managed identity. Defaults to `{}`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create for this managed identity. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `scope` - (Required) The resource ID of the scope to assign the role on.
+      - `description` - (Optional) The description of the role assignment. Defaults to `null`.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `null`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment. Defaults to `null`.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario. Defaults to `null`.
+    - `federated_identity_credentials` - (Optional) A map of federated identity credentials to create on the managed identity. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `audience` - (Required) Specifies the audience for this Federated Identity Credential.
+      - `issuer` - (Required) Specifies the issuer of this Federated Identity Credential.
+      - `name` - (Required) Specifies the name of this Federated Identity Credential. Changing this forces a new resource to be created.
+      - `subject` - (Required) Specifies the subject for this Federated Identity Credential.
 
-    - name:               Identity name.
-    - resource_group_key: Key in resource_groups map for placement.
-    - location:           Azure region. Defaults to var.location.
-    - tags:               Per-identity tags, merged with var.tags.
-    - lock:               Resource lock for the identity. See AVM module variable: lock.
-    - role_assignments:   Per-identity RBAC assignments.
-                          See AVM module variable: role_assignments.
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
   EOT
 }
 
@@ -664,7 +959,8 @@ variable "key_vaults" {
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -713,7 +1009,8 @@ variable "key_vaults" {
       tags            = optional(map(string))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -738,7 +1035,8 @@ variable "key_vaults" {
       expiration_date = optional(string)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -780,32 +1078,111 @@ variable "key_vaults" {
   }))
   default     = {}
   description = <<-EOT
-    Map of Key Vaults.
+    A map of Key Vaults to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-keyvault-vault/azurerm v0.10.2
-    See:  https://registry.terraform.io/modules/Azure/avm-res-keyvault-vault/azurerm
+    - `name` - (Required) The name of the Key Vault.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this Key Vault will be deployed.
+    - `location` - (Optional) The Azure region for the Key Vault. Defaults to `null`.
+    - `sku_name` - (Optional) The SKU tier of the Key Vault. Possible values are `"standard"` and `"premium"`. Defaults to `"premium"`.
+    - `public_network_access_enabled` - (Optional) Whether public network access is enabled. Defaults to `false`.
+    - `purge_protection_enabled` - (Optional) Whether purge protection is enabled. Defaults to `true`.
+    - `soft_delete_retention_days` - (Optional) The number of days to retain soft-deleted items. Defaults to `null`.
+    - `enabled_for_deployment` - (Optional) Whether Azure VMs can retrieve certificates stored as secrets. Defaults to `false`.
+    - `enabled_for_disk_encryption` - (Optional) Whether Azure Disk Encryption can retrieve secrets and unwrap keys. Defaults to `false`.
+    - `enabled_for_template_deployment` - (Optional) Whether Azure Resource Manager can retrieve secrets. Defaults to `false`.
+    - `network_acls` - (Optional) Network ACL configuration for the Key Vault. Defaults to `{}`.
+      - `bypass` - (Optional) Specifies which traffic can bypass network rules. Possible values are `"AzureServices"` and `"None"`. Defaults to `"None"`.
+      - `default_action` - (Optional) The default action when no rule matches. Possible values are `"Allow"` and `"Deny"`. Defaults to `"Deny"`.
+      - `ip_rules` - (Optional) A list of allowed IP address ranges in CIDR notation. Defaults to `[]`.
+      - `virtual_network_subnet_ids` - (Optional) A list of allowed subnet resource IDs. Defaults to `[]`.
+    - `role_assignments` - (Optional) A map of role assignments to create on this Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment. Defaults to `null`.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment. Defaults to `null`.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario. Defaults to `null`.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. Defaults to `null`.
 
-    - name:                          Key Vault name.
-    - resource_group_key:            Key in resource_groups map for placement.
-    - location:                      Azure region. Defaults to var.location.
-    - sku_name:                      SKU tier. Default: "premium".
-    - public_network_access_enabled: Default: false (secure-by-default, overrides AVM default).
-    - purge_protection_enabled:      Default: true.
-    - soft_delete_retention_days:    Soft-delete retention. Default: null (AVM default).
-    - network_acls:                  Network ACL configuration. Default: bypass=None, action=Deny.
-    - role_assignments:              Per-Key-Vault RBAC assignments. Supports principal_id (direct)
-                                     or managed_identity_key (from managed_identities map).
-                                     Exactly one must be set per assignment.
-    - private_endpoints:             Private endpoint configurations.
-                                     See AVM module variable: private_endpoints.
-    - tags:                          Per-Key-Vault tags, merged with var.tags.
-    - lock:                          Resource lock for the Key Vault. See AVM module variable: lock.
-    - diagnostic_settings:           Per-Key-Vault diagnostic settings. Each entry can send
-                                     logs/metrics to a Log Analytics workspace, storage account,
-                                     Event Hub, or partner solution. Set use_default_log_analytics
-                                     = true (default) to auto-fill workspace_resource_id with the
-                                     pattern's LAW (BYO or auto-created). Set to false to use
-                                     workspace_resource_id as-is (null = not sent to LAW).
+      > Note: Specify either `principal_id` or `managed_identity_key`, not both. Use `managed_identity_key` to reference a managed identity created by this pattern.
+
+    - `private_endpoints` - (Optional) A map of private endpoints to create on this Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `name` - (Optional) The name of the private endpoint. Defaults to `null`.
+      - `role_assignments` - (Optional) A map of role assignments to create on the private endpoint. Uses the same schema as the standard `role_assignments` block (9-field with `principal_id`).
+      - `lock` - (Optional) Controls the Resource Lock configuration for the private endpoint. Uses the same schema as top-level `lock`.
+      - `network_configuration` - (Required) Network placement for the private endpoint.
+        - `subnet_resource_id` - (Optional) The resource ID of the subnet. Mutually exclusive with `vnet_key`/`subnet_key`.
+        - `vnet_key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Used with `subnet_key`.
+        - `subnet_key` - (Optional) The key of the subnet within the virtual network identified by `vnet_key`.
+      - `private_dns_zone` - (Optional) Private DNS zone configuration for the endpoint.
+        - `resource_ids` - (Optional) A set of Private DNS Zone resource IDs.
+        - `keys` - (Optional) A set of keys from the `private_dns_zones` variable.
+      - `private_dns_zone_group_name` - (Optional) The name of the Private DNS Zone Group. Defaults to `"default"`.
+      - `application_security_group_associations` - (Optional) A map of application security group resource IDs. Defaults to `{}`.
+      - `private_service_connection_name` - (Optional) The name of the private service connection. Defaults to `null`.
+      - `network_interface_name` - (Optional) The name of the network interface. Defaults to `null`.
+      - `location` - (Optional) The Azure region for the private endpoint. Defaults to `null`.
+      - `resource_group_name` - (Optional) The resource group for the private endpoint. Defaults to `null`.
+      - `ip_configurations` - (Optional) A map of IP configurations for the private endpoint. Defaults to `{}`.
+        - `name` - (Required) The name of the IP configuration.
+        - `private_ip_address` - (Required) The private IP address of the IP configuration.
+      - `tags` - (Optional) Tags to apply to the private endpoint. Defaults to `null`.
+    - `contacts` - (Optional) A map of Key Vault contacts. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `email` - (Required) The email address of the contact.
+      - `name` - (Optional) The name of the contact.
+      - `phone` - (Optional) The phone number of the contact.
+    - `keys` - (Optional) A map of keys to create in the Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the key.
+      - `key_type` - (Required) The type of the key. Possible values are `"EC"`, `"EC-HSM"`, `"RSA"` and `"RSA-HSM"`.
+      - `key_opts` - (Optional) A list of key operations. Possible values include `"decrypt"`, `"encrypt"`, `"sign"`, `"unwrapKey"`, `"verify"` and `"wrapKey"`. Defaults to `[]`.
+      - `key_size` - (Optional) The size of the key in bits (e.g., `2048`, `3072`, `4096` for RSA).
+      - `curve` - (Optional) The EC curve name. Possible values are `"P-256"`, `"P-256K"`, `"P-384"` and `"P-521"`.
+      - `not_before_date` - (Optional) The key is not usable before this date (RFC 3339 format).
+      - `expiration_date` - (Optional) The key expiration date (RFC 3339 format).
+      - `tags` - (Optional) Tags to apply to this key.
+      - `role_assignments` - (Optional) A map of role assignments to create on this key. Uses the same schema as the standard `role_assignments` block (9-field with `principal_id`).
+      - `rotation_policy` - (Optional) The key rotation policy.
+        - `automatic` - (Optional) Automatic rotation configuration.
+          - `time_after_creation` - (Optional) Rotate automatically after this duration (e.g., `"P90D"`).
+          - `time_before_expiry` - (Optional) Rotate automatically this duration before expiry (e.g., `"P30D"`).
+        - `expire_after` - (Optional) The key expires after this duration (e.g., `"P365D"`).
+        - `notify_before_expiry` - (Optional) Send notification this duration before expiry (e.g., `"P30D"`).
+    - `secrets` - (Optional) A map of secrets to create in the Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the secret.
+      - `content_type` - (Optional) The content type of the secret.
+      - `tags` - (Optional) Tags to apply to this secret.
+      - `not_before_date` - (Optional) The secret is not usable before this date (RFC 3339 format).
+      - `expiration_date` - (Optional) The secret expiration date (RFC 3339 format).
+      - `role_assignments` - (Optional) A map of role assignments to create on this secret. Uses the same schema as the standard `role_assignments` block (9-field with `principal_id`).
+    - `wait_for_rbac_before_key_operations` - (Optional) Delay configuration to allow RBAC propagation before key operations.
+      - `create` - (Optional) Wait duration before create operations. Defaults to `"30s"`.
+      - `destroy` - (Optional) Wait duration before destroy operations. Defaults to `"0s"`.
+    - `wait_for_rbac_before_secret_operations` - (Optional) Delay configuration to allow RBAC propagation before secret operations.
+      - `create` - (Optional) Wait duration before create operations. Defaults to `"30s"`.
+      - `destroy` - (Optional) Wait duration before destroy operations. Defaults to `"0s"`.
+    - `wait_for_rbac_before_contact_operations` - (Optional) Delay configuration to allow RBAC propagation before contact operations.
+      - `create` - (Optional) Wait duration before create operations. Defaults to `"30s"`.
+      - `destroy` - (Optional) Wait duration before destroy operations. Defaults to `"0s"`.
+    - `tags` - (Optional) Tags to apply to this Key Vault. Defaults to `{}`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `diagnostic_settings` - (Optional) A map of diagnostic settings to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `name` - (Optional) The name of the diagnostic setting. One will be generated if not set, however this will not be unique if you want to create multiple diagnostic setting resources.
+      - `log_categories` - (Optional) A set of log categories to send to the log analytics workspace. Defaults to `[]`.
+      - `log_groups` - (Optional) A set of log groups to send to the log analytics workspace. Defaults to `["allLogs"]`.
+      - `metric_categories` - (Optional) A set of metric categories to send to the log analytics workspace. Defaults to `["AllMetrics"]`.
+      - `log_analytics_destination_type` - (Optional) The destination type for the diagnostic setting. Possible values are `Dedicated` and `AzureDiagnostics`. Defaults to `Dedicated`.
+      - `workspace_resource_id` - (Optional) The resource ID of the log analytics workspace to send logs and metrics to.
+      - `storage_account_resource_id` - (Optional) The resource ID of the storage account to send logs and metrics to.
+      - `event_hub_authorization_rule_resource_id` - (Optional) The resource ID of the event hub authorization rule to send logs and metrics to.
+      - `event_hub_name` - (Optional) The name of the event hub. If none is specified, the default event hub will be selected.
+      - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
+      - `use_default_log_analytics` - (Optional) When `true`, automatically sets the `workspace_resource_id` to the Log Analytics workspace created by this pattern. Defaults to `true`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. Each `role_assignments` entry must set exactly one of `principal_id` or `managed_identity_key`.
   EOT
 
   validation {
@@ -829,17 +1206,16 @@ variable "role_assignments" {
   }))
   default     = {}
   description = <<-EOT
-    Standalone role assignments at arbitrary scopes (not scoped to an AVM-managed resource).
+    A map of standalone role assignments at arbitrary scopes. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-authorization-roleassignment/azurerm v0.3.0
-    See:  https://registry.terraform.io/modules/Azure/avm-res-authorization-roleassignment/azurerm
+    - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign.
+    - `scope` - (Required) The Azure resource ID scope for the assignment.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `description` - (Optional) The description of the role assignment. Defaults to `null`.
+    - `principal_type` - (Optional) The type of the principal. Possible values are `User`, `Group` and `ServicePrincipal`. Defaults to `null`.
 
-    - role_definition_id_or_name: Role name or ID.
-    - scope:                      Azure resource ID scope for the assignment.
-    - principal_id:               Direct principal ID. Mutually exclusive with managed_identity_key.
-    - managed_identity_key:       Key in managed_identities map. Mutually exclusive with principal_id.
-    - description:                Optional description for the assignment.
-    - principal_type:             Optional principal type hint.
+    > Note: Specify either `principal_id` or `managed_identity_key`, not both. Use `managed_identity_key` to reference a managed identity created by this pattern.
   EOT
 
   validation {
@@ -871,27 +1247,24 @@ variable "vhub_connectivity_definitions" {
   }))
   default     = {}
   description = <<-EOT
-    Map of vWAN hub connections. Each entry links a spoke VNet to a vWAN hub.
+    A map of vWAN hub connections. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Each entry links a spoke VNet to a vWAN hub.
 
-    Uses: Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm//modules/virtual-network-connection v0.13.5
-    See:  https://registry.terraform.io/modules/Azure/avm-ptn-alz-connectivity-virtual-wan/azurerm
+    - `vhub_resource_id` - (Required) The Azure resource ID of the target Virtual Hub.
+    - `virtual_network` - (Required) Reference the spoke VNet to connect. Exactly one of `key` or `resource_id` must be set.
+      - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Mutually exclusive with `resource_id`.
+      - `resource_id` - (Optional) The Azure resource ID of the virtual network. Mutually exclusive with `key`.
+    - `internet_security_enabled` - (Optional) Whether to route internet traffic through the hub firewall. Defaults to `true`.
+    - `routing` - (Optional) Routing configuration for the connection.
+      - `associated_route_table_id` - (Required) The resource ID of the Virtual Hub Route Table to associate with this connection.
+      - `propagated_route_table` - (Optional) Propagation configuration for the connection.
+        - `route_table_ids` - (Optional) A list of Virtual Hub Route Table resource IDs to propagate routes to. Defaults to `[]`.
+        - `labels` - (Optional) A list of labels to propagate routes to. Defaults to `[]`.
+      - `static_vnet_route` - (Optional) A static VNet route for the connection.
+        - `name` - (Optional) The name of the static route.
+        - `address_prefixes` - (Optional) A list of address prefixes for the static route. Defaults to `[]`.
+        - `next_hop_ip_address` - (Optional) The next hop IP address for the static route.
 
-    - vhub_resource_id:          Resource ID of the target Virtual Hub.
-    - virtual_network:           Reference the spoke VNet by key (from virtual_networks map) or by
-                                 resource ID. Exactly one of key or resource_id must be set.
-    - internet_security_enabled: Route internet traffic through hub firewall. Default: true
-                                 (secure-by-default).
-    - routing:                   Optional routing configuration for the connection.
-      - associated_route_table_id: Resource ID of the Virtual Hub Route Table to associate.
-      - propagated_route_table:    Optional propagation config.
-        - route_table_ids:         List of Virtual Hub Route Table resource IDs to propagate to.
-        - labels:                  List of labels to propagate to.
-      - static_vnet_route:         Optional static VNet route.
-        - name:                    Name for the static route.
-        - address_prefixes:        List of address prefixes.
-        - next_hop_ip_address:     Next hop IP address.
-
-    Empty map = no vWAN connections (implicit toggle).
+    > Note: Specify either `virtual_network.key` or `virtual_network.resource_id`, not both.
   EOT
 
   validation {
@@ -940,7 +1313,8 @@ variable "bastion_hosts" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -964,32 +1338,67 @@ variable "bastion_hosts" {
   }))
   default     = {}
   description = <<-EOT
-    Map of Azure Bastion Host configurations, keyed by a user-chosen identifier.
-    Empty map = no Bastion hosts deployed.
+    A map of Azure Bastion Host configurations to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-network-bastionhost/azurerm v0.9.0
-    See:  https://registry.terraform.io/modules/Azure/avm-res-network-bastionhost/azurerm
+    - `name` - (Required) The name of the Azure Bastion Host.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this Bastion host will be deployed.
+    - `location` - (Optional) The Azure region for the Bastion host. Defaults to `null`.
+    - `sku` - (Optional) The SKU tier of the Bastion host. Possible values are `"Basic"`, `"Standard"`, `"Premium"` and `"Developer"`. Defaults to `"Standard"`.
+    - `zones` - (Optional) A set of availability zones for the Bastion host. Defaults to `["1", "2", "3"]`.
+    - `ip_configuration` - (Optional) The IP configuration for the Bastion host. Required for all SKUs except `"Developer"`.
+      - `name` - (Optional) The name of the IP configuration.
+      - `network_configuration` - (Required) Network placement for the Bastion subnet.
+        - `subnet_resource_id` - (Optional) The resource ID of the subnet. Mutually exclusive with `vnet_key`/`subnet_key`.
+        - `vnet_key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Used with `subnet_key`.
+        - `subnet_key` - (Optional) The key of the subnet within the virtual network identified by `vnet_key`.
+      - `create_public_ip` - (Optional) Whether a public IP address should be created by the module. Defaults to `true`.
+      - `public_ip_tags` - (Optional) A map of tags to apply to the public IP address. Defaults to `null`.
+      - `public_ip_merge_with_module_tags` - (Optional) If set to true, the public IP tags will be merged with the module's tags. Defaults to `true`.
+      - `public_ip_address_name` - (Optional) The name of the public IP address to create. Will be ignored if `public_ip_address_id` is set. Defaults to `null`.
+      - `public_ip_address_id` - (Optional) The resource ID of an existing public IP address. If set, `create_public_ip` must be `false`. Defaults to `null`.
+    - `virtual_network` - (Optional) For Developer SKU only. Omit `ip_configuration` when using this. Provide one of `resource_id` or `key`.
+      - `resource_id` - (Optional) The Azure resource ID of the virtual network. Mutually exclusive with `key`.
+      - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Mutually exclusive with `resource_id`.
+    - `copy_paste_enabled` - (Optional) Whether copy-paste functionality is enabled. Defaults to `true`.
+    - `file_copy_enabled` - (Optional) Whether file copy functionality is enabled. Only available for Standard and Premium SKUs. Defaults to `false`.
+    - `ip_connect_enabled` - (Optional) Whether IP connect functionality is enabled. Only available for Standard and Premium SKUs. Defaults to `false`.
+    - `kerberos_enabled` - (Optional) Whether Kerberos authentication is enabled. Defaults to `false`.
+    - `private_only_enabled` - (Optional) Whether the Bastion host is private-only (no public IP). Defaults to `false`.
+    - `scale_units` - (Optional) The number of scale units for the Bastion host. Defaults to `2`.
+    - `session_recording_enabled` - (Optional) Whether session recording is enabled. Defaults to `false`.
+    - `shareable_link_enabled` - (Optional) Whether shareable links are enabled. Defaults to `false`.
+    - `tunneling_enabled` - (Optional) Whether tunneling is enabled. Defaults to `false`.
+    - `tags` - (Optional) Tags to apply to this Bastion host. Defaults to `{}`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - name:                    Bastion name (required).
-    - resource_group_key:      Key in resource_groups map for placement.
-    - location:                Azure region. Defaults to var.location.
-    - sku:                     SKU tier. Default: "Standard".
-    - zones:                   Availability zones. Default: ["1","2","3"] (zone-redundant).
-    - ip_configuration:        Required for non-Developer SKUs. Provide subnet_resource_id
-                               directly, or use vnet_key + subnet_key to resolve from
-                               virtual_networks map.
-    - virtual_network:         For Developer SKU only. Omit ip_configuration. Provide
-                               resource_id directly or key to resolve from virtual_networks map.
-    - role_assignments:        Per-Bastion RBAC assignments.
-                               See AVM module variable: role_assignments.
-    - diagnostic_settings:     Per-Bastion diagnostic settings. Each entry can send logs/metrics
-                               to a Log Analytics workspace, storage account, Event Hub, or
-                               partner solution. Set use_default_log_analytics = true (default)
-                               to auto-fill workspace_resource_id with the pattern's LAW (BYO or
-                               auto-created). Set to false to use workspace_resource_id as-is
-                               (null = not sent to LAW).
-    - tags:                    Per-Bastion tags, merged with var.tags.
-    - lock:                    Resource lock for the Bastion host. See AVM module variable: lock.
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+    - `diagnostic_settings` - (Optional) A map of diagnostic settings to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `name` - (Optional) The name of the diagnostic setting. One will be generated if not set, however this will not be unique if you want to create multiple diagnostic setting resources.
+      - `log_categories` - (Optional) A set of log categories to send to the log analytics workspace. Defaults to `[]`.
+      - `log_groups` - (Optional) A set of log groups to send to the log analytics workspace. Defaults to `["allLogs"]`.
+      - `metric_categories` - (Optional) A set of metric categories to send to the log analytics workspace. Defaults to `["AllMetrics"]`.
+      - `log_analytics_destination_type` - (Optional) The destination type for the diagnostic setting. Possible values are `Dedicated` and `AzureDiagnostics`. Defaults to `Dedicated`.
+      - `workspace_resource_id` - (Optional) The resource ID of the log analytics workspace to send logs and metrics to.
+      - `storage_account_resource_id` - (Optional) The resource ID of the storage account to send logs and metrics to.
+      - `event_hub_authorization_rule_resource_id` - (Optional) The resource ID of the event hub authorization rule to send logs and metrics to.
+      - `event_hub_name` - (Optional) The name of the event hub. If none is specified, the default event hub will be selected.
+      - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
+      - `use_default_log_analytics` - (Optional) When `true`, automatically sets the `workspace_resource_id` to the Log Analytics workspace created by this pattern. Defaults to `true`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
   EOT
 }
 
@@ -1133,7 +1542,8 @@ variable "storage_accounts" {
       name     = string
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1154,7 +1564,8 @@ variable "storage_accounts" {
       })))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1180,7 +1591,8 @@ variable "storage_accounts" {
       })))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1263,7 +1675,8 @@ variable "storage_accounts" {
       }))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1276,7 +1689,8 @@ variable "storage_accounts" {
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1312,7 +1726,8 @@ variable "storage_accounts" {
     })), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1393,46 +1808,308 @@ variable "storage_accounts" {
   }))
   default     = {}
   description = <<-EOT
-    Map of storage accounts to create. The map key is used as a reference key
-    (e.g. by flowlog_configuration.flow_logs.storage_account_key).
+    A map of storage accounts to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
-    Uses: Azure/avm-res-storage-storageaccount/azurerm v0.6.7
-    See:  https://registry.terraform.io/modules/Azure/avm-res-storage-storageaccount/azurerm
+    - `name` - (Required) The name of the storage account. Must be between 3 and 24 characters, globally unique, and use only lowercase letters and numbers.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this storage account will be deployed.
+    - `location` - (Optional) The Azure region for the storage account. Defaults to `null`.
+    - `account_tier` - (Optional) Defines the tier to use for this storage account. Possible values are `"Standard"` and `"Premium"`. Defaults to `"Standard"`.
+    - `account_replication_type` - (Optional) Defines the type of replication to use for this storage account. Possible values are `"LRS"`, `"GRS"`, `"RAGRS"`, `"ZRS"`, `"GZRS"` and `"RAGZRS"`. Defaults to `"ZRS"`.
+    - `account_kind` - (Optional) Defines the kind of account. Possible values are `"BlobStorage"`, `"BlockBlobStorage"`, `"FileStorage"`, `"Storage"` and `"StorageV2"`. Defaults to `"StorageV2"`.
+    - `access_tier` - (Optional) Defines the access tier for `BlobStorage`, `FileStorage` and `StorageV2` accounts. Possible values are `"Hot"` and `"Cool"`. Defaults to `"Hot"`.
+    - `shared_access_key_enabled` - (Optional) Indicates whether the storage account permits requests to be authorized with the account access key via Shared Key. Defaults to `false`.
+    - `public_network_access_enabled` - (Optional) Whether the public network access is enabled. Defaults to `false`.
+    - `https_traffic_only_enabled` - (Optional) Boolean flag which forces HTTPS if enabled. Defaults to `true`.
+    - `min_tls_version` - (Optional) The minimum supported TLS version for the storage account. Possible values are `"TLS1_0"`, `"TLS1_1"`, and `"TLS1_2"`. Defaults to `"TLS1_2"`.
+    - `allow_nested_items_to_be_public` - (Optional) Allow or disallow nested items within this Account to opt into being public. Defaults to `false`.
+    - `allowed_copy_scope` - (Optional) Restrict copy to and from Storage Accounts within an AAD tenant or with Private Links to the same VNet. Possible values are `"AAD"` and `"PrivateLink"`.
+    - `cross_tenant_replication_enabled` - (Optional) Should cross Tenant replication be enabled? Defaults to `false`.
+    - `default_to_oauth_authentication` - (Optional) Default to Azure Active Directory authorization in the Azure portal when accessing the Storage Account.
+    - `infrastructure_encryption_enabled` - (Optional) Is infrastructure encryption enabled? Changing this forces a new resource to be created. Defaults to `false`.
+    - `nfsv3_enabled` - (Optional) Is NFSv3 protocol enabled? Changing this forces a new resource to be created. Defaults to `false`.
+    - `sftp_enabled` - (Optional) Boolean, enable SFTP for the storage account. Defaults to `false`.
+    - `is_hns_enabled` - (Optional) Is Hierarchical Namespace enabled? This can be used with Azure Data Lake Storage Gen 2. Changing this forces a new resource to be created.
+    - `large_file_share_enabled` - (Optional) Is Large File Share Enabled?
+    - `customer_managed_key` - (Optional) Customer managed key configuration for the storage account.
+      - `key_vault_resource_id` - (Required) The resource ID of the Key Vault containing the key.
+      - `key_name` - (Required) The name of the Key Vault key.
+      - `key_version` - (Optional) The version of the Key Vault key. Omit or set to an empty string to use automatic key rotation.
+      - `user_assigned_identity` - (Optional) The user-assigned identity to use for accessing the Key Vault.
+        - `resource_id` - (Required) The resource ID of the user-assigned managed identity.
+    - `sas_policy` - (Optional) SAS policy configuration for the storage account.
+      - `expiration_action` - (Optional) The SAS expiration action. Only `"Log"` is permitted. Defaults to `"Log"`.
+      - `expiration_period` - (Required) The SAS expiration period in the format `DD.HH:MM:SS`.
+    - `immutability_policy` - (Optional) Immutability policy configuration for the storage account.
+      - `allow_protected_append_writes` - (Required) When enabled, new blocks can be written to an append blob while maintaining immutability protection and compliance.
+      - `period_since_creation_in_days` - (Required) The immutability period for the blobs in the container since the policy creation, in days.
+      - `state` - (Required) Defines the mode of the policy. Possible values are `"Disabled"`, `"Locked"` and `"Unlocked"`.
+    - `blob_properties` - (Optional) Blob service properties for the storage account.
+      - `change_feed_enabled` - (Optional) Is the blob service properties for change feed events enabled? Defaults to `false`.
+      - `change_feed_retention_in_days` - (Optional) The duration of change feed events retention in days.
+      - `default_service_version` - (Optional) The API Version which should be used by default for requests to the Data Plane API.
+      - `last_access_time_enabled` - (Optional) Is the last access time based tracking enabled? Defaults to `false`.
+      - `versioning_enabled` - (Optional) Is versioning enabled? Defaults to `false`.
+      - `container_delete_retention_policy` - (Optional) Specifies the duration of the container soft-delete retention policy.
+        - `enabled` - (Optional) Is container soft-delete enabled? Defaults to `true`.
+        - `days` - (Optional) Specifies the number of days that the container should be retained. Defaults to `7`.
+      - `delete_retention_policy` - (Optional) Specifies the duration of the blob soft-delete retention policy.
+        - `enabled` - (Optional) Is blob soft-delete enabled? Defaults to `true`.
+        - `days` - (Optional) Specifies the number of days that the blob should be retained. Defaults to `7`.
+        - `permanent_delete_enabled` - (Optional) Indicates whether permanent deletion of the soft deleted blob versions and snapshots is allowed. Defaults to `false`.
+      - `restore_policy` - (Optional) Specifies the duration of the blob restore policy.
+        - `days` - (Required) Specifies the number of days that the blob can be restored.
+      - `cors_rule` - (Optional) A list of CORS rules for the blob service. Defaults to `[]`.
+        - `allowed_headers` - (Required) A list of headers that are allowed to be a part of the cross-origin request.
+        - `allowed_methods` - (Required) A list of HTTP methods that are allowed to be executed by the origin. Valid options are `DELETE`, `GET`, `HEAD`, `MERGE`, `POST`, `OPTIONS`, `PUT` or `PATCH`.
+        - `allowed_origins` - (Required) A list of origin domains that will be allowed by CORS.
+        - `exposed_headers` - (Required) A list of response headers that are exposed to CORS clients.
+        - `max_age_in_seconds` - (Required) The number of seconds the client should cache a preflight response.
+    - `share_properties` - (Optional) File share service properties for the storage account.
+      - `retention_policy` - (Optional) The retention policy for deleted file shares.
+        - `days` - (Optional) Specifies the number of days that the file share should be retained. Defaults to `7`.
+      - `smb` - (Optional) SMB protocol settings for file shares.
+        - `authentication_types` - (Optional) A set of SMB authentication methods. Possible values are `"NTLMv2"` and `"Kerberos"`.
+        - `channel_encryption_type` - (Optional) A set of SMB channel encryption values. Possible values are `"AES-128-CCM"`, `"AES-128-GCM"` and `"AES-256-GCM"`.
+        - `kerberos_ticket_encryption_type` - (Optional) A set of Kerberos ticket encryption values. Possible values are `"RC4-HMAC"` and `"AES-256"`.
+        - `multichannel_enabled` - (Optional) Indicates whether multichannel is enabled. Defaults to `false`.
+        - `versions` - (Optional) A set of SMB protocol versions. Possible values are `"SMB2.1"`, `"SMB3.0"` and `"SMB3.1.1"`.
+      - `cors_rule` - (Optional) A list of CORS rules for the file service. Defaults to `[]`.
+        - `allowed_headers` - (Required) A list of headers that are allowed to be a part of the cross-origin request.
+        - `allowed_methods` - (Required) A list of HTTP methods that are allowed to be executed by the origin.
+        - `allowed_origins` - (Required) A list of origin domains that will be allowed by CORS.
+        - `exposed_headers` - (Required) A list of response headers that are exposed to CORS clients.
+        - `max_age_in_seconds` - (Required) The number of seconds the client should cache a preflight response.
+    - `queue_properties` - (Optional) A map of queue service properties. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `cors_rule` - (Optional) A map of CORS rules for the queue service. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+        - `allowed_headers` - (Required) A list of headers that are allowed to be a part of the cross-origin request.
+        - `allowed_methods` - (Required) A list of HTTP methods that are allowed to be executed by the origin.
+        - `allowed_origins` - (Required) A list of origin domains that will be allowed by CORS.
+        - `exposed_headers` - (Required) A list of response headers that are exposed to CORS clients.
+        - `max_age_in_seconds` - (Required) The number of seconds the client should cache a preflight response.
+      - `logging` - (Optional) Logging configuration for the queue service.
+        - `delete` - (Required) Indicates whether all delete requests should be logged.
+        - `read` - (Required) Indicates whether all read requests should be logged.
+        - `version` - (Required) The version of storage analytics to configure.
+        - `write` - (Required) Indicates whether all write requests should be logged.
+        - `retention_policy_days` - (Optional) Specifies the number of days that logs will be retained.
+      - `hour_metrics` - (Optional) Hourly metrics configuration.
+        - `include_apis` - (Optional) Indicates whether metrics should generate summary statistics for called API operations.
+        - `retention_policy_days` - (Optional) Specifies the number of days that metrics data will be retained.
+        - `version` - (Required) The version of storage analytics to configure.
+      - `minute_metrics` - (Optional) Minute metrics configuration.
+        - `include_apis` - (Optional) Indicates whether metrics should generate summary statistics for called API operations.
+        - `retention_policy_days` - (Optional) Specifies the number of days that metrics data will be retained.
+        - `version` - (Required) The version of storage analytics to configure.
+    - `azure_files_authentication` - (Optional) Azure Files authentication configuration.
+      - `directory_type` - (Optional) Specifies the directory service used. Possible values are `"AADDS"`, `"AD"` and `"AADKERB"`.
+      - `default_share_level_permission` - (Optional) Specifies the default share level permission. Possible values are `"StorageFileDataSmbShareContributor"`, `"StorageFileDataSmbShareReader"`, `"StorageFileDataSmbShareElevatedContributor"` and `"None"`.
+      - `active_directory` - (Optional) Active Directory configuration. Required when `directory_type` is `"AD"`.
+        - `domain_guid` - (Required) Specifies the domain GUID.
+        - `domain_name` - (Required) Specifies the primary domain that the AD DNS server is authoritative for.
+        - `domain_sid` - (Optional) Specifies the security identifier (SID).
+        - `forest_name` - (Optional) Specifies the Active Directory forest.
+        - `netbios_domain_name` - (Optional) Specifies the NetBIOS domain name.
+        - `storage_sid` - (Optional) Specifies the security identifier (SID) for Azure Storage.
+    - `routing` - (Optional) Network routing preference configuration.
+      - `choice` - (Optional) Specifies the kind of network routing opted by the user. Possible values are `"InternetRouting"` and `"MicrosoftRouting"`.
+      - `publish_internet_endpoints` - (Optional) Should internet routing storage endpoints be published? Defaults to `false`.
+      - `publish_microsoft_endpoints` - (Optional) Should Microsoft routing storage endpoints be published? Defaults to `false`.
+    - `custom_domain` - (Optional) Custom domain configuration for the storage account.
+      - `name` - (Required) The Custom Domain Name to use for the Storage Account.
+      - `use_subdomain` - (Optional) Should the custom domain be validated by using indirect CNAME validation?
+    - `queues` - (Optional) A map of storage queues to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the queue.
+      - `metadata` - (Optional) A mapping of MetaData for this queue.
+      - `role_assignments` - (Optional) A map of role assignments to create on this queue. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+        - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+        - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+        - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+        - `description` - (Optional) The description of the role assignment.
+        - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+        - `condition` - (Optional) The condition which will be used to scope the role assignment.
+        - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+        - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity.
+        - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`.
+    - `tables` - (Optional) A map of storage tables to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the storage table.
+      - `signed_identifiers` - (Optional) A list of signed identifiers (stored access policies) for the table.
+        - `id` - (Required) The unique identifier for the signed identifier.
+        - `access_policy` - (Optional) An access policy for the signed identifier.
+          - `expiry_time` - (Required) The expiration time of the access policy in ISO 8601 format.
+          - `permission` - (Required) The permissions for the access policy. A combination of `r` (read), `a` (add), `u` (update), `d` (delete).
+          - `start_time` - (Required) The start time of the access policy in ISO 8601 format.
+      - `role_assignments` - (Optional) A map of role assignments to create on this table. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+        - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+        - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+        - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+        - `description` - (Optional) The description of the role assignment.
+        - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+        - `condition` - (Optional) The condition which will be used to scope the role assignment.
+        - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+        - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity.
+        - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`.
+    - `shares` - (Optional) A map of file shares to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the share.
+      - `quota` - (Required) The maximum size of the share, in gigabytes.
+      - `access_tier` - (Optional) The access tier of the File Share. Possible values are `"Hot"`, `"Cool"` and `"TransactionOptimized"`, `"Premium"`.
+      - `enabled_protocol` - (Optional) The protocol used for the share. Possible values are `"SMB"` and `"NFS"`.
+      - `metadata` - (Optional) A mapping of MetaData for this File Share.
+      - `root_squash` - (Optional) The squash level for NFS shares. Possible values are `"AllSquash"`, `"NoRootSquash"` and `"RootSquash"`.
+      - `signed_identifiers` - (Optional) A list of signed identifiers (stored access policies) for the share.
+        - `id` - (Required) The unique identifier for the signed identifier.
+        - `access_policy` - (Optional) An access policy for the signed identifier.
+          - `expiry_time` - (Required) The expiration time of the access policy in ISO 8601 format.
+          - `permission` - (Required) The permissions for the access policy.
+          - `start_time` - (Required) The start time of the access policy in ISO 8601 format.
+      - `role_assignments` - (Optional) A map of role assignments to create on this share. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+        - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+        - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+        - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+        - `description` - (Optional) The description of the role assignment.
+        - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+        - `condition` - (Optional) The condition which will be used to scope the role assignment.
+        - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+        - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity.
+        - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`.
+    - `queue_encryption_key_type` - (Optional) The encryption key type to be used for the queue service. Possible values are `"Service"` and `"Account"`.
+    - `table_encryption_key_type` - (Optional) The encryption key type to be used for the table service. Possible values are `"Service"` and `"Account"`.
+    - `storage_management_policy_rule` - (Optional) A map of lifecycle management policy rules. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `enabled` - (Required) Whether the rule is enabled.
+      - `name` - (Required) The name of the rule. Rule name is case-sensitive and must be unique within a policy.
+      - `actions` - (Required) The actions to take on the filtered set of objects.
+        - `base_blob` - (Optional) Actions to apply to base blobs.
+          - `auto_tier_to_hot_from_cool_enabled` - (Optional) Whether a blob should automatically be tiered from cool back to hot if it is accessed again after being tiered to cool.
+          - `delete_after_days_since_creation_greater_than` - (Optional) The age in days after creation to delete the blob.
+          - `delete_after_days_since_last_access_time_greater_than` - (Optional) The age in days after last access to delete the blob.
+          - `delete_after_days_since_modification_greater_than` - (Optional) The age in days after last modification to delete the blob.
+          - `tier_to_archive_after_days_since_creation_greater_than` - (Optional) The age in days after creation to archive the blob.
+          - `tier_to_archive_after_days_since_last_access_time_greater_than` - (Optional) The age in days after last access to archive the blob.
+          - `tier_to_archive_after_days_since_last_tier_change_greater_than` - (Optional) The age in days after last tier change to archive the blob.
+          - `tier_to_archive_after_days_since_modification_greater_than` - (Optional) The age in days after last modification to archive the blob.
+          - `tier_to_cold_after_days_since_creation_greater_than` - (Optional) The age in days after creation to tier to cold storage.
+          - `tier_to_cold_after_days_since_last_access_time_greater_than` - (Optional) The age in days after last access to tier to cold storage.
+          - `tier_to_cold_after_days_since_modification_greater_than` - (Optional) The age in days after last modification to tier to cold storage.
+          - `tier_to_cool_after_days_since_creation_greater_than` - (Optional) The age in days after creation to tier to cool storage.
+          - `tier_to_cool_after_days_since_last_access_time_greater_than` - (Optional) The age in days after last access to tier to cool storage.
+          - `tier_to_cool_after_days_since_modification_greater_than` - (Optional) The age in days after last modification to tier to cool storage.
+        - `snapshot` - (Optional) Actions to apply to snapshots.
+          - `change_tier_to_archive_after_days_since_creation` - (Optional) The age in days after creation to archive the snapshot.
+          - `change_tier_to_cool_after_days_since_creation` - (Optional) The age in days after creation to tier the snapshot to cool storage.
+          - `delete_after_days_since_creation_greater_than` - (Optional) The age in days after creation to delete the snapshot.
+          - `tier_to_archive_after_days_since_last_tier_change_greater_than` - (Optional) The age in days after last tier change to archive the snapshot.
+          - `tier_to_cold_after_days_since_creation_greater_than` - (Optional) The age in days after creation to tier the snapshot to cold storage.
+        - `version` - (Optional) Actions to apply to versions.
+          - `change_tier_to_archive_after_days_since_creation` - (Optional) The age in days after creation to archive the version.
+          - `change_tier_to_cool_after_days_since_creation` - (Optional) The age in days after creation to tier the version to cool storage.
+          - `delete_after_days_since_creation` - (Optional) The age in days after creation to delete the version.
+          - `tier_to_archive_after_days_since_last_tier_change_greater_than` - (Optional) The age in days after last tier change to archive the version.
+          - `tier_to_cold_after_days_since_creation_greater_than` - (Optional) The age in days after creation to tier the version to cold storage.
+      - `filters` - (Required) Filters to limit the rule to a subset of blobs.
+        - `blob_types` - (Required) A set of blob types. Possible values are `"blockBlob"` and `"appendBlob"`.
+        - `prefix_match` - (Optional) A set of strings for prefixes to be matched.
+        - `match_blob_index_tag` - (Optional) A set of blob index tag filters.
+          - `name` - (Required) The filter tag name.
+          - `operation` - (Optional) The comparison operator. Currently only `"=="` is supported.
+          - `value` - (Required) The filter tag value.
+    - `network_rules` - (Optional) Network ACL configuration for the storage account. Defaults to bypass `"AzureServices"` with a default action of `"Deny"`.
+      - `bypass` - (Optional) Specifies whether traffic is bypassed for logging, metrics, AzureServices, or none. Defaults to `["AzureServices"]`.
+      - `default_action` - (Optional) Specifies the default action of allow or deny when no other rules match. Possible values are `"Allow"` and `"Deny"`. Defaults to `"Deny"`.
+      - `ip_rules` - (Optional) A set of public IP or IP ranges in CIDR format. Only IPv4 addresses are allowed. Defaults to `[]`.
+      - `virtual_network_subnet_ids` - (Optional) A set of virtual network subnet IDs to secure the storage account. Defaults to `[]`.
+      - `private_link_access` - (Optional) A list of private link access rules.
+        - `endpoint_resource_id` - (Required) The resource id of the resource access rule.
+        - `endpoint_tenant_id` - (Optional) The tenant id of the resource of the resource access rule.
+    - `managed_identities` - (Optional) Managed identity configuration for the storage account. Defaults to no managed identity.
+      - `system_assigned` - (Optional) Specifies if the System Assigned Managed Identity should be enabled. Defaults to `false`.
+      - `user_assigned_resource_ids` - (Optional) Specifies a set of User Assigned Managed Identity resource IDs to be assigned. Defaults to `[]`.
+    - `containers` - (Optional) A map of blob containers to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Required) The name of the container.
+      - `public_access` - (Optional) The access level configured for this container. Possible values are `"blob"`, `"container"`, and `"None"`. Defaults to `"None"`.
+      - `metadata` - (Optional) A mapping of MetaData for this container.
+      - `default_encryption_scope` - (Optional) The default encryption scope for this container.
+      - `deny_encryption_scope_override` - (Optional) Whether to deny encryption scope override for this container.
+      - `enable_nfs_v3_all_squash` - (Optional) Whether NFSv3 all squash is enabled.
+      - `enable_nfs_v3_root_squash` - (Optional) Whether NFSv3 root squash is enabled.
+      - `immutable_storage_with_versioning` - (Optional) Immutable storage with versioning configuration.
+        - `enabled` - (Required) Whether immutable storage with versioning is enabled.
+      - `role_assignments` - (Optional) A map of role assignments to create on this container. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+        - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+        - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+        - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+        - `description` - (Optional) The description of the role assignment.
+        - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+        - `condition` - (Optional) The condition which will be used to scope the role assignment.
+        - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+        - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity.
+        - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`.
+    - `private_endpoints` - (Optional) A map of private endpoints to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Optional) The name of the private endpoint. One will be generated if not set.
+      - `subresource_name` - (Required) The subresource name which the Private Endpoint is able to connect to. Possible values include `"blob"`, `"blob_secondary"`, `"table"`, `"table_secondary"`, `"queue"`, `"queue_secondary"`, `"file"`, `"file_secondary"`, `"web"`, `"web_secondary"`, `"dfs"` and `"dfs_secondary"`.
+      - `network_configuration` - (Required) Network placement for the private endpoint.
+        - `subnet_resource_id` - (Optional) The resource ID of the subnet. Mutually exclusive with `vnet_key`/`subnet_key`.
+        - `vnet_key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Used with `subnet_key`.
+        - `subnet_key` - (Optional) The key of the subnet within the virtual network identified by `vnet_key`.
+      - `private_dns_zone` - (Optional) Private DNS zone configuration for the private endpoint.
+        - `resource_ids` - (Optional) A set of resource IDs of existing private DNS zones.
+        - `keys` - (Optional) A set of keys from the `private_dns_zones` variable.
+      - `private_dns_zone_group_name` - (Optional) The name of the private DNS zone group. Defaults to `"default"`.
+      - `application_security_group_associations` - (Optional) A map of application security group associations. Defaults to `{}`.
+      - `private_service_connection_name` - (Optional) The name of the private service connection.
+      - `network_interface_name` - (Optional) The name of the network interface.
+      - `location` - (Optional) The supported Azure location where the resource exists.
+      - `resource_group_name` - (Optional) The name of the resource group. Defaults to the storage account's resource group.
+      - `ip_configurations` - (Optional) A map of IP configurations for the private endpoint. Defaults to `{}`.
+        - `name` - (Required) The name of the IP configuration.
+        - `private_ip_address` - (Required) The static private IP address.
+      - `tags` - (Optional) A mapping of tags to assign to the private endpoint.
+      - `role_assignments` - (Optional) A map of role assignments to create on this private endpoint. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+        - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+        - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+        - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+        - `description` - (Optional) The description of the role assignment.
+        - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+        - `condition` - (Optional) The condition which will be used to scope the role assignment.
+        - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+        - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity.
+        - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`.
+      - `lock` - (Optional) Controls the Resource Lock configuration for this private endpoint.
+        - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+        - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - name:                          Storage account name (must be globally unique).
-    - resource_group_key:            Key in resource_groups map for placement.
-    - location:                      Azure region. Defaults to var.location.
-    - account_tier:                  Tier. Default: "Standard".
-    - account_replication_type:      Replication. Default: "ZRS".
-    - account_kind:                  Kind. Default: "StorageV2".
-    - access_tier:                   Access tier. Default: "Hot".
-    - shared_access_key_enabled:     Default: false (Entra-only auth).
-    - public_network_access_enabled: Default: false (secure-by-default).
-    - network_rules:                 Network ACL configuration. Default: bypass AzureServices, deny.
-    - managed_identities:            System/user-assigned identity configuration.
-    - containers:                    Map of blob containers.
-    - private_endpoints:             Private endpoint configurations.
-    - role_assignments:              Per-storage RBAC assignments.
-    - lock:                          Resource lock for the storage account. See AVM module variable: lock.
-    - tags:                          Per-storage tags, merged with var.tags.
-    - diagnostic_settings:           Per-storage-account diagnostic settings. Each entry can send
-                                     logs/metrics to a Log Analytics workspace, storage account,
-                                     Event Hub, or partner solution. Set use_default_log_analytics
-                                     = true (default) to auto-fill workspace_resource_id with the
-                                     pattern's LAW (BYO or auto-created). Set to false to use
-                                     workspace_resource_id as-is (null = not sent to LAW).
-    - diagnostic_settings_blob:      Per-blob-service diagnostic settings. Same structure and
-                                     use_default_log_analytics behaviour as diagnostic_settings.
-                                     See AVM module variable: diagnostic_settings_blob.
-    - diagnostic_settings_file:      Per-file-service diagnostic settings. Same structure and
-                                     use_default_log_analytics behaviour as diagnostic_settings.
-                                     See AVM module variable: diagnostic_settings_file.
-    - diagnostic_settings_queue:     Per-queue-service diagnostic settings. Same structure and
-                                     use_default_log_analytics behaviour as diagnostic_settings.
-                                     See AVM module variable: diagnostic_settings_queue.
-    - diagnostic_settings_table:     Per-table-service diagnostic settings. Same structure and
-                                     use_default_log_analytics behaviour as diagnostic_settings.
-                                     See AVM module variable: diagnostic_settings_table.
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `tags` - (Optional) Tags to apply to this storage account. Defaults to `{}`.
+    - `diagnostic_settings` - (Optional) A map of diagnostic settings to create on this storage account resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+      - `name` - (Optional) The name of the diagnostic setting. One will be generated if not set, however this will not be unique if you want to create multiple diagnostic setting resources.
+      - `log_categories` - (Optional) A set of log categories to send to the log analytics workspace. Defaults to `[]`.
+      - `log_groups` - (Optional) A set of log groups to send to the log analytics workspace. Defaults to `["allLogs"]`.
+      - `metric_categories` - (Optional) A set of metric categories to send to the log analytics workspace. Defaults to `["AllMetrics"]`.
+      - `log_analytics_destination_type` - (Optional) The destination type for the diagnostic setting. Possible values are `Dedicated` and `AzureDiagnostics`. Defaults to `Dedicated`.
+      - `workspace_resource_id` - (Optional) The resource ID of the log analytics workspace to send logs and metrics to.
+      - `storage_account_resource_id` - (Optional) The resource ID of the storage account to send logs and metrics to.
+      - `event_hub_authorization_rule_resource_id` - (Optional) The resource ID of the event hub authorization rule to send logs and metrics to.
+      - `event_hub_name` - (Optional) The name of the event hub. If none is specified, the default event hub will be selected.
+      - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
+      - `use_default_log_analytics` - (Optional) When `true`, automatically sets the `workspace_resource_id` to the Log Analytics workspace created by this pattern. Defaults to `true`.
+    - `diagnostic_settings_blob` - (Optional) A map of diagnostic settings for the blob service. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Same structure as `diagnostic_settings` above. Defaults to `{}`.
+    - `diagnostic_settings_file` - (Optional) A map of diagnostic settings for the file service. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Same structure as `diagnostic_settings` above. Defaults to `{}`.
+    - `diagnostic_settings_queue` - (Optional) A map of diagnostic settings for the queue service. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Same structure as `diagnostic_settings` above. Defaults to `{}`.
+    - `diagnostic_settings_table` - (Optional) A map of diagnostic settings for the table service. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Same structure as `diagnostic_settings` above. Defaults to `{}`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. The map key is referenced by `flowlog_configuration.flow_logs.storage_account.key`.
   EOT
 }
 
@@ -1473,7 +2150,8 @@ variable "flowlog_configuration" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1485,26 +2163,47 @@ variable "flowlog_configuration" {
   })
   default     = null
   description = <<-EOT
-    Network Watcher and VNet flow log configuration. When null (default), no Network Watcher or
-    flow logs are configured (implicit toggle).
+    Network Watcher and VNet flow log configuration. When `null` (the default), no Network Watcher or flow logs are configured.
 
-    Uses: Azure/avm-res-network-networkwatcher/azurerm v0.3.2
-    See:  https://registry.terraform.io/modules/Azure/avm-res-network-networkwatcher/azurerm
+    - `network_watcher_id` - (Optional) The resource ID of an existing Network Watcher.
+    - `network_watcher_name` - (Optional) The name of an existing Network Watcher.
+    - `resource_group_name` - (Optional) The name of the resource group containing the Network Watcher.
+    - `location` - (Optional) The Azure region for the Network Watcher. Defaults to `null`.
+    - `flow_logs` - (Optional) A map of flow logs to create for the Network Watcher. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `null`.
+      - `enabled` - (Required) Whether Network Flow Logging should be enabled.
+      - `name` - (Required) The name of the Network Watcher Flow Log. Changing this forces a new resource to be created.
+      - `vnet_key` - (Required) The key of the virtual network in the `virtual_networks` variable for which to enable flow logs.
+      - `retention_policy` - (Required) The retention policy for flow log records.
+        - `days` - (Required) The number of days to retain flow log records.
+        - `enabled` - (Required) Whether retention is enabled.
+      - `storage_account` - (Required) The storage account configuration for flow logs.
+        - `resource_id` - (Optional) The Azure resource ID of the storage account. Mutually exclusive with `key`.
+        - `key` - (Optional) The key of a storage account in the `storage_accounts` variable. Mutually exclusive with `resource_id`.
+      - `traffic_analytics` - (Optional) Traffic analytics configuration.
+        - `enabled` - (Required) Whether traffic analytics is enabled.
+        - `interval_in_minutes` - (Optional) How frequently service should do flow analytics in minutes.
+        - `workspace_id` - (Optional) The resource GUID of the attached workspace.
+        - `workspace_region` - (Optional) The location of the attached workspace.
+        - `workspace_resource_id` - (Optional) The resource ID of the attached workspace.
+      - `version` - (Optional) The version (revision) of the flow log. Possible values are `1` and `2`.
+    - `lock` - (Optional) Controls the Resource Lock configuration for this resource. The following properties can be specified:
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
+    - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
+      - `condition` - (Optional) The condition which will be used to scope the role assignment.
+      - `condition_version` - (Optional) The version of the condition syntax. Leave as `null` if you are not using a condition, if you are then valid values are '2.0'.
+      - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario.
+      - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. It is necessary to explicitly set this attribute when creating role assignments if the principal creating the assignment is constrained by ABAC rules that filters on the PrincipalType attribute.
 
-    - network_watcher_id:   Resource ID of the existing Network Watcher. Defaults to the Azure
-                            auto-created NetworkWatcher_<location> in NetworkWatcherRG.
-    - network_watcher_name: Name of the existing Network Watcher. Defaults to
-                            NetworkWatcher_<location>.
-    - resource_group_name:  Resource group containing the Network Watcher. Defaults to
-                            NetworkWatcherRG.
-    - location:             Azure region. Defaults to var.location.
-    - flow_logs:            Map of VNet flow log configurations. Each requires vnet_key (key in
-                            virtual_networks map), retention_policy, and storage_account. Provide
-                            either storage_account.resource_id (direct) or storage_account.key
-                            (reference to storage_accounts map). Optional traffic_analytics —
-                            workspace_id, workspace_region, and workspace_resource_id default to
-                            values from the pattern's Log Analytics workspace (internal or BYO).
-    - tags:                 Per-resource tags, merged with var.tags.
-    - lock:                 Resource lock for the Network Watcher. See AVM module variable: lock.
+      > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
+
+    - `tags` - (Optional) Tags to apply to the Network Watcher. Defaults to `{}`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. If `network_watcher_id`, `network_watcher_name`, and `resource_group_name` are not specified, defaults to the Azure auto-created `NetworkWatcher_<location>` in `NetworkWatcherRG`. For `traffic_analytics`, `workspace_id`, `workspace_region`, and `workspace_resource_id` default to the pattern's Log Analytics workspace (BYO or auto-created).
   EOT
 }

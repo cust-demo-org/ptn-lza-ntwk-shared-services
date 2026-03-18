@@ -80,7 +80,18 @@ module "resource_group" {
   location         = coalesce(each.value.location, var.location)
   tags             = merge(var.tags, each.value.tags)
   lock             = each.value.lock
-  role_assignments = each.value.role_assignments
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
 }
 
 module "log_analytics_workspace" {
@@ -109,14 +120,36 @@ module "log_analytics_workspace" {
   log_analytics_workspace_tables                             = var.log_analytics_workspace_configuration.tables
   tags                                                       = merge(var.tags, var.log_analytics_workspace_configuration.tags)
   lock                                                       = var.log_analytics_workspace_configuration.lock
-  role_assignments                                           = var.log_analytics_workspace_configuration.role_assignments
+  role_assignments = {
+    for ra_key, ra in var.log_analytics_workspace_configuration.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
 
   diagnostic_settings = var.log_analytics_workspace_configuration.diagnostic_settings
 
   private_endpoints = {
     for pe_k, pe in var.log_analytics_workspace_configuration.private_endpoints : pe_k => {
-      name             = pe.name
-      role_assignments = pe.role_assignments
+      name = pe.name
+      role_assignments = {
+        for ra_key, ra in pe.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
       lock             = pe.lock
       tags             = pe.tags
       subnet_resource_id = coalesce(
@@ -164,7 +197,18 @@ module "network_security_group" {
   }
   lock             = each.value.lock
   tags             = merge(var.tags, each.value.tags)
-  role_assignments = each.value.role_assignments
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
 }
 
 module "route_table" {
@@ -179,7 +223,18 @@ module "route_table" {
   bgp_route_propagation_enabled = each.value.bgp_route_propagation_enabled
   routes                        = each.value.routes
   lock                          = each.value.lock
-  role_assignments              = each.value.role_assignments
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
   tags                          = merge(var.tags, each.value.tags)
 }
 
@@ -213,6 +268,18 @@ module "virtual_network" {
       route_table = sv.route_table_key != null ? {
         id = local.rt_resource_ids[sv.route_table_key]
       } : null
+      role_assignments = {
+        for ra_key, ra in sv.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
     })
   }
 
@@ -233,7 +300,18 @@ module "virtual_network" {
   }
   lock             = each.value.lock
   tags             = merge(var.tags, each.value.tags)
-  role_assignments = each.value.role_assignments
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
 }
 
 module "private_dns_zone" {
@@ -256,7 +334,18 @@ module "private_dns_zone" {
   }
   lock             = each.value.lock
   tags             = merge(var.tags, each.value.tags)
-  role_assignments = each.value.role_assignments
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
 }
 
 module "private_dns_zone_link" {
@@ -308,8 +397,38 @@ module "key_vault" {
   enabled_for_template_deployment         = each.value.enabled_for_template_deployment
   network_acls                            = each.value.network_acls
   contacts                                = each.value.contacts
-  keys                                    = each.value.keys
-  secrets                                 = each.value.secrets
+  keys = {
+    for k_key, k in each.value.keys : k_key => merge(k, {
+      role_assignments = {
+        for ra_key, ra in k.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
+    })
+  }
+  secrets = {
+    for s_key, s in each.value.secrets : s_key => merge(s, {
+      role_assignments = {
+        for ra_key, ra in s.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
+    })
+  }
   wait_for_rbac_before_key_operations     = each.value.wait_for_rbac_before_key_operations
   wait_for_rbac_before_secret_operations  = each.value.wait_for_rbac_before_secret_operations
   wait_for_rbac_before_contact_operations = each.value.wait_for_rbac_before_contact_operations
@@ -345,8 +464,19 @@ module "key_vault" {
 
   private_endpoints = {
     for pe_k, pe in each.value.private_endpoints : pe_k => {
-      name             = pe.name
-      role_assignments = pe.role_assignments
+      name = pe.name
+      role_assignments = {
+        for ra_key, ra in pe.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
       lock             = pe.lock
       tags             = pe.tags
       subnet_resource_id = coalesce(
@@ -403,16 +533,87 @@ module "storage_account" {
   azure_files_authentication        = each.value.azure_files_authentication
   routing                           = each.value.routing
   custom_domain                     = each.value.custom_domain
-  queues                            = each.value.queues
-  tables                            = each.value.tables
-  shares                            = each.value.shares
+  queues = {
+    for q_key, q in each.value.queues : q_key => merge(q, {
+      role_assignments = {
+        for ra_key, ra in q.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
+    })
+  }
+  tables = {
+    for t_key, t in each.value.tables : t_key => merge(t, {
+      role_assignments = {
+        for ra_key, ra in t.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
+    })
+  }
+  shares = {
+    for s_key, s in each.value.shares : s_key => merge(s, {
+      role_assignments = {
+        for ra_key, ra in s.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
+    })
+  }
   queue_encryption_key_type         = each.value.queue_encryption_key_type
   table_encryption_key_type         = each.value.table_encryption_key_type
   storage_management_policy_rule    = each.value.storage_management_policy_rule
   network_rules                     = each.value.network_rules
   managed_identities                = each.value.managed_identities
-  containers                        = each.value.containers
-  role_assignments                  = each.value.role_assignments
+  containers = {
+    for c_key, c in each.value.containers : c_key => merge(c, {
+      role_assignments = {
+        for ra_key, ra in c.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
+    })
+  }
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
   lock                              = each.value.lock
   diagnostic_settings_storage_account = {
     for dk, dv in each.value.diagnostic_settings : dk => {
@@ -489,8 +690,19 @@ module "storage_account" {
 
   private_endpoints = {
     for pe_k, pe in each.value.private_endpoints : pe_k => {
-      name             = pe.name
-      role_assignments = pe.role_assignments
+      name = pe.name
+      role_assignments = {
+        for ra_key, ra in pe.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
       lock             = pe.lock
       tags             = pe.tags
       subnet_resource_id = coalesce(
@@ -599,7 +811,18 @@ module "bastion_host" {
   }
   lock             = each.value.lock
   tags             = merge(var.tags, each.value.tags)
-  role_assignments = each.value.role_assignments
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -637,6 +860,17 @@ module "network_watcher" {
     }
   } : null
   lock             = var.flowlog_configuration.lock
-  role_assignments = var.flowlog_configuration.role_assignments
+  role_assignments = {
+    for ra_key, ra in var.flowlog_configuration.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
   tags             = merge(var.tags, var.flowlog_configuration.tags)
 }

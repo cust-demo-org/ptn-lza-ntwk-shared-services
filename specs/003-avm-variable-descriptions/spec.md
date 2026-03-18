@@ -96,6 +96,13 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 - **FR-016**: Cross-reference keys (e.g., `resource_group_key`, `vnet_key`, `subnet_key`, `network_security_group_key`, `route_table_key`) MUST state the target variable map they reference.
 - **FR-017**: Variables with `validation` blocks MUST mention the constraint in the description so users understand the rule without reading HCL. Mutual exclusivity constraints (e.g., `principal_id` vs `managed_identity_key`) MUST be documented both inline on each affected attribute's bullet AND in a `> Note:` callout after the attribute list.
 - **FR-018**: The `location` and `tags` variables (simple scalars with no nested attributes) MUST receive a light polish only — paragraph style retained, backtick consistency applied, minor wording alignment — not a full AVM bullet-list rewrite.
+- **FR-019**: The variable's HCL `type` definition MUST be the source of truth for attribute completeness — not the existing description or AVM README. Old descriptions may be incomplete summaries that omit deeply nested attributes. *(from L11)*
+- **FR-020**: AVM source text MUST be critically reviewed for copy-paste artifacts before reuse. Known systematic bugs include unreplaced `<RESOURCE>` placeholders, wrong resource names in diagnostic_settings blocks, and typos in map descriptions. Blind paste of AVM text is prohibited. *(from L13)*
+- **FR-021**: All variable files in an AVM module directory MUST be scanned when sourcing descriptions — not just the primary `variables.tf`. AVM modules may split variable definitions across multiple files (e.g., `variables.storageaccount.tf`, `variables.diagnostics.tf`, `variables.container.tf`). *(from L14)*
+- **FR-022**: When multiple AVM description variants exist for the same interface block (e.g., 9-field vs 7-field `role_assignments`, standard vs short `lock`), the newest and most complete variant MUST be chosen as the canonical template and applied consistently across all variables. *(from L15)*
+- **FR-023**: Design choices that omit standard interface blocks or pattern-specific fields (e.g., omitting `use_default_log_analytics` from the Log Analytics workspace's own `diagnostic_settings` to avoid circular self-references) MUST be documented in a `> **Pattern note:**` callout explaining the rationale. Omissions without explanation look like bugs. *(from L16)*
+- **FR-024**: All cross-reference key attributes MUST be verified in a single post-rewrite audit pass across the entire file to ensure every occurrence names the correct target variable. Per-variable verification during writing is insufficient because drift accumulates across 17 variables. *(from L17)*
+- **FR-025**: Post-rewrite consistency checks — cross-reference key targets, pattern note format, `use_default_log_analytics` documentation, and removal of provenance lines — MUST be automated via text search (grep/Select-String), not manual visual review. A 2000+ line file defeats manual inspection. *(from L21)*
 
 ### Key Entities
 
@@ -112,7 +119,7 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 - **SC-003**: A new user can populate a complete `terraform.tfvars` for the `full` example using only the README without consulting module source code.
 - **SC-004**: `terraform-docs .` generates a README with no rendering artifacts (broken bullets, orphaned text, mangled backticks).
 - **SC-005**: `terraform validate` passes on the root module and all 4 examples after the description rewrite (confirming no structural changes).
-- **SC-006**: Every `map(object({...}))` description includes the deliberate arbitrary key statement.
+- **SC-006**: Every `map(object({...}))` description includes the deliberate arbitrary key statement. The total count of "deliberately arbitrary" occurrences MUST be verified against the combined count of top-level `map(object)` variables and nested `map(object)` attributes. *(strengthened by L19)*
 
 ## Clarifications
 
@@ -164,3 +171,49 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 | L3 | Phrase descriptions from the user's perspective | FR-002, FR-003 |
 | L4 | Run grep sweep after structural changes | FR-011 (terraform-docs rendering) |
 | L5 | Full example must pass `terraform validate` after changes | SC-005 |
+
+---
+
+## Lessons Learned (from Feature 003 Implementation)
+
+### Execution Strategy
+
+| # | Lesson | Detail |
+|---|--------|--------|
+| L6 | Phase by complexity, validate every phase | Ordering variables from trivial → low → medium → high → very-high let us establish a working template early, catch formatting issues on small variables, and build confidence before tackling the 80+ attribute monsters. Validating after every phase (not every variable) was the right cadence — fast enough to catch breaks, coarse enough not to bottleneck. |
+| L7 | Start with one reference variable, then stamp the rest | Writing `resource_groups` first as the "template" variable was critical. Every subsequent variable rewrite was measured against it for style consistency. Without this anchor, drift would have crept in across 17 variables. |
+| L8 | Group related variables per phase, not per user story | User stories (US1–US4) were cross-cutting—every variable contributed to US1 and US2 simultaneously. Organizing tasks by variable complexity rather than by story avoided redundant passes over the same file. |
+| L9 | Defer audits until all rewrites are done | Pattern audit (Phase 6), rendering validation (Phase 7), and polish (Phase 8) only make sense after every variable is written. Running them incrementally would have required repeated full-file sweeps that get invalidated by the next rewrite. |
+
+### Working with Large Files
+
+| # | Lesson | Detail |
+|---|--------|--------|
+| L10 | Heredoc descriptions can grow very large — plan for it | `storage_accounts` (~260 description lines), `virtual_networks` (~120), `key_vaults` (~110), and `log_analytics_workspace_configuration` (~100) dominated the file size. Read the full type definition before writing the description so you know the scope upfront. |
+| L11 | Read the type definition, not just the old description | The old descriptions were incomplete summaries. The type definition is the source of truth for which attributes exist. Writing a description from the old description would miss deeply nested attributes. |
+| L12 | Token budget is a real constraint on very large variables | The `storage_accounts` variable spans ~450 lines of type definition plus ~260 lines of description. Expect context-window pressure on variables this size — plan to carry forward partial state across sessions rather than assuming single-session completion. |
+
+### AVM Source Quality
+
+| # | Lesson | Detail |
+|---|--------|--------|
+| L13 | AVM module descriptions have systematic copy-paste bugs | At least 4 distinct bugs found: `<RESOURCE>` placeholder not replaced, "Key Vault" text in non-Key-Vault modules, "container app environment" in managed_identity, and a "role flow logs" typo. Always read the AVM source critically rather than pasting blindly. |
+| L14 | AVM modules split variables across multiple files | The storage account module uses 6 separate variable files. Always do a file scan of the AVM module directory before writing the description, not just read `variables.tf`. |
+| L15 | AVM interface blocks have 3+ variants — pick the newest | `role_assignments` had 3 variants (9-field, 7-field, managed-identity-scope), `lock` had 3 (standard, short, indented), `diagnostic_settings` had copy-paste bugs. Deciding on the canonical variant early and sticking to it prevented inconsistency. |
+
+### Pattern-Specific Concerns
+
+| # | Lesson | Detail |
+|---|--------|--------|
+| L16 | Circular references need explicit documentation | The `log_analytics_workspace_configuration` diagnostic_settings block deliberately omits `use_default_log_analytics` because the workspace cannot send diagnostics to itself. This is a non-obvious design choice that must be called out in a pattern note — it would otherwise look like an oversight. |
+| L17 | Cross-reference keys are the glue — audit them as a group | Seven key types (`resource_group_key`, `vnet_key`, `virtual_network_key`, `subnet_key`, `network_security_group_key`, `route_table_key`, `managed_identity_key`) appear across 13+ locations. Auditing them individually during each variable rewrite risks drift; a single sweep after all rewrites catches mismatches more reliably. |
+| L18 | `description: false` in terraform-docs config is non-blocking but surprising | The project's `.terraform-docs.yml` suppresses description rendering. The descriptions still live in `variables.tf` and are visible via `terraform-docs json .` or direct file inspection, but the generated README doesn't show them. This is a project design choice — don't waste time "fixing" rendering of content that's intentionally hidden. |
+
+### Process & Quality
+
+| # | Lesson | Detail |
+|---|--------|--------|
+| L19 | "Deliberately arbitrary" is a measurable contract | Counting occurrences of "deliberately arbitrary" (61 in final file) and comparing against the known `map(object)` count is a fast, reliable acceptance check. Encode such counts as success criteria early. |
+| L20 | `terraform validate` is the only gate that matters during description-only changes | Since only `description` attributes change, semantic errors are impossible — the only risk is heredoc syntax errors (unclosed EOT, bad escaping). `terraform validate` catches these instantly. A full plan or apply would be wasted effort. |
+| L21 | Grep-based audits outperform manual review for consistency checks | Verifying cross-ref keys, pattern notes, `use_default_log_analytics` documentation, and removal of `Uses:`/`See:` lines was done entirely with grep/Select-String. Manual reading of a 2100+ line file would have missed something. |
+| L22 | Validation blocks are implicit contracts — document them before users hit them | Four validation blocks enforce constraints that users will encounter as opaque errors if not documented. The description should preempt the error message by explaining the rule in plain language. |
