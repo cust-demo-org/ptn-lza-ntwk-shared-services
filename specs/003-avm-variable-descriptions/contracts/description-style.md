@@ -10,6 +10,8 @@
 
 ### For `map(object({...}))` variables:
 
+> **Note:** The `<<DESCRIPTION` heredoc marker below is a template placeholder. Implementers MUST use the codebase's actual heredoc marker (e.g., `<<-EOT`) when writing descriptions in `variables.tf`.
+
 ```hcl
 variable "example" {
   description = <<DESCRIPTION
@@ -80,8 +82,8 @@ variable "location" {
 
 ```
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
-  - `role_definition_id_or_name` - The ID or name of the role definition to assign to the principal.
-  - `principal_id` - The ID of the principal to assign the role to.
+  - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+  - `principal_id` - (Required) The ID of the principal to assign the role to.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to false.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -143,6 +145,29 @@ variable "location" {
     - `subresource_name` - (Optional) The subresource name of the IP configuration.
 ```
 
+### 3f. Standalone `role_assignments` Variable (L821)
+
+**WARNING**: This is the top-level `role_assignments` variable — NOT the nested `role_assignments` block inside other variables. It uses a completely different AVM module (`avm-res-authorization-roleassignment` v0.3.0) and has a different field set.
+
+```
+A map of standalone role assignments at arbitrary scopes. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+
+- `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign.
+- `scope` - (Required) The Azure resource ID scope for the assignment.
+- `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+- `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+- `description` - (Optional) The description of the role assignment.
+- `principal_type` - (Optional) The type of the principal. Possible values are `User`, `Group` and `ServicePrincipal`.
+
+> Note: Specify either `principal_id` or `managed_identity_key`, not both. Use `managed_identity_key` to reference a managed identity created by this pattern.
+```
+
+**Key differences from nested `role_assignments` (§3b)**:
+- Has `scope` field (nested blocks are scoped to their parent resource)
+- Has `managed_identity_key` (pattern cross-reference)
+- No `skip_service_principal_aad_check`, `condition`, `condition_version`, `delegated_managed_identity_resource_id`
+- Only 6 fields vs 9 fields in §3b
+
 ---
 
 ## 4. Pattern-Specific Notes
@@ -153,7 +178,7 @@ variable "location" {
 - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this resource will be deployed.
 ```
 
-Always state which variable the key references.
+Always state which variable the key references. The description must make clear that the key must correspond to an existing entry in the referenced variable (e.g., "The key of the resource group **in the `resource_groups` variable**" implies the key must exist there). If a `validation` block enforces this constraint, mention the constraint per FR-017.
 
 ### Pattern Callout Format
 

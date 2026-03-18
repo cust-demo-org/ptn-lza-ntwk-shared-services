@@ -30,7 +30,9 @@
 | 10 | `byo_private_dns_zone_links` | L562 | `map(object)` | private_dns_zone_link submodule v0.5.0 | ~5 (zone_key, vnet_key, registration_enabled) |
 | 11 | `managed_identities` | L591 | `map(object)` | managed_identity v0.4.0 | ~12 (lock, role_assignments w/scope, federated_identity_credentials) |
 | 12 | `key_vaults` | L634 | `map(object)` | key_vault v0.10.2 | ~50 (contacts, keys, secrets, PE, diag, lock, role_assignments, network_acls) |
-| 13 | `role_assignments` | L821 | `map(object)` | role_assignment v0.3.0 | ~8 (scope, role_definition, principal_id, etc.) |
+| 13 | `role_assignments` | L821 | `map(object)` | role_assignment v0.3.0 | ~6 (scope, role_definition, principal_id/managed_identity_key, description, principal_type) |  
+
+> **WARNING**: The standalone `role_assignments` variable (L821) is NOT the same as the nested `role_assignments` blocks in other variables. It uses `avm-res-authorization-roleassignment` (not the AVM interface block) and has a different field set: `scope` instead of parent-scoped, `managed_identity_key` for pattern cross-ref, and only 6 fields (no `skip_service_principal_aad_check`, `condition`, `condition_version`, `delegated_managed_identity_resource_id`). See contracts §3f for the correct template.
 | 14 | `vhub_connectivity_definitions` | L851 | `map(object)` | vhub_vnet_connection submodule v0.13.5 | ~10 (routing, associated_route_table, propagated_route_tables) |
 | 15 | `bastion_hosts` | L903 | `map(object)` | bastion_host v0.9.0 | ~20 (ip_configuration, diag, lock, role_assignments, sku) |
 | 16 | `storage_accounts` | L1000 | `map(object)` | storage_account v0.6.7 | ~80+ (blob_properties, share_properties, queue_properties, network_rules, containers, managed_identities, PE, diag, lock, role_assignments) |
@@ -62,15 +64,18 @@ These pattern-specific keys reference other variable maps and need the `> **Patt
 | Key Attribute | Found In Variables | References |
 |---------------|-------------------|------------|
 | `resource_group_key` | network_security_groups, route_tables, virtual_networks, private_dns_zones, managed_identities, key_vaults, bastion_hosts, storage_accounts | `resource_groups` variable |
-| `vnet_key` | byo_private_dns_zone_links, vhub_connectivity_definitions | `virtual_networks` variable |
-| `subnet_key` | bastion_hosts (ip_configuration) | `virtual_networks[].subnets` |
+| `vnet_key` | vhub_connectivity_definitions (virtual_network), flowlog_configuration (flow_logs) | `virtual_networks` variable |
+| `virtual_network_key` | private_dns_zones (virtual_network_links), byo_private_dns_zone_links | `virtual_networks` variable |
+| `subnet_key` | bastion_hosts (ip_configuration), key_vaults (private_endpoints), storage_accounts (private_endpoints) | `virtual_networks[].subnets` |
 | `network_security_group_key` | virtual_networks (subnets) | `network_security_groups` variable |
 | `route_table_key` | virtual_networks (subnets) | `route_tables` variable |
-| `managed_identity_key` | key_vaults, storage_accounts | `managed_identities` variable |
-| `log_analytics_workspace_key` | flowlog_configuration (traffic_analytics) | Pattern's LAW resource |
-| `storage_account_key` | flowlog_configuration (flow_logs) | `storage_accounts` variable |
-| `key_vault_key` | storage_accounts (customer_managed_key) | `key_vaults` variable |
-| `private_dns_zone_key` | private_dns_zones (virtual_network_links) | Pattern's VNet resource |
+| `managed_identity_key` | key_vaults, role_assignments (standalone, L821) | `managed_identities` variable |
+
+> **Removed (incorrect in prior version)**:
+> - ~~`log_analytics_workspace_key`~~ — does not exist; flowlog `traffic_analytics` uses `workspace_id`/`workspace_resource_id` (resource IDs, not map keys)
+> - ~~`storage_account_key`~~ — does not exist as an attribute; flowlog uses `storage_account.key` (nested field named `key` inside a `storage_account` object)
+> - ~~`key_vault_key`~~ — does not exist; storage CMK uses `key_vault_resource_id` (resource ID, not key reference)
+> - ~~`private_dns_zone_key`~~ — does not exist; the actual attribute is `virtual_network_key` (listed above)
 
 ---
 
@@ -107,7 +112,7 @@ Recommended implementation order by complexity (simplest first):
 | 4 | `byo_log_analytics_workspace` | Low | ~2 attrs, simple object |
 | 5 | `byo_private_dns_zone_links` | Low | ~5 attrs, cross-ref keys |
 | 6 | `route_tables` | Low | ~12 attrs, standard interfaces |
-| 7 | `role_assignments` | Low | ~8 attrs, standalone role assignment module |
+| 7 | `role_assignments` | Low | ~6 attrs, standalone role assignment module |
 | 8 | `network_security_groups` | Medium | ~18 attrs, security_rules nested object |
 | 9 | `private_dns_zones` | Medium | ~15 attrs, virtual_network_links |
 | 10 | `managed_identities` | Medium | ~12 attrs, unique role_assignments variant |
