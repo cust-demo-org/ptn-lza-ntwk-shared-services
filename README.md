@@ -102,7 +102,7 @@ Description: A map of resource groups to create. The map key is deliberately arb
 
   > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
 
-> **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
+> **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. `managed_identity_key` is not supported in `resource_groups` role assignments because managed identities are created inside resource groups, which would cause a circular dependency.
 
 Type:
 
@@ -170,7 +170,8 @@ Description: A map of Azure Bastion Host configurations to create. The map key i
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -237,7 +238,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -343,7 +345,8 @@ Description: Network Watcher and VNet flow log configuration. When `null` (the d
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -392,7 +395,8 @@ object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -549,7 +553,8 @@ map(object({
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -598,7 +603,8 @@ map(object({
       tags            = optional(map(string))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -623,7 +629,8 @@ map(object({
       expiration_date = optional(string)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -731,7 +738,8 @@ Description: Configuration for the auto-created Log Analytics workspace which wi
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -839,7 +847,8 @@ object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -851,7 +860,8 @@ object({
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -978,7 +988,8 @@ Description: A map of network security groups to create. The map key is delibera
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1035,7 +1046,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1079,7 +1091,8 @@ Description: A map of Private DNS Zones to create and optionally link to VNets c
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1113,7 +1126,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1173,7 +1187,8 @@ Description: A map of route tables to create. The map key is deliberately arbitr
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1207,7 +1222,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1337,7 +1353,8 @@ Description: A map of storage accounts to create. The map key is deliberately ar
   - `metadata` - (Optional) A mapping of MetaData for this queue.
   - `role_assignments` - (Optional) A map of role assignments to create on this queue. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Required) The ID of the principal to assign the role to.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1354,7 +1371,8 @@ Description: A map of storage accounts to create. The map key is deliberately ar
       - `start_time` - (Required) The start time of the access policy in ISO 8601 format.
   - `role_assignments` - (Optional) A map of role assignments to create on this table. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Required) The ID of the principal to assign the role to.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1376,7 +1394,8 @@ Description: A map of storage accounts to create. The map key is deliberately ar
       - `start_time` - (Required) The start time of the access policy in ISO 8601 format.
   - `role_assignments` - (Optional) A map of role assignments to create on this share. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Required) The ID of the principal to assign the role to.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1446,7 +1465,8 @@ Description: A map of storage accounts to create. The map key is deliberately ar
     - `enabled` - (Required) Whether immutable storage with versioning is enabled.
   - `role_assignments` - (Optional) A map of role assignments to create on this container. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Required) The ID of the principal to assign the role to.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1475,7 +1495,8 @@ Description: A map of storage accounts to create. The map key is deliberately ar
   - `tags` - (Optional) A mapping of tags to assign to the private endpoint.
   - `role_assignments` - (Optional) A map of role assignments to create on this private endpoint. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Required) The ID of the principal to assign the role to.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1487,7 +1508,8 @@ Description: A map of storage accounts to create. The map key is deliberately ar
     - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1658,7 +1680,8 @@ map(object({
       name     = string
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1679,7 +1702,8 @@ map(object({
       })))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1705,7 +1729,8 @@ map(object({
       })))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1788,7 +1813,8 @@ map(object({
       }))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1801,7 +1827,8 @@ map(object({
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1837,7 +1864,8 @@ map(object({
     })), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -2065,7 +2093,8 @@ Description: A map of spoke virtual networks to create. The map key is deliberat
   - `role_assignments` - (Optional) A map of role assignments to create on this subnet. Uses the same schema as VNet-level `role_assignments`.
 - `role_assignments` - (Optional) A map of role assignments to create on this VNet. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -2199,7 +2228,8 @@ map(object({
       private_endpoint_network_policies             = optional(string, "Enabled")
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -2210,7 +2240,8 @@ map(object({
     })), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)

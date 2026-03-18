@@ -29,8 +29,7 @@ variable "resource_groups" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = optional(string)
-      managed_identity_key                   = optional(string)
+      principal_id                           = string
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -50,8 +49,7 @@ variable "resource_groups" {
     - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
   - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `principal_id` - (Required) The ID of the principal to assign the role to.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -61,7 +59,7 @@ variable "resource_groups" {
 
     > Note: only set `skip_service_principal_aad_check` to true if you are assigning a role to a service principal.
 
-  > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
+  > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. `managed_identity_key` is not supported in `resource_groups` role assignments because managed identities are created inside resource groups, which would cause a circular dependency.
   EOT
 }
 
@@ -843,6 +841,15 @@ variable "private_dns_zones" {
 
     > **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zone_links` instead.
   EOT
+
+  validation {
+    condition = alltrue([
+      for dns_key, dns in var.private_dns_zones : alltrue([
+        for ra_key, ra in dns.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+      ])
+    ])
+    error_message = "Each private DNS zone role assignment must set exactly one of principal_id or managed_identity_key."
+  }
 }
 
 variable "byo_private_dns_zone_links" {
@@ -1400,6 +1407,15 @@ variable "bastion_hosts" {
 
     > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
   EOT
+
+  validation {
+    condition = alltrue([
+      for bh_key, bh in var.bastion_hosts : alltrue([
+        for ra_key, ra in bh.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+      ])
+    ])
+    error_message = "Each bastion host role assignment must set exactly one of principal_id or managed_identity_key."
+  }
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -2111,6 +2127,15 @@ variable "storage_accounts" {
 
     > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. The map key is referenced by `flowlog_configuration.flow_logs.storage_account.key`.
   EOT
+
+  validation {
+    condition = alltrue([
+      for sa_key, sa in var.storage_accounts : alltrue([
+        for ra_key, ra in sa.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+      ])
+    ])
+    error_message = "Each storage account role assignment must set exactly one of principal_id or managed_identity_key."
+  }
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -2206,4 +2231,11 @@ variable "flowlog_configuration" {
 
     > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. If `network_watcher_id`, `network_watcher_name`, and `resource_group_name` are not specified, defaults to the Azure auto-created `NetworkWatcher_<location>` in `NetworkWatcherRG`. For `traffic_analytics`, `workspace_id`, `workspace_region`, and `workspace_resource_id` default to the pattern's Log Analytics workspace (BYO or auto-created).
   EOT
+
+  validation {
+    condition = var.flowlog_configuration == null ? true : alltrue([
+      for ra_key, ra in var.flowlog_configuration.role_assignments : (ra.principal_id != null) != (ra.managed_identity_key != null)
+    ])
+    error_message = "Each flowlog configuration role assignment must set exactly one of principal_id or managed_identity_key."
+  }
 }

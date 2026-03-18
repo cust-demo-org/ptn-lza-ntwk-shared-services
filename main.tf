@@ -76,14 +76,14 @@ module "resource_group" {
 
   for_each = var.resource_groups
 
-  name             = each.value.name
-  location         = coalesce(each.value.location, var.location)
-  tags             = merge(var.tags, each.value.tags)
-  lock             = each.value.lock
+  name     = each.value.name
+  location = coalesce(each.value.location, var.location)
+  tags     = merge(var.tags, each.value.tags)
+  lock     = each.value.lock
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -150,8 +150,8 @@ module "log_analytics_workspace" {
           principal_type                         = ra.principal_type
         }
       }
-      lock             = pe.lock
-      tags             = pe.tags
+      lock = pe.lock
+      tags = pe.tags
       subnet_resource_id = coalesce(
         pe.network_configuration.subnet_resource_id,
         try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
@@ -195,8 +195,8 @@ module "network_security_group" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock             = each.value.lock
-  tags             = merge(var.tags, each.value.tags)
+  lock = each.value.lock
+  tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -235,7 +235,7 @@ module "route_table" {
       principal_type                         = ra.principal_type
     }
   }
-  tags                          = merge(var.tags, each.value.tags)
+  tags = merge(var.tags, each.value.tags)
 }
 
 module "virtual_network" {
@@ -298,8 +298,8 @@ module "virtual_network" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock             = each.value.lock
-  tags             = merge(var.tags, each.value.tags)
+  lock = each.value.lock
+  tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -332,8 +332,8 @@ module "private_dns_zone" {
       tags                                   = merge(var.tags, vnl.tags)
     }
   }
-  lock             = each.value.lock
-  tags             = merge(var.tags, each.value.tags)
+  lock = each.value.lock
+  tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -384,19 +384,19 @@ module "key_vault" {
 
   for_each = var.key_vaults
 
-  name                                    = each.value.name
-  location                                = coalesce(each.value.location, var.location)
-  resource_group_name                     = local.resource_group_names[each.value.resource_group_key]
-  tenant_id                               = data.azurerm_client_config.current.tenant_id
-  sku_name                                = each.value.sku_name
-  public_network_access_enabled           = each.value.public_network_access_enabled
-  purge_protection_enabled                = each.value.purge_protection_enabled
-  soft_delete_retention_days              = each.value.soft_delete_retention_days
-  enabled_for_deployment                  = each.value.enabled_for_deployment
-  enabled_for_disk_encryption             = each.value.enabled_for_disk_encryption
-  enabled_for_template_deployment         = each.value.enabled_for_template_deployment
-  network_acls                            = each.value.network_acls
-  contacts                                = each.value.contacts
+  name                            = each.value.name
+  location                        = coalesce(each.value.location, var.location)
+  resource_group_name             = local.resource_group_names[each.value.resource_group_key]
+  tenant_id                       = data.azurerm_client_config.current.tenant_id
+  sku_name                        = each.value.sku_name
+  public_network_access_enabled   = each.value.public_network_access_enabled
+  purge_protection_enabled        = each.value.purge_protection_enabled
+  soft_delete_retention_days      = each.value.soft_delete_retention_days
+  enabled_for_deployment          = each.value.enabled_for_deployment
+  enabled_for_disk_encryption     = each.value.enabled_for_disk_encryption
+  enabled_for_template_deployment = each.value.enabled_for_template_deployment
+  network_acls                    = each.value.network_acls
+  contacts                        = each.value.contacts
   keys = {
     for k_key, k in each.value.keys : k_key => merge(k, {
       role_assignments = {
@@ -477,8 +477,8 @@ module "key_vault" {
           principal_type                         = ra.principal_type
         }
       }
-      lock             = pe.lock
-      tags             = pe.tags
+      lock = pe.lock
+      tags = pe.tags
       subnet_resource_id = coalesce(
         pe.network_configuration.subnet_resource_id,
         try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
@@ -581,11 +581,11 @@ module "storage_account" {
       }
     })
   }
-  queue_encryption_key_type         = each.value.queue_encryption_key_type
-  table_encryption_key_type         = each.value.table_encryption_key_type
-  storage_management_policy_rule    = each.value.storage_management_policy_rule
-  network_rules                     = each.value.network_rules
-  managed_identities                = each.value.managed_identities
+  queue_encryption_key_type      = each.value.queue_encryption_key_type
+  table_encryption_key_type      = each.value.table_encryption_key_type
+  storage_management_policy_rule = each.value.storage_management_policy_rule
+  network_rules                  = each.value.network_rules
+  managed_identities             = each.value.managed_identities
   containers = {
     for c_key, c in each.value.containers : c_key => merge(c, {
       role_assignments = {
@@ -614,7 +614,7 @@ module "storage_account" {
       principal_type                         = ra.principal_type
     }
   }
-  lock                              = each.value.lock
+  lock = each.value.lock
   diagnostic_settings_storage_account = {
     for dk, dv in each.value.diagnostic_settings : dk => {
       name                                     = dv.name
@@ -703,8 +703,8 @@ module "storage_account" {
           principal_type                         = ra.principal_type
         }
       }
-      lock             = pe.lock
-      tags             = pe.tags
+      lock = pe.lock
+      tags = pe.tags
       subnet_resource_id = coalesce(
         pe.network_configuration.subnet_resource_id,
         try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
@@ -809,8 +809,8 @@ module "bastion_host" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock             = each.value.lock
-  tags             = merge(var.tags, each.value.tags)
+  lock = each.value.lock
+  tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -859,7 +859,7 @@ module "network_watcher" {
       version = fl.version
     }
   } : null
-  lock             = var.flowlog_configuration.lock
+  lock = var.flowlog_configuration.lock
   role_assignments = {
     for ra_key, ra in var.flowlog_configuration.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -872,5 +872,5 @@ module "network_watcher" {
       principal_type                         = ra.principal_type
     }
   }
-  tags             = merge(var.tags, var.flowlog_configuration.tags)
+  tags = merge(var.tags, var.flowlog_configuration.tags)
 }

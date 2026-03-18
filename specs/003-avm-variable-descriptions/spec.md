@@ -87,7 +87,7 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 - **FR-007**: Every `diagnostic_settings` block MUST document all child attributes, including `use_default_log_analytics` with its pattern-specific defaulting behavior.
 - **FR-008**: Every `private_endpoints` block MUST document all child attributes including `network_configuration`, `private_dns_zone`, `ip_configurations`, and sub-attributes.
 - **FR-009**: Pattern-specific behaviors (location defaulting, tag merging, key cross-references) MUST be documented as clearly distinguished addenda — not mixed into AVM text.
-- **FR-010**: Descriptions MUST NOT change variable types, defaults, or validation blocks — only `description` attributes are modified.
+- **FR-010**: Descriptions MUST NOT change variable types, defaults, or validation blocks — only `description` attributes are modified. **Exception**: FR-026 explicitly authorises type, validation, and `main.tf` changes to universalise `managed_identity_key` across all `role_assignments` blocks.
 - **FR-011**: Descriptions MUST render cleanly with `terraform-docs` — proper Markdown nesting, no orphaned bullets, no broken backticks.
 - **FR-012**: The `storage_accounts` variable MUST document all sub-objects including `blob_properties.*`, `share_properties.*`, `queue_properties.*`, `network_rules.*`, `containers.*`, `private_endpoints.*`, `managed_identities.*`, and all storage management policy rule attributes.
 - **FR-013**: The `virtual_networks` variable MUST document `subnets.*` and `peerings.*` with all their nested attributes.
@@ -103,6 +103,7 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 - **FR-023**: Design choices that omit standard interface blocks or pattern-specific fields (e.g., omitting `use_default_log_analytics` from the Log Analytics workspace's own `diagnostic_settings` to avoid circular self-references) MUST be documented in a `> **Pattern note:**` callout explaining the rationale. Omissions without explanation look like bugs. *(from L16)*
 - **FR-024**: All cross-reference key attributes MUST be verified in a single post-rewrite audit pass across the entire file to ensure every occurrence names the correct target variable. Per-variable verification during writing is insufficient because drift accumulates across 17 variables. *(from L17)*
 - **FR-025**: Post-rewrite consistency checks — cross-reference key targets, pattern note format, `use_default_log_analytics` documentation, and removal of provenance lines — MUST be automated via text search (grep/Select-String), not manual visual review. A 2000+ line file defeats manual inspection. *(from L21)*
+- **FR-026**: The `managed_identity_key` attribute MUST be supported in ALL resources with `role_assignments` — not just `key_vaults` and standalone `role_assignments`. This includes `resource_groups`, `log_analytics_workspace_configuration`, `network_security_groups`, `route_tables`, `virtual_networks`, `private_dns_zones`, `bastion_hosts`, `storage_accounts`, and `flowlog_configuration`. The `principal_id` field in each `role_assignments` block MUST be `optional(string)` (not `string`), and a new `managed_identity_key = optional(string)` field MUST be added alongside it. In `main.tf`, each module's `role_assignments` MUST resolve `managed_identity_key` via `local.managed_identity_principal_ids[ra.managed_identity_key]` when set, falling back to `ra.principal_id`. Top-level variables MUST include a `validation` block enforcing XOR (`(ra.principal_id != null) != (ra.managed_identity_key != null)`). Sub-resource `role_assignments` (e.g., storage queues, tables, shares, containers, private endpoints) MUST document mutual exclusivity in descriptions but do not require validation blocks (matching the `key_vaults` pattern where only the top-level variable validates).
 
 ### Key Entities
 
@@ -134,7 +135,7 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 ## Assumptions
 
 - AVM module source is available locally under `.terraform/modules/` after running `terraform init` on any example.
-- The existing variable types, defaults, and validation blocks are correct and must not be modified.
+- The existing variable types, defaults, and validation blocks are correct and must not be modified — **except** as required by FR-026 (`managed_identity_key` universalisation, which adds `managed_identity_key = optional(string)`, changes `principal_id` to `optional(string)`, adds XOR validation blocks, and updates `main.tf` resolution logic).
 - The `resource_groups` variable description provided by the user is the reference style target — all other variables must match this level of detail.
 - Descriptions sourced from AVM modules may be lightly edited for grammar or clarity, but semantic meaning must be preserved.
 - Where AVM descriptions reference other AVM variables (e.g., "See the `lock` variable"), this feature inlines the full documentation rather than cross-referencing.
@@ -151,10 +152,10 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 
 ### Out of Scope
 
-- Changing variable types, defaults, or validation blocks.
-- Updating example `variables.tf` descriptions (those are simpler wrappers and follow a different convention).
+- Changing variable types, defaults, or validation blocks — **except** as required by FR-026 (`managed_identity_key` universalisation).
+- Updating example `variables.tf` descriptions (those are simpler wrappers and follow a different convention). Example type definitions ARE updated to match root module types per FR-026.
 - Adding new variables or removing existing ones.
-- Modifying `main.tf`, `locals.tf`, `outputs.tf`, or any other file.
+- Modifying `main.tf`, `locals.tf`, `outputs.tf`, or any other file — **except** `main.tf` resolution logic for `managed_identity_key` per FR-026.
 
 ## Dependencies
 
@@ -217,3 +218,11 @@ A CI pipeline generates a README via `terraform-docs`. The rewritten description
 | L20 | `terraform validate` is the only gate that matters during description-only changes | Since only `description` attributes change, semantic errors are impossible — the only risk is heredoc syntax errors (unclosed EOT, bad escaping). `terraform validate` catches these instantly. A full plan or apply would be wasted effort. |
 | L21 | Grep-based audits outperform manual review for consistency checks | Verifying cross-ref keys, pattern notes, `use_default_log_analytics` documentation, and removal of `Uses:`/`See:` lines was done entirely with grep/Select-String. Manual reading of a 2100+ line file would have missed something. |
 | L22 | Validation blocks are implicit contracts — document them before users hit them | Four validation blocks enforce constraints that users will encounter as opaque errors if not documented. The description should preempt the error message by explaining the rule in plain language. |
+
+### Managed Identity Key Universalisation (FR-026)
+
+| # | Lesson | Detail |
+|---|--------|--------|
+| L23 | `resource_groups` cannot use `managed_identity_key` — circular dependency | Managed identities are created inside resource groups (`module.managed_identity` depends on `module.resource_group`). Adding `local.managed_identity_principal_ids` resolution to `module.resource_group.role_assignments` creates a cycle: `resource_group` → `managed_identity_principal_ids` → `managed_identity` → `resource_group_names` → `resource_group`. The `resource_groups` variable keeps `principal_id = string` (required) with no `managed_identity_key` field. A `> **Pattern note:**` explains the limitation. |
+| L24 | Hybrid validation approach — validate top-level, describe sub-resources | Adding XOR validation blocks to every `role_assignments` block (including deeply nested sub-resource blocks like `storage_accounts.queues.role_assignments`) would bloat `variables.tf` significantly. The pragmatic approach: validation blocks on the 8 top-level variables + description-only mutual exclusivity documentation on sub-resource blocks. This matches the existing `key_vaults` pattern which validates `kv.role_assignments` but not `kv.keys.role_assignments`. |
+| L25 | Use `.terraform-docs.yml` config — don't override with CLI flags | Each directory has its own `.terraform-docs.yml` with specific formatter (`markdown document`), output mode (`replace`), and section ordering. Running `terraform-docs .` respects these configs automatically. Using CLI flags like `markdown table --output-mode inject` overrides the config and produces inconsistent output. |
