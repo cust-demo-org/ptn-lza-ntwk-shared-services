@@ -315,6 +315,14 @@ map(object({
 
 Default: `{}`
 
+### <a name="input_enable_telemetry"></a> [enable\_telemetry](#input\_enable\_telemetry)
+
+Description: Controls whether telemetry is enabled for all AVM modules deployed by this pattern. When `true`, each AVM module may collect anonymous usage data (see [AVM telemetry documentation](https://aka.ms/avm/telemetryinfo)). Set to `false` to disable telemetry across all resources.
+
+Type: `bool`
+
+Default: `true`
+
 ### <a name="input_flowlog_configuration"></a> [flowlog\_configuration](#input\_flowlog\_configuration)
 
 Description: Network Watcher and VNet flow log configuration. When `null` (the default), no Network Watcher or flow logs are configured.

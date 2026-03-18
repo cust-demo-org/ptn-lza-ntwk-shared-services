@@ -144,6 +144,24 @@ Extended `managed_identity_key` support from only `key_vaults` and standalone `r
 | `examples/*/variables.tf` | Type definitions mirrored from root (4 dirs × 13–19 blocks each). `resource_groups` kept as `principal_id = string`. |
 | `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |
 
+## Phase 3: FR-027 — Global `enable_telemetry` Variable (Complete)
+
+**Prerequisites**: Phase 2 complete.
+
+### Summary
+
+Added a global `enable_telemetry` variable (type `bool`, default `true`) to the root module and wired it through to 12 of 14 AVM module calls in `main.tf` (2 submodules — `private_dns_zone_link` and `vhub_vnet_connection` — don't expose `enable_telemetry`). Previously, only `storage_account` had `enable_telemetry` (hardcoded to `false`). Also added to all 4 example `variables.tf` and `main.tf` files.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `variables.tf` | Added `variable "enable_telemetry"` (type `bool`, default `true`) between `location` and `tags`. |
+| `main.tf` | Added `enable_telemetry = var.enable_telemetry` to 12 module calls (excluding `private_dns_zone_link` and `vhub_vnet_connection` submodules). Replaced hardcoded `false` in `storage_account`. |
+| `examples/*/variables.tf` | Added `enable_telemetry` variable (4 files). |
+| `examples/*/main.tf` | Added `enable_telemetry = var.enable_telemetry` pass-through (4 files). |
+| `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |
+
 ## Complexity Tracking
 
 > No constitution violations to justify. All gates pass.

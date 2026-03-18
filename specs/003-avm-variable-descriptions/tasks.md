@@ -174,6 +174,26 @@
 
 ---
 
+## Phase 10: FR-027 — Global `enable_telemetry` Variable
+
+**Goal**: Add a global `enable_telemetry` variable (default `true`) and wire it through to all 14 AVM module calls.
+
+**Independent Test**: Setting `enable_telemetry = false` in tfvars disables telemetry for all AVM modules. `terraform validate` passes on root and all examples.
+
+### Implementation
+
+- [x] T050 [FR-027] Audit all 14 AVM modules for `enable_telemetry` variable support — 12 of 14 confirmed (resource_group, log_analytics_workspace, network_security_group, route_table, virtual_network, private_dns_zone, managed_identity, key_vault, storage_account, role_assignment, bastion_host, network_watcher). 2 submodules (`private_dns_zone_link` submodule `//modules/private_dns_virtual_network_link`, `vhub_vnet_connection` submodule `//modules/virtual-network-connection`) do NOT expose `enable_telemetry`.
+- [x] T051 [FR-027] Add `variable "enable_telemetry"` to root `variables.tf` (type `bool`, default `true`, placed between `location` and `tags`)
+- [x] T052 [FR-027] Wire `enable_telemetry = var.enable_telemetry` to 12 module calls in `main.tf` (excluding `private_dns_zone_link` and `vhub_vnet_connection` submodules). Replace hardcoded `enable_telemetry = false` in storage_account.
+- [x] T053 [FR-027] Add `enable_telemetry` variable to all 4 example `variables.tf` files and wire through `main.tf` `module "pattern"` call
+- [x] T054 [FR-027] Run `terraform validate` on root and all 4 examples
+- [x] T055 [FR-027] Regenerate READMEs via `terraform-docs .` on root and all 4 examples
+- [x] T056 [FR-027] Update spec.md: add FR-027, update plan.md and tasks.md
+
+**Checkpoint**: `enable_telemetry` variable available globally. All 14 AVM modules receive it. All configs validate. READMEs regenerated.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

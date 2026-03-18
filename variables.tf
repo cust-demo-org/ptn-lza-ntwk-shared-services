@@ -7,6 +7,14 @@ variable "location" {
   EOT
 }
 
+variable "enable_telemetry" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Controls whether telemetry is enabled for all AVM modules deployed by this pattern. When `true`, each AVM module may collect anonymous usage data (see [AVM telemetry documentation](https://aka.ms/avm/telemetryinfo)). Set to `false` to disable telemetry across all resources.
+  EOT
+}
+
 variable "tags" {
   type        = map(string)
   default     = {}

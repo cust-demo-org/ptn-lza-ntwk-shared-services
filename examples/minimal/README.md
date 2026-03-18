@@ -154,6 +154,14 @@ map(object({
 
 Default: `{}`
 
+### <a name="input_enable_telemetry"></a> [enable\_telemetry](#input\_enable\_telemetry)
+
+Description: Controls whether telemetry is enabled for all AVM modules. Refer to the main pattern module variable descriptions for complete details.
+
+Type: `bool`
+
+Default: `true`
+
 ### <a name="input_flowlog_configuration"></a> [flowlog\_configuration](#input\_flowlog\_configuration)
 
 Description: Network Watcher flow log configuration. Null disables flow logs. Refer to the main pattern module variable descriptions for complete details.

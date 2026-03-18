@@ -76,10 +76,11 @@ module "resource_group" {
 
   for_each = var.resource_groups
 
-  name     = each.value.name
-  location = coalesce(each.value.location, var.location)
-  tags     = merge(var.tags, each.value.tags)
-  lock     = each.value.lock
+  enable_telemetry = var.enable_telemetry
+  name             = each.value.name
+  location         = coalesce(each.value.location, var.location)
+  tags             = merge(var.tags, each.value.tags)
+  lock             = each.value.lock
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -100,6 +101,7 @@ module "log_analytics_workspace" {
 
   count = var.byo_log_analytics_workspace == null ? 1 : 0
 
+  enable_telemetry                                           = var.enable_telemetry
   name                                                       = var.log_analytics_workspace_configuration.name
   location                                                   = coalesce(var.log_analytics_workspace_configuration.location, var.location)
   resource_group_name                                        = local.resource_group_names[var.log_analytics_workspace_configuration.resource_group_key]
@@ -177,6 +179,7 @@ module "network_security_group" {
 
   for_each = var.network_security_groups
 
+  enable_telemetry    = var.enable_telemetry
   name                = each.value.name
   resource_group_name = local.resource_group_names[each.value.resource_group_key]
   location            = coalesce(each.value.location, var.location)
@@ -217,6 +220,7 @@ module "route_table" {
 
   for_each = var.route_tables
 
+  enable_telemetry              = var.enable_telemetry
   name                          = each.value.name
   resource_group_name           = local.resource_group_names[each.value.resource_group_key]
   location                      = coalesce(each.value.location, var.location)
@@ -244,10 +248,11 @@ module "virtual_network" {
 
   for_each = var.virtual_networks
 
-  name          = each.value.name
-  parent_id     = local.resource_group_resource_ids[each.value.resource_group_key]
-  location      = coalesce(each.value.location, var.location)
-  address_space = each.value.address_space
+  enable_telemetry = var.enable_telemetry
+  name             = each.value.name
+  parent_id        = local.resource_group_resource_ids[each.value.resource_group_key]
+  location         = coalesce(each.value.location, var.location)
+  address_space    = each.value.address_space
 
   dns_servers = each.value.dns_servers != null ? { dns_servers = each.value.dns_servers } : null
   ddos_protection_plan = each.value.ddos_protection_plan != null ? {
@@ -320,8 +325,9 @@ module "private_dns_zone" {
 
   for_each = var.private_dns_zones
 
-  domain_name = each.value.domain_name
-  parent_id   = local.resource_group_resource_ids[each.value.resource_group_key]
+  enable_telemetry = var.enable_telemetry
+  domain_name      = each.value.domain_name
+  parent_id        = local.resource_group_resource_ids[each.value.resource_group_key]
   virtual_network_links = {
     for vnl_k, vnl in each.value.virtual_network_links : vnl_k => {
       name                                   = vnl.name
@@ -369,6 +375,7 @@ module "managed_identity" {
 
   for_each = var.managed_identities
 
+  enable_telemetry               = var.enable_telemetry
   name                           = each.value.name
   location                       = coalesce(each.value.location, var.location)
   resource_group_name            = local.resource_group_names[each.value.resource_group_key]
@@ -384,6 +391,7 @@ module "key_vault" {
 
   for_each = var.key_vaults
 
+  enable_telemetry                = var.enable_telemetry
   name                            = each.value.name
   location                        = coalesce(each.value.location, var.location)
   resource_group_name             = local.resource_group_names[each.value.resource_group_key]
@@ -504,6 +512,7 @@ module "storage_account" {
 
   for_each = var.storage_accounts
 
+  enable_telemetry                  = var.enable_telemetry
   name                              = each.value.name
   resource_group_name               = local.resource_group_names[each.value.resource_group_key]
   location                          = coalesce(each.value.location, var.location)
@@ -685,8 +694,7 @@ module "storage_account" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  tags             = merge(var.tags, each.value.tags)
-  enable_telemetry = false
+  tags = merge(var.tags, each.value.tags)
 
   private_endpoints = {
     for pe_k, pe in each.value.private_endpoints : pe_k => {
@@ -731,6 +739,7 @@ module "role_assignment" {
 
   count = length(var.role_assignments) > 0 ? 1 : 0
 
+  enable_telemetry = var.enable_telemetry
   role_assignments_azure_resource_manager = {
     for ra_key, ra in var.role_assignments : ra_key => {
       role_definition_name = ra.role_definition_id_or_name
@@ -765,11 +774,12 @@ module "bastion_host" {
 
   for_each = var.bastion_hosts
 
-  name      = each.value.name
-  location  = coalesce(each.value.location, var.location)
-  parent_id = local.resource_group_resource_ids[each.value.resource_group_key]
-  sku       = each.value.sku
-  zones     = each.value.zones
+  enable_telemetry = var.enable_telemetry
+  name             = each.value.name
+  location         = coalesce(each.value.location, var.location)
+  parent_id        = local.resource_group_resource_ids[each.value.resource_group_key]
+  sku              = each.value.sku
+  zones            = each.value.zones
   ip_configuration = each.value.ip_configuration != null ? {
     name = each.value.ip_configuration.name
     subnet_id = coalesce(
@@ -835,6 +845,7 @@ module "network_watcher" {
 
   count = var.flowlog_configuration != null ? 1 : 0
 
+  enable_telemetry     = var.enable_telemetry
   network_watcher_id   = coalesce(var.flowlog_configuration.network_watcher_id, "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/NetworkWatcherRG/providers/Microsoft.Network/networkWatchers/NetworkWatcher_${coalesce(var.flowlog_configuration.location, var.location)}")
   network_watcher_name = coalesce(var.flowlog_configuration.network_watcher_name, "NetworkWatcher_${coalesce(var.flowlog_configuration.location, var.location)}")
   resource_group_name  = coalesce(var.flowlog_configuration.resource_group_name, "NetworkWatcherRG")

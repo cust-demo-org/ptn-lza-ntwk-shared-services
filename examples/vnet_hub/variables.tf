@@ -4,6 +4,12 @@ variable "location" {
   description = "Azure region for all resources. Refer to the main pattern module variable descriptions for complete details."
 }
 
+variable "enable_telemetry" {
+  type        = bool
+  default     = true
+  description = "Controls whether telemetry is enabled for all AVM modules. Refer to the main pattern module variable descriptions for complete details."
+}
+
 variable "tags" {
   type        = map(string)
   default     = {}
