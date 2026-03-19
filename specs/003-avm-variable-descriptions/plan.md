@@ -184,3 +184,27 @@ Replaced the global `random_suffix_length` variable with per-resource `name_rand
 ## Complexity Tracking
 
 > No constitution violations to justify. All gates pass.
+
+## Phase 5: FR-029 — `assign_to_caller` for All Role Assignments (Complete)
+
+**Prerequisites**: Phase 4 complete.
+
+### Summary
+
+Added `assign_to_caller = optional(bool, false)` to every `role_assignments` block across all variables. When `true`, the principal_id is automatically set to `data.azurerm_client_config.current.object_id` — the identity running Terraform. This is mutually exclusive with `principal_id` and `managed_identity_key`. Validation blocks updated from 2-way XOR to 3-way sum-equals-1 expression. In `resource_groups`, `assign_to_caller` is mutually exclusive with `principal_id` only (no `managed_identity_key` due to circular dependency). A new validation block was added to `resource_groups` (previously had none since `principal_id` was required).
+
+### Key Decisions
+
+1. **Flat attributes over nested object** — `assign_to_caller`, `principal_id`, and `managed_identity_key` stay as flat fields rather than grouped into a nested object. This preserves AVM consistency, avoids breaking changes, and keeps nesting depth manageable.
+2. **`resource_groups` gets 2-way validation** — Only `principal_id` and `assign_to_caller` (no `managed_identity_key`). Circular dependency constraint still applies.
+3. **Resolution priority** — `assign_to_caller` checked first, then `managed_identity_key`, then `principal_id` in the ternary chain.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `variables.tf` | 21 type defs: added `assign_to_caller = optional(bool, false)`. `resource_groups` `principal_id` changed from `string` to `optional(string)`. 11 validation blocks updated (10 existing to 3-way XOR + 1 new for `resource_groups`). 15 standard description blocks + 1 `resource_groups` description updated with `assign_to_caller` docs. |
+| `main.tf` | 21 `principal_id` resolution lines updated: `ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ...` prepended to each ternary chain. |
+| `examples/*/variables.tf` | Type definitions mirrored from root (4 dirs). `assign_to_caller` added to all role_assignments blocks (minimal: 15, full: 21, vnet_hub: 15, vwan_hub: 15). |
+| `examples/full/terraform.tfvars` | Added `kv_admin_caller` role assignment with `assign_to_caller = true` demo. |
+| `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |

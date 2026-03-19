@@ -96,7 +96,8 @@ Description: A map of resource groups to create. The map key is deliberately arb
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Required) The ID of the principal to assign the role to.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -121,7 +122,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -174,8 +176,9 @@ Description: A map of Azure Bastion Host configurations to create. The map key i
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -244,6 +247,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -357,8 +361,9 @@ Description: Network Watcher and VNet flow log configuration. When `null` (the d
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -409,6 +414,7 @@ object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -446,8 +452,9 @@ Description: A map of Key Vaults to create. The map key is deliberately arbitrar
   - `virtual_network_subnet_ids` - (Optional) A list of allowed subnet resource IDs. Defaults to `[]`.
 - `role_assignments` - (Optional) A map of role assignments to create on this Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment. Defaults to `null`.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment. Defaults to `null`.
@@ -455,7 +462,7 @@ Description: A map of Key Vaults to create. The map key is deliberately arbitrar
   - `delegated_managed_identity_resource_id` - (Optional) The delegated Azure Resource Id which contains a Managed Identity. Changing this forces a new resource to be created. This field is only used in cross-tenant scenario. Defaults to `null`.
   - `principal_type` - (Optional) The type of the `principal_id`. Possible values are `User`, `Group` and `ServicePrincipal`. Defaults to `null`.
 
-  > Note: Specify either `principal_id` or `managed_identity_key`, not both. Use `managed_identity_key` to reference a managed identity created by this pattern.
+  > Note: Specify exactly one of `principal_id`, `managed_identity_key`, or `assign_to_caller`. Use `managed_identity_key` to reference a managed identity created by this pattern. Use `assign_to_caller` to automatically assign to the identity running Terraform.
 
 - `private_endpoints` - (Optional) A map of private endpoints to create on this Key Vault. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `name` - (Optional) The name of the private endpoint. Defaults to `null`.
@@ -531,7 +538,7 @@ Description: A map of Key Vaults to create. The map key is deliberately arbitrar
   - `marketplace_partner_resource_id` - (Optional) The full ARM resource ID of the Marketplace resource to which you would like to send Diagnostic Logs.
   - `use_default_log_analytics` - (Optional) When `true`, automatically sets the `workspace_resource_id` to the Log Analytics workspace created by this pattern. Defaults to `true`.
 
-> **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. Each `role_assignments` entry must set exactly one of `principal_id` or `managed_identity_key`.
+> **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. Each `role_assignments` entry must set exactly one of `principal_id`, `managed_identity_key`, or `assign_to_caller`.
 
 Type:
 
@@ -561,6 +568,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -574,6 +582,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -624,6 +633,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -650,6 +660,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -757,8 +768,9 @@ Description: Configuration for the auto-created Log Analytics workspace which wi
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -868,6 +880,7 @@ object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -881,6 +894,7 @@ object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1007,8 +1021,9 @@ Description: A map of network security groups to create. The map key is delibera
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1067,6 +1082,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1110,8 +1126,9 @@ Description: A map of Private DNS Zones to create and optionally link to VNets c
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1147,6 +1164,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1166,12 +1184,13 @@ Description: A map of standalone role assignments at arbitrary scopes. The map k
 
 - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign.
 - `scope` - (Required) The Azure resource ID scope for the assignment.
-- `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-- `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+- `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+- `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+- `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
 - `description` - (Optional) The description of the role assignment. Defaults to `null`.
 - `principal_type` - (Optional) The type of the principal. Possible values are `User`, `Group` and `ServicePrincipal`. Defaults to `null`.
 
-> Note: Specify either `principal_id` or `managed_identity_key`, not both. Use `managed_identity_key` to reference a managed identity created by this pattern.
+> Note: Specify exactly one of `principal_id`, `managed_identity_key`, or `assign_to_caller`. Use `managed_identity_key` to reference a managed identity created by this pattern. Use `assign_to_caller` to automatically assign to the identity running Terraform.
 
 Type:
 
@@ -1181,6 +1200,7 @@ map(object({
     scope                      = string
     principal_id               = optional(string)
     managed_identity_key       = optional(string)
+    assign_to_caller           = optional(bool, false)
     description                = optional(string, null)
     principal_type             = optional(string, null)
   }))
@@ -1206,8 +1226,9 @@ Description: A map of route tables to create. The map key is deliberately arbitr
   - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1243,6 +1264,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1374,8 +1396,9 @@ Description: A map of storage accounts to create. The map key is deliberately ar
   - `metadata` - (Optional) A mapping of MetaData for this queue.
   - `role_assignments` - (Optional) A map of role assignments to create on this queue. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+    - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1392,8 +1415,9 @@ Description: A map of storage accounts to create. The map key is deliberately ar
       - `start_time` - (Required) The start time of the access policy in ISO 8601 format.
   - `role_assignments` - (Optional) A map of role assignments to create on this table. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+    - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1415,8 +1439,9 @@ Description: A map of storage accounts to create. The map key is deliberately ar
       - `start_time` - (Required) The start time of the access policy in ISO 8601 format.
   - `role_assignments` - (Optional) A map of role assignments to create on this share. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+    - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1486,8 +1511,9 @@ Description: A map of storage accounts to create. The map key is deliberately ar
     - `enabled` - (Required) Whether immutable storage with versioning is enabled.
   - `role_assignments` - (Optional) A map of role assignments to create on this container. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+    - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1516,8 +1542,9 @@ Description: A map of storage accounts to create. The map key is deliberately ar
   - `tags` - (Optional) A mapping of tags to assign to the private endpoint.
   - `role_assignments` - (Optional) A map of role assignments to create on this private endpoint. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
     - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+    - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+    - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+    - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
     - `description` - (Optional) The description of the role assignment.
     - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
     - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1529,8 +1556,9 @@ Description: A map of storage accounts to create. The map key is deliberately ar
     - `name` - (Optional) The name of the lock. If not specified, a name will be generated based on the `kind` value. Changing this forces the creation of a new resource.
 - `role_assignments` - (Optional) A map of role assignments to create on this resource. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -1706,6 +1734,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1728,6 +1757,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1755,6 +1785,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1839,6 +1870,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1853,6 +1885,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1890,6 +1923,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -2117,8 +2151,9 @@ Description: A map of spoke virtual networks to create. The map key is deliberat
   - `role_assignments` - (Optional) A map of role assignments to create on this subnet. Uses the same schema as VNet-level `role_assignments`.
 - `role_assignments` - (Optional) A map of role assignments to create on this VNet. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
   - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
-  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key`.
-  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id`.
+  - `principal_id` - (Optional) The ID of the principal to assign the role to. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+  - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+  - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform as the principal. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
   - `description` - (Optional) The description of the role assignment.
   - `skip_service_principal_aad_check` - (Optional) If set to true, skips the Azure Active Directory check for the service principal in the tenant. Defaults to `false`.
   - `condition` - (Optional) The condition which will be used to scope the role assignment.
@@ -2254,6 +2289,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -2266,6 +2302,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)

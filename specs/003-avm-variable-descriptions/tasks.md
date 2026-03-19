@@ -218,6 +218,29 @@
 
 ---
 
+## Phase 12: FR-029 — `assign_to_caller` for All Role Assignments
+
+**Goal**: Add `assign_to_caller = optional(bool, false)` to every `role_assignments` block across all variables, enabling users to automatically assign roles to the identity running Terraform via `data.azurerm_client_config.current.object_id`. Mutually exclusive with `principal_id` and `managed_identity_key`.
+
+**Independent Test**: Setting `assign_to_caller = true` on a key vault role assignment resolves to the caller's object ID. Setting both `assign_to_caller = true` and `principal_id` triggers validation error. `terraform validate` passes on root and all examples.
+
+### Implementation
+
+- [x] T068 [FR-029] Add `assign_to_caller = optional(bool, false)` to all 20 standard `role_assignments` blocks in root `variables.tf` (blocks with `managed_identity_key`)
+- [x] T069 [FR-029] Update `resource_groups` variable: change `principal_id` from `string` to `optional(string)`, add `assign_to_caller = optional(bool, false)` (no `managed_identity_key` — circular dependency)
+- [x] T070 [FR-029] Update all 11 validation blocks to 3-way XOR: `((ra.principal_id != null ? 1 : 0) + (ra.managed_identity_key != null ? 1 : 0) + (ra.assign_to_caller ? 1 : 0)) == 1` (10 existing + 1 new for `resource_groups`)
+- [x] T071 [FR-029] Update all 21 `principal_id` resolution lines in `main.tf` to check `ra.assign_to_caller` first: `ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ...`
+- [x] T072 [FR-029] Update all role_assignments descriptions: add `assign_to_caller` attribute documentation and mutual exclusivity notes (15 standard blocks + 1 `resource_groups` + 2 Note callouts + 1 Pattern note)
+- [x] T073 [FR-029] Add `assign_to_caller = optional(bool, false)` to all role_assignments blocks in 4 example `variables.tf` files (minimal: 15, full: 21, vnet_hub: 15, vwan_hub: 15)
+- [x] T074 [FR-029] Add `assign_to_caller = true` demo to full example `terraform.tfvars` (key vault `kv_admin_caller` role assignment)
+- [x] T075 [FR-029] Run `terraform validate` on root and all 4 examples
+- [x] T076 [FR-029] Regenerate READMEs via `terraform-docs .` on root and all 4 examples
+- [x] T077 [FR-029] Update spec.md (FR-029), plan.md (Phase 5), and tasks.md (Phase 12)
+
+**Checkpoint**: `assign_to_caller` available on all role_assignments blocks across all variables. Validation enforces 3-way mutual exclusivity. All configs validate. READMEs regenerated.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -233,6 +256,7 @@
 - **Phase 9 (FR-026 managed_identity_key)**: Depends on Phase 8 completion (all descriptions must be finalized before modifying types and adding validations)
 - **Phase 10 (FR-027 enable_telemetry)**: Depends on Phase 9 completion
 - **Phase 11 (FR-028 name_random_suffix_configuration)**: Depends on Phase 10 completion
+- **Phase 12 (FR-029 assign_to_caller)**: Depends on Phase 11 completion
 
 ### User Story Dependencies
 

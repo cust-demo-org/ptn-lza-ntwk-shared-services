@@ -100,7 +100,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -208,7 +209,8 @@ object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -254,6 +256,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -267,6 +270,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -317,6 +321,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -343,6 +348,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -472,7 +478,8 @@ object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -486,6 +493,7 @@ object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -595,7 +603,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -645,7 +654,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -676,7 +686,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -701,6 +712,7 @@ map(object({
     scope                      = string
     principal_id               = optional(string)
     managed_identity_key       = optional(string)
+    assign_to_caller           = optional(bool, false)
     description                = optional(string, null)
     principal_type             = optional(string, null)
   }))
@@ -732,7 +744,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -895,6 +908,7 @@ map(object({
         role_definition_id_or_name             = string
         principal_id                           = optional(string)
         managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -907,6 +921,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)

@@ -272,6 +272,10 @@ key_vaults = {
         role_definition_id_or_name = "Key Vault Secrets User"
         managed_identity_key       = "mi_app"
       }
+      kv_admin_caller = {
+        role_definition_id_or_name = "Key Vault Administrator"
+        assign_to_caller           = true
+      }
     }
 
     private_endpoints = {

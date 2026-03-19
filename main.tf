@@ -84,7 +84,7 @@ module "resource_group" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -125,7 +125,7 @@ module "log_analytics_workspace" {
   role_assignments = {
     for ra_key, ra in var.log_analytics_workspace_configuration.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -143,7 +143,7 @@ module "log_analytics_workspace" {
       role_assignments = {
         for ra_key, ra in pe.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -203,7 +203,7 @@ module "network_security_group" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -230,7 +230,7 @@ module "route_table" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -276,7 +276,7 @@ module "virtual_network" {
       role_assignments = {
         for ra_key, ra in sv.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -308,7 +308,7 @@ module "virtual_network" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -343,7 +343,7 @@ module "private_dns_zone" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -430,7 +430,7 @@ module "key_vault" {
       role_assignments = {
         for ra_key, ra in k.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -446,7 +446,7 @@ module "key_vault" {
       role_assignments = {
         for ra_key, ra in s.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -480,7 +480,7 @@ module "key_vault" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -496,7 +496,7 @@ module "key_vault" {
       role_assignments = {
         for ra_key, ra in pe.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -567,7 +567,7 @@ module "storage_account" {
       role_assignments = {
         for ra_key, ra in q.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -583,7 +583,7 @@ module "storage_account" {
       role_assignments = {
         for ra_key, ra in t.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -599,7 +599,7 @@ module "storage_account" {
       role_assignments = {
         for ra_key, ra in s.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -620,7 +620,7 @@ module "storage_account" {
       role_assignments = {
         for ra_key, ra in c.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -634,7 +634,7 @@ module "storage_account" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -722,7 +722,7 @@ module "storage_account" {
       role_assignments = {
         for ra_key, ra in pe.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
-          principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
           description                            = ra.description
           skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
           condition                              = ra.condition
@@ -764,7 +764,7 @@ module "role_assignment" {
     for ra_key, ra in var.role_assignments : ra_key => {
       role_definition_name = ra.role_definition_id_or_name
       scope                = ra.scope
-      principal_id         = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id         = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description          = ra.description
       principal_type       = ra.principal_type
     }
@@ -844,7 +844,7 @@ module "bastion_host" {
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
@@ -894,7 +894,7 @@ module "network_watcher" {
   role_assignments = {
     for ra_key, ra in var.flowlog_configuration.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
-      principal_id                           = ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description                            = ra.description
       skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
       condition                              = ra.condition
