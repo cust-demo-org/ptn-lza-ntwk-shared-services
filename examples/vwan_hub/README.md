@@ -426,11 +426,14 @@ object({
       identity_ids = optional(set(string))
     }))
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     data_exports = optional(map(object({

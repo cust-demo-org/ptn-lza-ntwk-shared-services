@@ -208,3 +208,33 @@ Added `assign_to_caller = optional(bool, false)` to every `role_assignments` blo
 | `examples/*/variables.tf` | Type definitions mirrored from root (4 dirs). `assign_to_caller` added to all role_assignments blocks (minimal: 15, full: 21, vnet_hub: 15, vwan_hub: 15). |
 | `examples/full/terraform.tfvars` | Added `kv_admin_caller` role assignment with `assign_to_caller = true` demo. |
 | `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |
+
+## Phase 6: FR-030 & FR-031 — Key-Based CMK References and Managed Identity Keys (Complete)
+
+**Prerequisites**: Phase 5 complete.
+
+### Summary
+
+Added key-based referencing support to `customer_managed_key` objects and inline `managed_identities` objects, allowing users to reference pattern-managed Key Vaults, Key Vault keys, and managed identities by their map keys instead of raw resource IDs and names.
+
+FR-030 adds `key_vault_key` (mutually exclusive with `key_vault_resource_id`), `key_key` (mutually exclusive with `key_name`, requires `key_vault_key`), and `user_assigned_identity.key` (mutually exclusive with `user_assigned_identity.resource_id`) to the `customer_managed_key` object in `log_analytics_workspace_configuration` and `storage_accounts`.
+
+FR-031 adds `user_assigned_keys` to the inline `managed_identities` object in `storage_accounts`, which resolves to resource IDs and merges additively with `user_assigned_resource_ids`.
+
+### Key Decisions
+
+1. **Mutual exclusivity for CMK fields** — `key_vault_key` XOR `key_vault_resource_id`, `key_key` XOR `key_name`, `user_assigned_identity.key` XOR `resource_id`. Validation blocks enforce each pair.
+2. **`key_key` requires `key_vault_key`** — Since `key_key` references a key entry within a specific pattern key vault, `key_vault_key` must also be set to identify which vault's keys map to look up.
+3. **`user_assigned_keys` is additive** — Not mutually exclusive with `user_assigned_resource_ids`. Uses `setunion` to merge resolved resource IDs with any explicitly provided IDs.
+4. **New locals** — `key_vault_resource_ids` and `managed_identity_resource_ids` added to `locals.tf` for key resolution.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `locals.tf` | Added `managed_identity_resource_ids` and `key_vault_resource_ids` lookups. |
+| `variables.tf` | 2 CMK type defs updated with `key_vault_key`, `key_key`, `user_assigned_identity.key`; fields changed to `optional(string)`. 8 new validation blocks (4 per variable). 1 MI type def updated with `user_assigned_keys`. Descriptions updated for CMK and MI. |
+| `main.tf` | 2 CMK resolution blocks updated to resolve key-based references via locals. 1 `managed_identities` passthrough updated to resolve `user_assigned_keys` via `setunion`. |
+| `examples/*/variables.tf` | CMK type definitions mirrored (LAW: 4 files, storage: full only). MI type definition mirrored (full only). |
+| `examples/full/terraform.tfvars` | Added key vault `keys` entry, storage account CMK with key-based references, `managed_identities` with `user_assigned_keys`. |
+| `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |

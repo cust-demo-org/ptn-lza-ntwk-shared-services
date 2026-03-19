@@ -118,11 +118,14 @@ variable "log_analytics_workspace_configuration" {
       identity_ids = optional(set(string))
     }))
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     data_exports = optional(map(object({
@@ -241,11 +244,14 @@ variable "log_analytics_workspace_configuration" {
       - `type` - (Required) The type of managed identity. Possible values are `"SystemAssigned"` and `"UserAssigned"`.
       - `identity_ids` - (Optional) A set of user-assigned managed identity resource IDs.
     - `customer_managed_key` - (Optional) Customer managed key configuration.
-      - `key_vault_resource_id` - (Required) The resource ID of the Key Vault containing the key.
-      - `key_name` - (Required) The name of the key in the Key Vault.
+      - `key_vault_resource_id` - (Optional) The resource ID of the Key Vault containing the key. Mutually exclusive with `key_vault_key`.
+      - `key_vault_key` - (Optional) The key of a Key Vault in the `key_vaults` variable, resolving to its resource ID. Mutually exclusive with `key_vault_resource_id`.
+      - `key_name` - (Optional) The name of the key in the Key Vault. Mutually exclusive with `key_key`.
+      - `key_key` - (Optional) The key of a key entry within the Key Vault's `keys` map (identified by `key_vault_key`), resolving to its name. Requires `key_vault_key` to be set. Mutually exclusive with `key_name`.
       - `key_version` - (Optional) The version of the key. Defaults to `null`.
       - `user_assigned_identity` - (Optional) The user-assigned identity to use for accessing the key.
-        - `resource_id` - (Required) The resource ID of the user-assigned managed identity.
+        - `resource_id` - (Optional) The resource ID of the user-assigned managed identity. Mutually exclusive with `key`.
+        - `key` - (Optional) The key of a managed identity in the `managed_identities` variable, resolving to its resource ID. Mutually exclusive with `resource_id`.
     - `data_exports` - (Optional) A map of data export rules. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
       - `name` - (Required) The name of the data export rule.
       - `table_names` - (Required) A list of table names to export.
@@ -326,6 +332,40 @@ variable "log_analytics_workspace_configuration" {
       for ra_key, ra in var.log_analytics_workspace_configuration.role_assignments : ((ra.principal_id != null ? 1 : 0) + (ra.managed_identity_key != null ? 1 : 0) + (ra.assign_to_caller ? 1 : 0)) == 1
     ])
     error_message = "Each Log Analytics workspace role assignment must set exactly one of principal_id, managed_identity_key, or assign_to_caller."
+  }
+
+  validation {
+    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
+      (var.log_analytics_workspace_configuration.customer_managed_key.key_vault_resource_id != null ? 1 : 0) +
+      (var.log_analytics_workspace_configuration.customer_managed_key.key_vault_key != null ? 1 : 0)
+    ) == 1
+    error_message = "customer_managed_key must set exactly one of key_vault_resource_id or key_vault_key."
+  }
+
+  validation {
+    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
+      (var.log_analytics_workspace_configuration.customer_managed_key.key_name != null ? 1 : 0) +
+      (var.log_analytics_workspace_configuration.customer_managed_key.key_key != null ? 1 : 0)
+    ) == 1
+    error_message = "customer_managed_key must set exactly one of key_name or key_key."
+  }
+
+  validation {
+    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
+      var.log_analytics_workspace_configuration.customer_managed_key.key_key == null ||
+      var.log_analytics_workspace_configuration.customer_managed_key.key_vault_key != null
+    )
+    error_message = "customer_managed_key key_key requires key_vault_key to be set (the key must reference a key vault created by this pattern)."
+  }
+
+  validation {
+    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
+      var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity == null ? true : (
+        (var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity.resource_id != null ? 1 : 0) +
+        (var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity.key != null ? 1 : 0)
+      ) == 1
+    )
+    error_message = "customer_managed_key user_assigned_identity must set exactly one of resource_id or key."
   }
 }
 
@@ -1495,11 +1535,14 @@ variable "storage_accounts" {
     is_hns_enabled                    = optional(bool)
     large_file_share_enabled          = optional(bool)
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     sas_policy = optional(object({
@@ -1730,6 +1773,7 @@ variable "storage_accounts" {
     managed_identities = optional(object({
       system_assigned            = optional(bool, false)
       user_assigned_resource_ids = optional(set(string), [])
+      user_assigned_keys         = optional(set(string), [])
     }), {})
     containers = optional(map(object({
       name                           = string
@@ -1905,11 +1949,14 @@ variable "storage_accounts" {
     - `is_hns_enabled` - (Optional) Is Hierarchical Namespace enabled? This can be used with Azure Data Lake Storage Gen 2. Changing this forces a new resource to be created.
     - `large_file_share_enabled` - (Optional) Is Large File Share Enabled?
     - `customer_managed_key` - (Optional) Customer managed key configuration for the storage account.
-      - `key_vault_resource_id` - (Required) The resource ID of the Key Vault containing the key.
-      - `key_name` - (Required) The name of the Key Vault key.
+      - `key_vault_resource_id` - (Optional) The resource ID of the Key Vault containing the key. Mutually exclusive with `key_vault_key`.
+      - `key_vault_key` - (Optional) The key of a Key Vault in the `key_vaults` variable, resolving to its resource ID. Mutually exclusive with `key_vault_resource_id`.
+      - `key_name` - (Optional) The name of the Key Vault key. Mutually exclusive with `key_key`.
+      - `key_key` - (Optional) The key of a key entry within the Key Vault's `keys` map (identified by `key_vault_key`), resolving to its name. Requires `key_vault_key` to be set. Mutually exclusive with `key_name`.
       - `key_version` - (Optional) The version of the Key Vault key. Omit or set to an empty string to use automatic key rotation.
       - `user_assigned_identity` - (Optional) The user-assigned identity to use for accessing the Key Vault.
-        - `resource_id` - (Required) The resource ID of the user-assigned managed identity.
+        - `resource_id` - (Optional) The resource ID of the user-assigned managed identity. Mutually exclusive with `key`.
+        - `key` - (Optional) The key of a managed identity in the `managed_identities` variable, resolving to its resource ID. Mutually exclusive with `resource_id`.
     - `sas_policy` - (Optional) SAS policy configuration for the storage account.
       - `expiration_action` - (Optional) The SAS expiration action. Only `"Log"` is permitted. Defaults to `"Log"`.
       - `expiration_period` - (Required) The SAS expiration period in the format `DD.HH:MM:SS`.
@@ -2099,6 +2146,7 @@ variable "storage_accounts" {
     - `managed_identities` - (Optional) Managed identity configuration for the storage account. Defaults to no managed identity.
       - `system_assigned` - (Optional) Specifies if the System Assigned Managed Identity should be enabled. Defaults to `false`.
       - `user_assigned_resource_ids` - (Optional) Specifies a set of User Assigned Managed Identity resource IDs to be assigned. Defaults to `[]`.
+      - `user_assigned_keys` - (Optional) A set of keys from the `managed_identities` variable, resolving to their resource IDs. The resolved resource IDs are merged (appended) with `user_assigned_resource_ids`. Defaults to `[]`.
     - `containers` - (Optional) A map of blob containers to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
       - `name` - (Required) The name of the container.
       - `public_access` - (Optional) The access level configured for this container. Possible values are `"blob"`, `"container"`, and `"None"`. Defaults to `"None"`.
@@ -2199,6 +2247,48 @@ variable "storage_accounts" {
       ])
     ])
     error_message = "Each storage account role assignment must set exactly one of principal_id, managed_identity_key, or assign_to_caller."
+  }
+
+  validation {
+    condition = alltrue([
+      for sa_key, sa in var.storage_accounts : sa.customer_managed_key == null ? true : (
+        (sa.customer_managed_key.key_vault_resource_id != null ? 1 : 0) +
+        (sa.customer_managed_key.key_vault_key != null ? 1 : 0)
+      ) == 1
+    ])
+    error_message = "Each storage account customer_managed_key must set exactly one of key_vault_resource_id or key_vault_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for sa_key, sa in var.storage_accounts : sa.customer_managed_key == null ? true : (
+        (sa.customer_managed_key.key_name != null ? 1 : 0) +
+        (sa.customer_managed_key.key_key != null ? 1 : 0)
+      ) == 1
+    ])
+    error_message = "Each storage account customer_managed_key must set exactly one of key_name or key_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for sa_key, sa in var.storage_accounts : sa.customer_managed_key == null ? true : (
+        sa.customer_managed_key.key_key == null ||
+        sa.customer_managed_key.key_vault_key != null
+      )
+    ])
+    error_message = "Each storage account customer_managed_key key_key requires key_vault_key to be set (the key must reference a key vault created by this pattern)."
+  }
+
+  validation {
+    condition = alltrue([
+      for sa_key, sa in var.storage_accounts : sa.customer_managed_key == null ? true : (
+        sa.customer_managed_key.user_assigned_identity == null ? true : (
+          (sa.customer_managed_key.user_assigned_identity.resource_id != null ? 1 : 0) +
+          (sa.customer_managed_key.user_assigned_identity.key != null ? 1 : 0)
+        ) == 1
+      )
+    ])
+    error_message = "Each storage account customer_managed_key user_assigned_identity must set exactly one of resource_id or key."
   }
 }
 

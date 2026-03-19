@@ -278,6 +278,15 @@ key_vaults = {
       }
     }
 
+    keys = {
+      cmk_sa = {
+        name     = "cmk-storage"
+        key_type = "RSA"
+        key_size = 2048
+        key_opts = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
+      }
+    }
+
     private_endpoints = {
       pe_kv = {
         name = "pe-kv-shared-full"
@@ -351,6 +360,21 @@ storage_accounts = {
     public_network_access_enabled = true
     name_random_suffix_configuration = {
       length = 4
+    }
+
+    # Demonstrates key-based CMK referencing a pattern key vault and key by map key
+    customer_managed_key = {
+      key_vault_key = "kv_shared"
+      key_key       = "cmk_sa"
+      user_assigned_identity = {
+        key = "mi_app"
+      }
+    }
+
+    # Demonstrates user_assigned_keys referencing a pattern managed identity by map key
+    managed_identities = {
+      system_assigned    = false
+      user_assigned_keys = ["mi_app"]
     }
 
     diagnostic_settings = {

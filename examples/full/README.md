@@ -443,11 +443,14 @@ object({
       identity_ids = optional(set(string))
     }))
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     data_exports = optional(map(object({
@@ -809,11 +812,14 @@ map(object({
     is_hns_enabled                    = optional(bool)
     large_file_share_enabled          = optional(bool)
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     sas_policy = optional(object({
@@ -1044,6 +1050,7 @@ map(object({
     managed_identities = optional(object({
       system_assigned            = optional(bool, false)
       user_assigned_resource_ids = optional(set(string), [])
+      user_assigned_keys         = optional(set(string), [])
     }), {})
     containers = optional(map(object({
       name                           = string

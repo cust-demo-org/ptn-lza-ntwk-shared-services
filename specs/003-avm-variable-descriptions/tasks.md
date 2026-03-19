@@ -241,6 +241,38 @@
 
 ---
 
+## Phase 13: FR-030 & FR-031 — Key-Based CMK References and Managed Identity Keys (Complete)
+
+**Prerequisites**: Phase 12 complete.
+
+### Acceptance Criteria
+
+**FR-030**: `customer_managed_key` objects MUST support `key_vault_key`, `key_key`, and `user_assigned_identity.key` for key-based references to pattern-managed resources. Mutual exclusivity validated. `main.tf` resolves keys to resource IDs/names. Examples and docs updated.
+
+**FR-031**: `managed_identities` inline objects MUST support `user_assigned_keys` that resolves to resource IDs and merges with `user_assigned_resource_ids`. Examples and docs updated.
+
+**Independent Test**: Setting `key_vault_key = "kv_shared"` and `key_key = "cmk_sa"` resolves to the key vault resource ID and key name. Setting both `key_vault_resource_id` and `key_vault_key` triggers validation error. Setting `user_assigned_keys = ["mi_app"]` merges with explicit resource IDs. `terraform validate` passes on root and all examples.
+
+### Implementation
+
+- [x] T078 [FR-030/FR-031] Add `managed_identity_resource_ids` and `key_vault_resource_ids` locals in `locals.tf`
+- [x] T079 [FR-030] Update `customer_managed_key` type definitions in root `variables.tf`: add `key_vault_key`, `key_key`, `user_assigned_identity.key`; change `key_vault_resource_id`, `key_name`, `user_assigned_identity.resource_id` to `optional(string)` (2 blocks: `log_analytics_workspace_configuration`, `storage_accounts`)
+- [x] T080 [FR-030] Add CMK validation blocks: mutual exclusivity for `key_vault_resource_id`/`key_vault_key`, `key_name`/`key_key`, `user_assigned_identity.resource_id`/`key`; dependency `key_key` requires `key_vault_key` (2 variables × 4 validations = 8 new validation blocks)
+- [x] T081 [FR-031] Add `user_assigned_keys = optional(set(string), [])` to `managed_identities` inline type in `storage_accounts` root `variables.tf`
+- [x] T082 [FR-030] Update `main.tf` CMK resolution for `log_analytics_workspace_configuration` and `storage_accounts`: resolve `key_vault_key` → `local.key_vault_resource_ids`, `key_key` → key vault keys map name, `user_assigned_identity.key` → `local.managed_identity_resource_ids`
+- [x] T083 [FR-031] Update `main.tf` `managed_identities` passthrough for `storage_accounts`: resolve `user_assigned_keys` via `local.managed_identity_resource_ids` and merge with `user_assigned_resource_ids` using `setunion`
+- [x] T084 [FR-030/FR-031] Update `customer_managed_key` and `managed_identities` descriptions in root `variables.tf` with new fields, mutual exclusivity notes, and key-based reference documentation
+- [x] T085 [FR-030] Update `customer_managed_key` type definitions in all example `variables.tf` files (LAW: 4 files; storage: full only)
+- [x] T086 [FR-031] Update `managed_identities` type definition in full example `variables.tf`
+- [x] T087 [FR-030/FR-031] Add demos to full example `terraform.tfvars`: key vault `keys` entry, storage account `customer_managed_key` with key-based references, `managed_identities` with `user_assigned_keys`
+- [x] T088 [FR-030/FR-031] Run `terraform validate` on root and all 4 examples
+- [x] T089 [FR-030/FR-031] Regenerate READMEs via `terraform-docs .` on root and all 4 examples
+- [x] T090 [FR-030/FR-031] Update spec.md (FR-030, FR-031), plan.md (Phase 6), and tasks.md (Phase 13)
+
+**Checkpoint**: Key-based CMK references and managed identity keys work across all relevant variables. Validation enforces mutual exclusivity. All configs validate. READMEs regenerated.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -257,6 +289,7 @@
 - **Phase 10 (FR-027 enable_telemetry)**: Depends on Phase 9 completion
 - **Phase 11 (FR-028 name_random_suffix_configuration)**: Depends on Phase 10 completion
 - **Phase 12 (FR-029 assign_to_caller)**: Depends on Phase 11 completion
+- **Phase 13 (FR-030/FR-031 CMK keys & MI keys)**: Depends on Phase 12 completion
 
 ### User Story Dependencies
 

@@ -116,12 +116,31 @@ module "log_analytics_workspace" {
   log_analytics_workspace_dedicated_cluster_resource_id      = var.log_analytics_workspace_configuration.dedicated_cluster_resource_id
   log_analytics_workspace_reservation_capacity_in_gb_per_day = var.log_analytics_workspace_configuration.reservation_capacity_in_gb_per_day
   log_analytics_workspace_identity                           = var.log_analytics_workspace_configuration.identity
-  customer_managed_key                                       = var.log_analytics_workspace_configuration.customer_managed_key
-  log_analytics_workspace_data_exports                       = var.log_analytics_workspace_configuration.data_exports
-  log_analytics_workspace_linked_storage_accounts            = var.log_analytics_workspace_configuration.linked_storage_accounts
-  log_analytics_workspace_tables                             = var.log_analytics_workspace_configuration.tables
-  tags                                                       = merge(var.tags, var.log_analytics_workspace_configuration.tags)
-  lock                                                       = var.log_analytics_workspace_configuration.lock
+  customer_managed_key = var.log_analytics_workspace_configuration.customer_managed_key != null ? {
+    key_vault_resource_id = (
+      var.log_analytics_workspace_configuration.customer_managed_key.key_vault_key != null
+      ? local.key_vault_resource_ids[var.log_analytics_workspace_configuration.customer_managed_key.key_vault_key]
+      : var.log_analytics_workspace_configuration.customer_managed_key.key_vault_resource_id
+    )
+    key_name = (
+      var.log_analytics_workspace_configuration.customer_managed_key.key_key != null
+      ? var.key_vaults[var.log_analytics_workspace_configuration.customer_managed_key.key_vault_key].keys[var.log_analytics_workspace_configuration.customer_managed_key.key_key].name
+      : var.log_analytics_workspace_configuration.customer_managed_key.key_name
+    )
+    key_version = var.log_analytics_workspace_configuration.customer_managed_key.key_version
+    user_assigned_identity = var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity != null ? {
+      resource_id = (
+        var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity.key != null
+        ? local.managed_identity_resource_ids[var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity.key]
+        : var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity.resource_id
+      )
+    } : null
+  } : null
+  log_analytics_workspace_data_exports            = var.log_analytics_workspace_configuration.data_exports
+  log_analytics_workspace_linked_storage_accounts = var.log_analytics_workspace_configuration.linked_storage_accounts
+  log_analytics_workspace_tables                  = var.log_analytics_workspace_configuration.tables
+  tags                                            = merge(var.tags, var.log_analytics_workspace_configuration.tags)
+  lock                                            = var.log_analytics_workspace_configuration.lock
   role_assignments = {
     for ra_key, ra in var.log_analytics_workspace_configuration.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -553,15 +572,34 @@ module "storage_account" {
   sftp_enabled                      = each.value.sftp_enabled
   is_hns_enabled                    = each.value.is_hns_enabled
   large_file_share_enabled          = each.value.large_file_share_enabled
-  customer_managed_key              = each.value.customer_managed_key
-  sas_policy                        = each.value.sas_policy
-  immutability_policy               = each.value.immutability_policy
-  blob_properties                   = each.value.blob_properties
-  share_properties                  = each.value.share_properties
-  queue_properties                  = each.value.queue_properties
-  azure_files_authentication        = each.value.azure_files_authentication
-  routing                           = each.value.routing
-  custom_domain                     = each.value.custom_domain
+  customer_managed_key = each.value.customer_managed_key != null ? {
+    key_vault_resource_id = (
+      each.value.customer_managed_key.key_vault_key != null
+      ? local.key_vault_resource_ids[each.value.customer_managed_key.key_vault_key]
+      : each.value.customer_managed_key.key_vault_resource_id
+    )
+    key_name = (
+      each.value.customer_managed_key.key_key != null
+      ? var.key_vaults[each.value.customer_managed_key.key_vault_key].keys[each.value.customer_managed_key.key_key].name
+      : each.value.customer_managed_key.key_name
+    )
+    key_version = each.value.customer_managed_key.key_version
+    user_assigned_identity = each.value.customer_managed_key.user_assigned_identity != null ? {
+      resource_id = (
+        each.value.customer_managed_key.user_assigned_identity.key != null
+        ? local.managed_identity_resource_ids[each.value.customer_managed_key.user_assigned_identity.key]
+        : each.value.customer_managed_key.user_assigned_identity.resource_id
+      )
+    } : null
+  } : null
+  sas_policy                 = each.value.sas_policy
+  immutability_policy        = each.value.immutability_policy
+  blob_properties            = each.value.blob_properties
+  share_properties           = each.value.share_properties
+  queue_properties           = each.value.queue_properties
+  azure_files_authentication = each.value.azure_files_authentication
+  routing                    = each.value.routing
+  custom_domain              = each.value.custom_domain
   queues = {
     for q_key, q in each.value.queues : q_key => merge(q, {
       role_assignments = {
@@ -614,7 +652,13 @@ module "storage_account" {
   table_encryption_key_type      = each.value.table_encryption_key_type
   storage_management_policy_rule = each.value.storage_management_policy_rule
   network_rules                  = each.value.network_rules
-  managed_identities             = each.value.managed_identities
+  managed_identities = {
+    system_assigned = each.value.managed_identities.system_assigned
+    user_assigned_resource_ids = setunion(
+      each.value.managed_identities.user_assigned_resource_ids,
+      toset([for k in each.value.managed_identities.user_assigned_keys : local.managed_identity_resource_ids[k]])
+    )
+  }
   containers = {
     for c_key, c in each.value.containers : c_key => merge(c, {
       role_assignments = {
