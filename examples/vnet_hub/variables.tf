@@ -483,7 +483,11 @@ variable "managed_identities" {
 
 variable "key_vaults" {
   type = map(object({
-    name                            = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length             = number
+      append_with_hyphen = optional(bool, true)
+    }))
     resource_group_key              = string
     location                        = optional(string)
     sku_name                        = optional(string, "premium")

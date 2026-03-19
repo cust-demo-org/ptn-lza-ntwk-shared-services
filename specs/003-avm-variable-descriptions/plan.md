@@ -162,6 +162,25 @@ Added a global `enable_telemetry` variable (type `bool`, default `true`) to the 
 | `examples/*/main.tf` | Added `enable_telemetry = var.enable_telemetry` pass-through (4 files). |
 | `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |
 
+## Phase 4: FR-028 — Per-Resource `name_random_suffix_configuration` (Complete)
+
+**Prerequisites**: Phase 3 complete.
+
+### Summary
+
+Replaced the global `random_suffix_length` variable with per-resource `name_random_suffix_configuration` on `key_vaults` and `storage_accounts`. This gives users granular control: each key vault or storage account can independently configure whether and how many random characters to append to its name for global uniqueness. Key Vault supports an `append_with_hyphen` option (default `true`); Storage Account always appends directly (no separator). A separate `random_string` resource is created per resource that opts in. The old global `random_suffix_length` variable, `random_string.name_suffix` resource, and `local.name_suffix` were removed.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `variables.tf` | Removed `random_suffix_length` variable. Added `name_random_suffix_configuration` to `key_vaults` and `storage_accounts` type definitions and descriptions. |
+| `main.tf` | Removed `random_string.name_suffix`. Added `random_string.key_vault_suffix` and `random_string.storage_account_suffix` per-resource. Updated key_vault and storage_account `name` arguments. |
+| `locals.tf` | Removed `local.name_suffix`. |
+| `examples/*/variables.tf` | Added `name_random_suffix_configuration` to `key_vaults` (4 files) and `storage_accounts` (full only). |
+| `examples/full/terraform.tfvars` | Added `name_random_suffix_configuration` demo config for both key vault and storage account (`length = 4`). |
+| `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |
+
 ## Complexity Tracking
 
 > No constitution violations to justify. All gates pass.

@@ -51,6 +51,8 @@ The following requirements are needed by this module:
 
 - <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) (= 4.63.0)
 
+- <a name="requirement_random"></a> [random](#requirement\_random) (= 3.8.1)
+
 ## Resources
 
 The following resources are used by this module:
@@ -245,7 +247,11 @@ Type:
 
 ```hcl
 map(object({
-    name                            = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length             = number
+      append_with_hyphen = optional(bool, true)
+    }))
     resource_group_key              = string
     location                        = optional(string)
     sku_name                        = optional(string, "premium")
@@ -766,7 +772,10 @@ Type:
 
 ```hcl
 map(object({
-    name                              = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length = number
+    }))
     resource_group_key                = string
     location                          = optional(string)
     account_tier                      = optional(string, "Standard")

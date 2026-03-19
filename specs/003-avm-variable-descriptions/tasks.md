@@ -194,6 +194,30 @@
 
 ---
 
+## Phase 11: FR-028 — Per-Resource `name_random_suffix_configuration`
+
+**Goal**: Replace the global `random_suffix_length` variable with per-resource `name_random_suffix_configuration` on `key_vaults` and `storage_accounts`, giving users granular control over random name suffixes for globally unique resources.
+
+**Independent Test**: Setting `name_random_suffix_configuration = { length = 4 }` on a storage account or `{ length = 4, append_with_hyphen = true }` on a key vault appends random characters. Omitting it uses the name as-is. `terraform validate` passes on root and all examples.
+
+### Implementation
+
+- [x] T057 [FR-028] Remove global `random_suffix_length` variable from root `variables.tf`
+- [x] T058 [FR-028] Remove `random_string.name_suffix` resource from `main.tf` and `local.name_suffix` from `locals.tf`
+- [x] T059 [FR-028] Add `name_random_suffix_configuration` optional object to `key_vaults` type definition (root + 4 examples) with `length` (number) and `append_with_hyphen` (optional bool, default `true`)
+- [x] T060 [FR-028] Add `name_random_suffix_configuration` optional object to `storage_accounts` type definition (root + full example) with `length` (number)
+- [x] T061 [FR-028] Add per-resource `random_string.key_vault_suffix` and `random_string.storage_account_suffix` resources to `main.tf`
+- [x] T062 [FR-028] Update key_vault and storage_account module `name` arguments to use per-resource suffix when configured
+- [x] T063 [FR-028] Update full example `terraform.tfvars` to demonstrate `name_random_suffix_configuration` on both key vault and storage account
+- [x] T064 [FR-028] Update descriptions for both variables with 24-character max name length warning
+- [x] T065 [FR-028] Run `terraform validate` on root and all 4 examples
+- [x] T066 [FR-028] Regenerate READMEs via `terraform-docs .` on root and all 4 examples
+- [x] T067 [FR-028] Update spec.md: add FR-028, update plan.md and tasks.md
+
+**Checkpoint**: Per-resource random suffix config available on key_vaults and storage_accounts. Global `random_suffix_length` removed. All configs validate. READMEs regenerated.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -207,6 +231,8 @@
 - **Phase 7 (US4 Rendering)**: Depends on Phase 6 (pattern notes may affect rendering)
 - **Phase 8 (Polish)**: Depends on Phase 7 completion
 - **Phase 9 (FR-026 managed_identity_key)**: Depends on Phase 8 completion (all descriptions must be finalized before modifying types and adding validations)
+- **Phase 10 (FR-027 enable_telemetry)**: Depends on Phase 9 completion
+- **Phase 11 (FR-028 name_random_suffix_configuration)**: Depends on Phase 10 completion
 
 ### User Story Dependencies
 

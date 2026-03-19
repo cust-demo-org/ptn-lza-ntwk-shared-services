@@ -385,6 +385,26 @@ module "managed_identity" {
   federated_identity_credentials = each.value.federated_identity_credentials
 }
 
+# ──────────────────────────────────────────────────────────────
+# Random suffixes for globally unique resource names
+# ──────────────────────────────────────────────────────────────
+
+resource "random_string" "key_vault_suffix" {
+  for_each = { for k, v in var.key_vaults : k => v.name_random_suffix_configuration if v.name_random_suffix_configuration != null }
+
+  length  = each.value.length
+  special = false
+  upper   = false
+}
+
+resource "random_string" "storage_account_suffix" {
+  for_each = { for k, v in var.storage_accounts : k => v.name_random_suffix_configuration if v.name_random_suffix_configuration != null }
+
+  length  = each.value.length
+  special = false
+  upper   = false
+}
+
 module "key_vault" {
   source  = "Azure/avm-res-keyvault-vault/azurerm"
   version = "0.10.2"
@@ -392,7 +412,7 @@ module "key_vault" {
   for_each = var.key_vaults
 
   enable_telemetry                = var.enable_telemetry
-  name                            = each.value.name
+  name                            = each.value.name_random_suffix_configuration != null ? (each.value.name_random_suffix_configuration.append_with_hyphen ? "${each.value.name}-${random_string.key_vault_suffix[each.key].result}" : "${each.value.name}${random_string.key_vault_suffix[each.key].result}") : each.value.name
   location                        = coalesce(each.value.location, var.location)
   resource_group_name             = local.resource_group_names[each.value.resource_group_key]
   tenant_id                       = data.azurerm_client_config.current.tenant_id
@@ -513,7 +533,7 @@ module "storage_account" {
   for_each = var.storage_accounts
 
   enable_telemetry                  = var.enable_telemetry
-  name                              = each.value.name
+  name                              = each.value.name_random_suffix_configuration != null ? "${each.value.name}${random_string.storage_account_suffix[each.key].result}" : each.value.name
   resource_group_name               = local.resource_group_names[each.value.resource_group_key]
   location                          = coalesce(each.value.location, var.location)
   account_tier                      = each.value.account_tier

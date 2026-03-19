@@ -254,6 +254,10 @@ key_vaults = {
     name               = "kv-shared-full"
     resource_group_key = "rg_shared"
     sku_name           = "premium"
+    name_random_suffix_configuration = {
+      length             = 4
+      append_with_hyphen = true
+    }
 
     diagnostic_settings = {
       to_law = {
@@ -341,6 +345,9 @@ storage_accounts = {
     account_replication_type      = "LRS"
     shared_access_key_enabled     = false
     public_network_access_enabled = true
+    name_random_suffix_configuration = {
+      length = 4
+    }
 
     diagnostic_settings = {
       to_law = {

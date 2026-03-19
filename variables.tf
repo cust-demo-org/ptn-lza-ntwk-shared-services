@@ -943,7 +943,11 @@ variable "managed_identities" {
 
 variable "key_vaults" {
   type = map(object({
-    name                            = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length             = number
+      append_with_hyphen = optional(bool, true)
+    }))
     resource_group_key              = string
     location                        = optional(string)
     sku_name                        = optional(string, "premium")
@@ -1096,6 +1100,9 @@ variable "key_vaults" {
     A map of Key Vaults to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
     - `name` - (Required) The name of the Key Vault.
+    - `name_random_suffix_configuration` - (Optional) Configuration for appending a random suffix to the Key Vault name to ensure global uniqueness. When set, a random lowercase alphanumeric string of the specified length is generated and appended to the name. Key Vault names must be between 3 and 24 characters — ensure the total length (base name + hyphen if applicable + suffix) does not exceed 24 characters. Defaults to `null` (no suffix).
+      - `length` - (Required) The number of random characters to append.
+      - `append_with_hyphen` - (Optional) Whether to separate the suffix with a hyphen (e.g., `kv-shared-a1b2`). Defaults to `true`. Set to `false` to append directly (e.g., `kv-shareda1b2`).
     - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this Key Vault will be deployed.
     - `location` - (Optional) The Azure region for the Key Vault. Defaults to `null`.
     - `sku_name` - (Optional) The SKU tier of the Key Vault. Possible values are `"standard"` and `"premium"`. Defaults to `"premium"`.
@@ -1432,7 +1439,10 @@ variable "bastion_hosts" {
 
 variable "storage_accounts" {
   type = map(object({
-    name                              = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length = number
+    }))
     resource_group_key                = string
     location                          = optional(string)
     account_tier                      = optional(string, "Standard")
@@ -1835,6 +1845,8 @@ variable "storage_accounts" {
     A map of storage accounts to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
     - `name` - (Required) The name of the storage account. Must be between 3 and 24 characters, globally unique, and use only lowercase letters and numbers.
+    - `name_random_suffix_configuration` - (Optional) Configuration for appending a random suffix to the storage account name to ensure global uniqueness. When set, a random lowercase alphanumeric string of the specified length is generated and appended directly to the name (no separator, since storage account names only allow lowercase alphanumeric characters). Storage account names must be between 3 and 24 characters — ensure the total length (base name + suffix) does not exceed 24 characters. Defaults to `null` (no suffix).
+      - `length` - (Required) The number of random characters to append.
     - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this storage account will be deployed.
     - `location` - (Optional) The Azure region for the storage account. Defaults to `null`.
     - `account_tier` - (Optional) Defines the tier to use for this storage account. Possible values are `"Standard"` and `"Premium"`. Defaults to `"Standard"`.
