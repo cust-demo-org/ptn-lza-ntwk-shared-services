@@ -1134,15 +1134,15 @@ variable "key_vaults" {
     wait_for_rbac_before_key_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_secret_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_contact_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     tags = optional(map(string), {})
     lock = optional(object({
       kind = string
@@ -2289,6 +2289,610 @@ variable "storage_accounts" {
       )
     ])
     error_message = "Each storage account customer_managed_key user_assigned_identity must set exactly one of resource_id or key."
+  }
+}
+
+# ──────────────────────────────────────────────────────────────
+# Backup Vaults (Azure Data Protection)
+# ──────────────────────────────────────────────────────────────
+
+variable "backup_vaults" {
+  type = map(object({
+    name                                    = string
+    resource_group_key                      = string
+    location                                = optional(string)
+    datastore_type                          = string
+    redundancy                              = string
+    immutability                            = optional(string, "Disabled")
+    soft_delete                             = optional(string, "AlwaysOn")
+    retention_duration_in_days              = optional(number, 14)
+    cross_region_restore_enabled            = optional(bool, false)
+    cross_subscription_restore_state        = optional(string, null)
+    alerts_for_all_job_failures             = optional(string, null)
+    resource_guard_enabled                  = optional(bool, false)
+    resource_guard_name                     = optional(string, null)
+    vault_critical_operation_exclusion_list = optional(list(string), [])
+    replicated_regions                      = optional(list(string), [])
+    permanent_delete_on_destroy             = optional(bool, true)
+    customer_managed_key = optional(object({
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
+      key_version           = optional(string)
+      user_assigned_identity = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+    }))
+    backup_policies = optional(map(object({
+      type                                   = string
+      name                                   = string
+      backup_repeating_time_intervals        = optional(list(string), [])
+      default_retention_duration             = optional(string, "P30D")
+      time_zone                              = optional(string, "UTC")
+      operational_default_retention_duration = optional(string)
+      vault_default_retention_duration       = optional(string)
+      default_retention_life_cycle = optional(object({
+        data_store_type = optional(string, "OperationalStore")
+        duration        = optional(string, "P14D")
+      }))
+      retention_rules = optional(list(object({
+        name     = string
+        priority = number
+        duration = optional(string, "P30D")
+        criteria = list(object({
+          absolute_criteria      = optional(string)
+          days_of_month          = optional(list(number))
+          days_of_week           = optional(list(string))
+          months_of_year         = optional(list(string))
+          scheduled_backup_times = optional(list(string))
+          weeks_of_month         = optional(list(string))
+        }))
+        life_cycle = optional(list(object({
+          data_store_type = string
+          duration        = string
+        })), [])
+      })), [])
+    })), {})
+    backup_instances = optional(map(object({
+      type                            = string
+      name                            = string
+      backup_policy_key               = string
+      disk_id                         = optional(string)
+      snapshot_resource_group_name    = optional(string)
+      storage_account_id              = optional(string)
+      storage_account_container_names = optional(list(string), [])
+      kubernetes_cluster_id           = optional(string)
+      backup_datasource_parameters = optional(object({
+        excluded_namespaces              = optional(list(string), [])
+        included_namespaces              = optional(list(string), [])
+        excluded_resource_types          = optional(list(string), [])
+        included_resource_types          = optional(list(string), [])
+        label_selectors                  = optional(list(string), [])
+        cluster_scoped_resources_enabled = optional(bool, false)
+        volume_snapshot_enabled          = optional(bool, false)
+      }))
+      postgresql_server_id                    = optional(string)
+      postgresql_database_id                  = optional(string)
+      postgresql_key_vault_secret_id          = optional(string)
+      postgresql_flexible_server_id           = optional(string)
+      postgresql_flexible_database_id         = optional(string)
+      postgresql_flexible_key_vault_secret_id = optional(string)
+    })), {})
+    managed_identities = optional(object({
+      system_assigned            = optional(bool, false)
+      user_assigned_resource_ids = optional(set(string), [])
+      user_assigned_keys         = optional(set(string), [])
+    }), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    lock = optional(object({
+      kind = string
+      name = optional(string, null)
+    }))
+    tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+      use_default_log_analytics                = optional(bool, true)
+    })), {})
+  }))
+  default     = {}
+  description = <<-EOT
+    A map of Azure Data Protection Backup Vaults to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+
+    - `name` - (Required) The name of the Backup Vault. Must be between 5 and 50 characters long.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this Backup Vault will be deployed.
+    - `location` - (Optional) The Azure region for the Backup Vault. Defaults to `var.location`.
+    - `datastore_type` - (Required) Specifies the type of the datastore. Valid options: `"ArchiveStore"`, `"OperationalStore"`, `"SnapshotStore"`, `"VaultStore"`.
+    - `redundancy` - (Required) Specifies the backup storage redundancy. Valid options: `"GeoRedundant"`, `"LocallyRedundant"`, `"ZoneRedundant"`.
+    - `immutability` - (Optional) Immutability state of the vault. Possible values: `"Disabled"`, `"Locked"`, `"Unlocked"`. Defaults to `"Disabled"`.
+    - `soft_delete` - (Optional) Soft delete state. Defaults to `"AlwaysOn"`.
+    - `retention_duration_in_days` - (Optional) Soft delete retention duration. Valid values are between 14 and 180. Defaults to `14`.
+    - `cross_region_restore_enabled` - (Optional) Whether to enable cross-region restore. Can only be enabled with `"GeoRedundant"` redundancy. Defaults to `false`.
+    - `cross_subscription_restore_state` - (Optional) Cross-subscription restore state. Possible values: `"Enabled"`, `"Disabled"`, `"PermanentlyDisabled"`. Defaults to `null`.
+    - `alerts_for_all_job_failures` - (Optional) Azure Monitor alert setting for all job failures. Possible values: `"Enabled"`, `"Disabled"`. Defaults to `null`.
+    - `resource_guard_enabled` - (Optional) Whether to deploy a Resource Guard to protect the vault. Defaults to `false`.
+    - `resource_guard_name` - (Optional) The name of the Resource Guard. If not specified, uses vault name with `"-guard"` suffix. Defaults to `null`.
+    - `vault_critical_operation_exclusion_list` - (Optional) Critical operations not protected by Resource Guard. Possible values: `"Delete"`, `"Update"`, `"DisableSoftDelete"`, `"ChangeBackupProperties"`. Defaults to `[]`.
+    - `replicated_regions` - (Optional) List of replicated regions. Only applicable for `"GeoRedundant"` vaults. Defaults to `[]`.
+    - `permanent_delete_on_destroy` - (Optional) Whether backup instances should be permanently deleted on destroy. Defaults to `true`.
+    - `customer_managed_key` - (Optional) Customer managed key configuration for encrypting the Backup Vault.
+      - `key_vault_resource_id` - (Optional) The resource ID of the Key Vault containing the key. Mutually exclusive with `key_vault_key`.
+      - `key_vault_key` - (Optional) The key of a Key Vault in the `key_vaults` variable, resolving to its resource ID. Mutually exclusive with `key_vault_resource_id`.
+      - `key_name` - (Optional) The name of the Key Vault key. Mutually exclusive with `key_key`.
+      - `key_key` - (Optional) The key of a key entry within the Key Vault's `keys` map (identified by `key_vault_key`), resolving to its name. Requires `key_vault_key` to be set. Mutually exclusive with `key_name`.
+      - `key_version` - (Optional) Specific key version. If omitted, the service uses the latest.
+      - `user_assigned_identity` - (Optional) The user-assigned identity to use for accessing the Key Vault.
+        - `resource_id` - (Optional) The resource ID of the user-assigned managed identity. Mutually exclusive with `key`.
+        - `key` - (Optional) The key of a managed identity in the `managed_identities` variable, resolving to its resource ID. Mutually exclusive with `resource_id`.
+    - `backup_policies` - (Optional) A map of backup policies to create. Defaults to `{}`.
+      - `type` - (Required) Policy type: `"disk"`, `"blob"`, `"adls"`, `"kubernetes"`, `"postgresql"`, `"postgresql_flexible"`.
+      - `name` - (Required) The name of the backup policy.
+      - `backup_repeating_time_intervals` - (Optional) List of ISO8601 backup schedule intervals. Defaults to `[]`.
+      - `default_retention_duration` - (Optional) Default retention period in ISO8601 format. Defaults to `"P30D"`.
+      - `time_zone` - (Optional) Time zone for backup schedules. Defaults to `"UTC"`.
+      - `operational_default_retention_duration` - (Optional) For blob/ADLS policies.
+      - `vault_default_retention_duration` - (Optional) For blob/ADLS policies.
+      - `default_retention_life_cycle` - (Optional) For AKS policies.
+      - `retention_rules` - (Optional) List of retention rules with criteria and lifecycle. Defaults to `[]`.
+    - `backup_instances` - (Optional) A map of backup instances to create. Each instance references a backup policy via `backup_policy_key`. Defaults to `{}`.
+      - `type` - (Required) Instance type: `"disk"`, `"blob"`, `"adls"`, `"kubernetes"`, `"postgresql"`, `"postgresql_flexible"`.
+      - `name` - (Required) Display name for the backup instance.
+      - `backup_policy_key` - (Required) Reference to a key in the `backup_policies` map.
+      - Type-specific settings (disk, blob, AKS, PostgreSQL, PostgreSQL Flexible) — see module documentation.
+    - `managed_identities` - (Optional) Managed identity configuration. Defaults to `{}`.
+      - `system_assigned` - (Optional) Whether to enable system-assigned managed identity. Defaults to `false`.
+      - `user_assigned_resource_ids` - (Optional) A set of user-assigned managed identity resource IDs. Defaults to `[]`.
+      - `user_assigned_keys` - (Optional) A set of keys from the `managed_identities` variable, resolving to their resource IDs. Defaults to `[]`.
+    - `role_assignments` - (Optional) A map of role assignments to create on this Backup Vault. Defaults to `{}`.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition to assign to the principal.
+      - `principal_id` - (Optional) The ID of the principal. Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+      - `managed_identity_key` - (Optional) The key of a managed identity in the `managed_identities` variable. Mutually exclusive with `principal_id` and `assign_to_caller`.
+      - `assign_to_caller` - (Optional) When `true`, automatically uses the object ID of the identity running Terraform. Mutually exclusive with `principal_id` and `managed_identity_key`. Defaults to `false`.
+      - `description` - (Optional) The description of the role assignment.
+      - `skip_service_principal_aad_check` - (Optional) Defaults to `false`.
+      - `condition` - (Optional) Defaults to `null`.
+      - `condition_version` - (Optional) Defaults to `null`.
+      - `delegated_managed_identity_resource_id` - (Optional) Defaults to `null`.
+      - `principal_type` - (Optional) Defaults to `null`.
+
+      > Note: Specify exactly one of `principal_id`, `managed_identity_key`, or `assign_to_caller`.
+
+    - `lock` - (Optional) Controls the Resource Lock configuration.
+      - `kind` - (Required) The type of lock. Possible values are `"CanNotDelete"` and `"ReadOnly"`.
+      - `name` - (Optional) The name of the lock.
+    - `tags` - (Optional) Tags to apply. Defaults to `{}`.
+    - `diagnostic_settings` - (Optional) A map of diagnostic settings. Defaults to `{}`.
+      - `name` - (Optional) The name of the diagnostic setting.
+      - `log_categories` - (Optional) Defaults to `[]`.
+      - `log_groups` - (Optional) Defaults to `["allLogs"]`.
+      - `metric_categories` - (Optional) Defaults to `["AllMetrics"]`.
+      - `log_analytics_destination_type` - (Optional) Defaults to `"Dedicated"`.
+      - `workspace_resource_id` - (Optional) Defaults to `null`.
+      - `storage_account_resource_id` - (Optional) Defaults to `null`.
+      - `event_hub_authorization_rule_resource_id` - (Optional) Defaults to `null`.
+      - `event_hub_name` - (Optional) Defaults to `null`.
+      - `marketplace_partner_resource_id` - (Optional) Defaults to `null`.
+      - `use_default_log_analytics` - (Optional) When `true`, automatically sets `workspace_resource_id` to the pattern's Log Analytics workspace. Defaults to `true`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
+  EOT
+
+  validation {
+    condition = alltrue([
+      for bv_key, bv in var.backup_vaults : alltrue([
+        for ra_key, ra in bv.role_assignments : ((ra.principal_id != null ? 1 : 0) + (ra.managed_identity_key != null ? 1 : 0) + (ra.assign_to_caller ? 1 : 0)) == 1
+      ])
+    ])
+    error_message = "Each backup vault role assignment must set exactly one of principal_id, managed_identity_key, or assign_to_caller."
+  }
+
+  validation {
+    condition = alltrue([
+      for bv_key, bv in var.backup_vaults : bv.customer_managed_key == null ? true : (
+        (bv.customer_managed_key.key_vault_resource_id != null ? 1 : 0) +
+        (bv.customer_managed_key.key_vault_key != null ? 1 : 0)
+      ) == 1
+    ])
+    error_message = "Each backup vault customer_managed_key must set exactly one of key_vault_resource_id or key_vault_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for bv_key, bv in var.backup_vaults : bv.customer_managed_key == null ? true : (
+        (bv.customer_managed_key.key_name != null ? 1 : 0) +
+        (bv.customer_managed_key.key_key != null ? 1 : 0)
+      ) == 1
+    ])
+    error_message = "Each backup vault customer_managed_key must set exactly one of key_name or key_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for bv_key, bv in var.backup_vaults : bv.customer_managed_key == null ? true : (
+        bv.customer_managed_key.key_key == null ||
+        bv.customer_managed_key.key_vault_key != null
+      )
+    ])
+    error_message = "Each backup vault customer_managed_key key_key requires key_vault_key to be set."
+  }
+
+  validation {
+    condition = alltrue([
+      for bv_key, bv in var.backup_vaults : bv.customer_managed_key == null ? true : (
+        bv.customer_managed_key.user_assigned_identity == null ? true : (
+          (bv.customer_managed_key.user_assigned_identity.resource_id != null ? 1 : 0) +
+          (bv.customer_managed_key.user_assigned_identity.key != null ? 1 : 0)
+        ) == 1
+      )
+    ])
+    error_message = "Each backup vault customer_managed_key user_assigned_identity must set exactly one of resource_id or key."
+  }
+}
+
+# ──────────────────────────────────────────────────────────────
+# Recovery Services Vaults
+# ──────────────────────────────────────────────────────────────
+
+variable "recovery_services_vaults" {
+  type = map(object({
+    name                                           = string
+    resource_group_key                             = string
+    location                                       = optional(string)
+    sku                                            = optional(string, "Standard")
+    immutability                                   = optional(string, "Unlocked")
+    soft_delete_enabled                            = optional(bool, true)
+    storage_mode_type                              = optional(string, "GeoRedundant")
+    cross_region_restore_enabled                   = optional(bool, true)
+    public_network_access_enabled                  = optional(bool, true)
+    classic_vmware_replication_enabled             = optional(bool, false)
+    alerts_for_all_job_failures_enabled            = optional(bool, true)
+    alerts_for_critical_operation_failures_enabled = optional(bool, true)
+    customer_managed_key = optional(object({
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
+      key_version           = optional(string, null)
+      user_assigned_identity = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+    }))
+    vm_backup_policy = optional(map(object({
+      name                           = string
+      timezone                       = string
+      instant_restore_retention_days = optional(number, null)
+      instant_restore_resource_group = optional(map(object({
+        prefix = optional(string, null)
+        suffix = optional(string, null)
+      })), {})
+      policy_type     = string
+      frequency       = string
+      retention_daily = optional(number, null)
+      backup = object({
+        time          = string
+        hour_interval = optional(number, null)
+        hour_duration = optional(number, null)
+        weekdays      = optional(list(string), [])
+      })
+      retention_weekly = optional(object({
+        count    = optional(number, 7)
+        weekdays = optional(list(string), [])
+      }), {})
+      retention_monthly = optional(object({
+        count             = optional(number, 0)
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+      retention_yearly = optional(object({
+        count             = optional(number, 0)
+        months            = optional(list(string), [])
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+    })), null)
+    file_share_backup_policy = optional(map(object({
+      name            = string
+      timezone        = string
+      frequency       = string
+      retention_daily = optional(number, null)
+      backup = object({
+        time = string
+        hourly = optional(object({
+          interval        = number
+          start_time      = string
+          window_duration = number
+        }))
+      })
+      retention_weekly = optional(object({
+        count    = optional(number, 7)
+        weekdays = optional(list(string), [])
+      }), {})
+      retention_monthly = optional(object({
+        count             = optional(number, 0)
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+      retention_yearly = optional(object({
+        count             = optional(number, 0)
+        months            = optional(list(string), [])
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+    })), null)
+    workload_backup_policy = optional(map(object({
+      name          = string
+      workload_type = string
+      settings = object({
+        time_zone           = string
+        compression_enabled = bool
+      })
+      backup_frequency = string
+      protection_policy = map(object({
+        policy_type           = string
+        retention_daily_count = number
+        retention_weekly = optional(object({
+          count    = optional(number, null)
+          weekdays = optional(set(string), null)
+        }), null)
+        backup = optional(object({
+          time                 = optional(string)
+          frequency_in_minutes = optional(number)
+          weekdays             = optional(set(string))
+        }), null)
+        retention_monthly = optional(object({
+          count             = optional(number, null)
+          weekdays          = optional(set(string), null)
+          weeks             = optional(set(string), null)
+          monthdays         = optional(set(number), null)
+          include_last_days = optional(bool, false)
+        }), null)
+        retention_yearly = optional(object({
+          count             = optional(number, null)
+          months            = optional(set(string), null)
+          weekdays          = optional(set(string), null)
+          weeks             = optional(set(string), null)
+          monthdays         = optional(set(number), null)
+          include_last_days = optional(bool, false)
+        }), null)
+      }))
+    })), null)
+    backup_protected_vm = optional(map(object({
+      source_vm_id          = string
+      vm_backup_policy_name = string
+      sleep_timer           = optional(string, "60s")
+    })), null)
+    backup_protected_file_share = optional(map(object({
+      source_storage_account_id     = string
+      backup_file_share_policy_name = string
+      source_file_share_name        = string
+      disable_registration          = optional(bool, false)
+      sleep_timer                   = optional(string, "60s")
+    })), null)
+    managed_identities = optional(object({
+      system_assigned            = optional(bool, false)
+      user_assigned_resource_ids = optional(set(string), [])
+      user_assigned_keys         = optional(set(string), [])
+    }), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    private_endpoints = optional(map(object({
+      name = optional(string, null)
+      role_assignments = optional(map(object({
+        role_definition_id_or_name             = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
+        description                            = optional(string, null)
+        skip_service_principal_aad_check       = optional(bool, false)
+        condition                              = optional(string, null)
+        condition_version                      = optional(string, null)
+        delegated_managed_identity_resource_id = optional(string, null)
+        principal_type                         = optional(string, null)
+      })), {})
+      lock = optional(object({
+        kind = string
+        name = optional(string, null)
+      }), null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      subresource_name = string
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      private_dns_zone_group_name             = optional(string, "default")
+      application_security_group_associations = optional(map(string), {})
+      private_service_connection_name         = optional(string, null)
+      network_interface_name                  = optional(string, null)
+      location                                = optional(string, null)
+      resource_group_name                     = optional(string, null)
+      ip_configurations = optional(map(object({
+        name               = string
+        private_ip_address = string
+      })), {})
+      tags = optional(map(string), null)
+    })), {})
+    lock = optional(object({
+      kind = string
+      name = optional(string, null)
+    }))
+    tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+      use_default_log_analytics                = optional(bool, true)
+    })), {})
+  }))
+  default     = {}
+  description = <<-EOT
+    A map of Azure Recovery Services Vaults to create. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+
+    - `name` - (Required) The name of the Recovery Services Vault. Must be between 2 and 50 characters, containing upper/lowercase letters, numbers and hyphens.
+    - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this vault will be deployed.
+    - `location` - (Optional) The Azure region for the vault. Defaults to `var.location`.
+    - `sku` - (Optional) The SKU of the vault. Possible values: `"Standard"`, `"RS0"`. Defaults to `"Standard"`.
+    - `immutability` - (Optional) Immutability setting. Possible values: `"Locked"`, `"Unlocked"`, `"Disabled"`. Defaults to `"Unlocked"`.
+    - `soft_delete_enabled` - (Optional) Whether soft delete is enabled. Defaults to `true`.
+    - `storage_mode_type` - (Optional) Storage type. Possible values: `"GeoRedundant"`, `"LocallyRedundant"`, `"ZoneRedundant"`. Defaults to `"GeoRedundant"`.
+    - `cross_region_restore_enabled` - (Optional) Whether cross-region restore is enabled. Requires `"GeoRedundant"` storage. Defaults to `true`.
+    - `public_network_access_enabled` - (Optional) Whether public network access is enabled. Defaults to `true`.
+    - `classic_vmware_replication_enabled` - (Optional) Whether classic VMware replication is enabled. Defaults to `false`.
+    - `alerts_for_all_job_failures_enabled` - (Optional) Whether monitoring alerts for all job failures are enabled. Defaults to `true`.
+    - `alerts_for_critical_operation_failures_enabled` - (Optional) Whether monitoring alerts for critical operation failures are enabled. Defaults to `true`.
+    - `customer_managed_key` - (Optional) Customer managed key configuration for encryption.
+      - `key_vault_resource_id` - (Optional) The resource ID of the Key Vault. Mutually exclusive with `key_vault_key`.
+      - `key_vault_key` - (Optional) The key of a Key Vault in the `key_vaults` variable. Mutually exclusive with `key_vault_resource_id`.
+      - `key_name` - (Optional) The name of the Key Vault key. Mutually exclusive with `key_key`.
+      - `key_key` - (Optional) The key of a key entry within the Key Vault's `keys` map (identified by `key_vault_key`). Requires `key_vault_key`. Mutually exclusive with `key_name`.
+      - `key_version` - (Optional) Customer managed key version.
+      - `user_assigned_identity` - (Optional) The user-assigned identity for Key Vault access.
+        - `resource_id` - (Optional) The resource ID. Mutually exclusive with `key`.
+        - `key` - (Optional) The key of a managed identity in `managed_identities`. Mutually exclusive with `resource_id`.
+    - `vm_backup_policy` - (Optional) A map of VM backup policies. See module documentation for full schema.
+    - `file_share_backup_policy` - (Optional) A map of file share backup policies. See module documentation for full schema.
+    - `workload_backup_policy` - (Optional) A map of workload (SQL/SAP HANA) backup policies. See module documentation for full schema.
+    - `backup_protected_vm` - (Optional) A map of protected VMs to register for backup.
+    - `backup_protected_file_share` - (Optional) A map of protected file shares to register for backup.
+    - `managed_identities` - (Optional) Managed identity configuration. Defaults to `{}`.
+      - `system_assigned` - (Optional) Whether to enable system-assigned managed identity. Defaults to `false`.
+      - `user_assigned_resource_ids` - (Optional) A set of user-assigned managed identity resource IDs. Defaults to `[]`.
+      - `user_assigned_keys` - (Optional) A set of keys from the `managed_identities` variable. Defaults to `[]`.
+    - `role_assignments` - (Optional) A map of role assignments. Defaults to `{}`.
+      - `role_definition_id_or_name` - (Required) The ID or name of the role definition.
+      - `principal_id` - (Optional) Mutually exclusive with `managed_identity_key` and `assign_to_caller`.
+      - `managed_identity_key` - (Optional) Mutually exclusive with `principal_id` and `assign_to_caller`.
+      - `assign_to_caller` - (Optional) Defaults to `false`. Mutually exclusive with `principal_id` and `managed_identity_key`.
+      - `description` - (Optional) Defaults to `null`.
+      - `skip_service_principal_aad_check` - (Optional) Defaults to `false`.
+      - `condition` - (Optional) Defaults to `null`.
+      - `condition_version` - (Optional) Defaults to `null`.
+      - `delegated_managed_identity_resource_id` - (Optional) Defaults to `null`.
+      - `principal_type` - (Optional) Defaults to `null`.
+
+      > Note: Specify exactly one of `principal_id`, `managed_identity_key`, or `assign_to_caller`.
+
+    - `private_endpoints` - (Optional) A map of private endpoints. Defaults to `{}`. Supports `subresource_name` for specifying the service sub-resource (e.g., `"AzureBackup"`, `"AzureSiteRecovery"`).
+      - `name` - (Optional) The name of the private endpoint.
+      - `role_assignments` - (Optional) Role assignments on the private endpoint. Same schema as vault `role_assignments`.
+      - `lock` - (Optional) Lock configuration.
+      - `network_configuration` - (Required) Network configuration.
+        - `subnet_resource_id` - (Optional) Explicit subnet resource ID. Mutually exclusive with `vnet_key`/`subnet_key`.
+        - `vnet_key` - (Optional) Key of a VNet in `virtual_networks`. Used with `subnet_key`.
+        - `subnet_key` - (Optional) Key of a subnet within the VNet.
+      - `subresource_name` - (Required) The sub-resource name for the PE (e.g., `"AzureBackup"`, `"AzureSiteRecovery"`).
+      - `private_dns_zone` - (Optional) DNS zone configuration.
+        - `resource_ids` - (Optional) Explicit DNS zone resource IDs.
+        - `keys` - (Optional) Keys from `private_dns_zones` or `byo_private_dns_zone_links`.
+      - Additional PE fields: `private_dns_zone_group_name`, `application_security_group_associations`, `private_service_connection_name`, `network_interface_name`, `location`, `resource_group_name`, `ip_configurations`, `tags`.
+    - `lock` - (Optional) Resource lock configuration.
+      - `kind` - (Required) `"CanNotDelete"` or `"ReadOnly"`.
+      - `name` - (Optional) Lock name.
+    - `tags` - (Optional) Tags. Defaults to `{}`.
+    - `diagnostic_settings` - (Optional) Diagnostic settings. Defaults to `{}`. Same schema as other resources with `use_default_log_analytics`.
+
+    > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`.
+  EOT
+
+  validation {
+    condition = alltrue([
+      for rsv_key, rsv in var.recovery_services_vaults : alltrue([
+        for ra_key, ra in rsv.role_assignments : ((ra.principal_id != null ? 1 : 0) + (ra.managed_identity_key != null ? 1 : 0) + (ra.assign_to_caller ? 1 : 0)) == 1
+      ])
+    ])
+    error_message = "Each recovery services vault role assignment must set exactly one of principal_id, managed_identity_key, or assign_to_caller."
+  }
+
+  validation {
+    condition = alltrue([
+      for rsv_key, rsv in var.recovery_services_vaults : rsv.customer_managed_key == null ? true : (
+        (rsv.customer_managed_key.key_vault_resource_id != null ? 1 : 0) +
+        (rsv.customer_managed_key.key_vault_key != null ? 1 : 0)
+      ) == 1
+    ])
+    error_message = "Each recovery services vault customer_managed_key must set exactly one of key_vault_resource_id or key_vault_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for rsv_key, rsv in var.recovery_services_vaults : rsv.customer_managed_key == null ? true : (
+        (rsv.customer_managed_key.key_name != null ? 1 : 0) +
+        (rsv.customer_managed_key.key_key != null ? 1 : 0)
+      ) == 1
+    ])
+    error_message = "Each recovery services vault customer_managed_key must set exactly one of key_name or key_key."
+  }
+
+  validation {
+    condition = alltrue([
+      for rsv_key, rsv in var.recovery_services_vaults : rsv.customer_managed_key == null ? true : (
+        rsv.customer_managed_key.key_key == null ||
+        rsv.customer_managed_key.key_vault_key != null
+      )
+    ])
+    error_message = "Each recovery services vault customer_managed_key key_key requires key_vault_key to be set."
+  }
+
+  validation {
+    condition = alltrue([
+      for rsv_key, rsv in var.recovery_services_vaults : rsv.customer_managed_key == null ? true : (
+        rsv.customer_managed_key.user_assigned_identity == null ? true : (
+          (rsv.customer_managed_key.user_assigned_identity.resource_id != null ? 1 : 0) +
+          (rsv.customer_managed_key.user_assigned_identity.key != null ? 1 : 0)
+        ) == 1
+      )
+    ])
+    error_message = "Each recovery services vault customer_managed_key user_assigned_identity must set exactly one of resource_id or key."
   }
 }
 

@@ -360,15 +360,15 @@ map(object({
     wait_for_rbac_before_key_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_secret_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_contact_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     tags = optional(map(string), {})
     lock = optional(object({
       kind = string

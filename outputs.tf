@@ -119,3 +119,18 @@ output "storage_accounts" {
   } }
   description = "Map of storage account keys to their resource IDs and names."
 }
+
+output "backup_vaults" {
+  value = { for key, mod in module.backup_vault : key => {
+    resource_id = mod.resource_id
+    name        = mod.backup_vault_name
+  } }
+  description = "Map of backup vault keys to their resource IDs and names."
+}
+
+output "recovery_services_vaults" {
+  value = { for key, mod in module.recovery_services_vault : key => {
+    resource_id = mod.resource_id
+  } }
+  description = "Map of recovery services vault keys to their resource IDs."
+}

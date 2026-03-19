@@ -797,6 +797,229 @@ module "storage_account" {
   }
 }
 
+# ──────────────────────────────────────────────────────────────
+# Backup Vaults (Azure Data Protection)
+# ──────────────────────────────────────────────────────────────
+
+module "backup_vault" {
+  source  = "Azure/avm-res-dataprotection-backupvault/azurerm"
+  version = "2.0.3"
+
+  for_each = var.backup_vaults
+
+  enable_telemetry    = var.enable_telemetry
+  name                = each.value.name
+  location            = coalesce(each.value.location, var.location)
+  resource_group_name = local.resource_group_names[each.value.resource_group_key]
+  datastore_type      = each.value.datastore_type
+  redundancy          = each.value.redundancy
+
+  immutability                            = each.value.immutability
+  soft_delete                             = each.value.soft_delete
+  retention_duration_in_days              = each.value.retention_duration_in_days
+  cross_region_restore_enabled            = each.value.cross_region_restore_enabled
+  cross_subscription_restore_state        = each.value.cross_subscription_restore_state
+  alerts_for_all_job_failures             = each.value.alerts_for_all_job_failures
+  resource_guard_enabled                  = each.value.resource_guard_enabled
+  resource_guard_name                     = each.value.resource_guard_name
+  vault_critical_operation_exclusion_list = each.value.vault_critical_operation_exclusion_list
+  replicated_regions                      = each.value.replicated_regions
+  permanent_delete_on_destroy             = each.value.permanent_delete_on_destroy
+
+  customer_managed_key = each.value.customer_managed_key != null ? {
+    key_vault_resource_id = (
+      each.value.customer_managed_key.key_vault_key != null
+      ? local.key_vault_resource_ids[each.value.customer_managed_key.key_vault_key]
+      : each.value.customer_managed_key.key_vault_resource_id
+    )
+    key_name = (
+      each.value.customer_managed_key.key_key != null
+      ? var.key_vaults[each.value.customer_managed_key.key_vault_key].keys[each.value.customer_managed_key.key_key].name
+      : each.value.customer_managed_key.key_name
+    )
+    key_version = each.value.customer_managed_key.key_version
+    user_assigned_identity = each.value.customer_managed_key.user_assigned_identity != null ? {
+      resource_id = (
+        each.value.customer_managed_key.user_assigned_identity.key != null
+        ? local.managed_identity_resource_ids[each.value.customer_managed_key.user_assigned_identity.key]
+        : each.value.customer_managed_key.user_assigned_identity.resource_id
+      )
+    } : null
+  } : null
+
+  backup_policies  = each.value.backup_policies
+  backup_instances = each.value.backup_instances
+
+  managed_identities = {
+    system_assigned = each.value.managed_identities.system_assigned
+    user_assigned_resource_ids = setunion(
+      each.value.managed_identities.user_assigned_resource_ids,
+      toset([for k in each.value.managed_identities.user_assigned_keys : local.managed_identity_resource_ids[k]])
+    )
+  }
+
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
+
+  lock = each.value.lock
+
+  diagnostic_settings = {
+    for dk, dv in each.value.diagnostic_settings : dk => {
+      name                                     = dv.name
+      log_categories                           = dv.log_categories
+      log_groups                               = dv.log_groups
+      metric_categories                        = dv.metric_categories
+      log_analytics_destination_type           = dv.log_analytics_destination_type
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
+      storage_account_resource_id              = dv.storage_account_resource_id
+      event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
+      event_hub_name                           = dv.event_hub_name
+      marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
+    }
+  }
+
+  tags = merge(var.tags, each.value.tags)
+}
+
+# ──────────────────────────────────────────────────────────────
+# Recovery Services Vaults
+# ──────────────────────────────────────────────────────────────
+
+module "recovery_services_vault" {
+  source  = "Azure/avm-res-recoveryservices-vault/azurerm"
+  version = "0.3.3"
+
+  for_each = var.recovery_services_vaults
+
+  enable_telemetry    = var.enable_telemetry
+  name                = each.value.name
+  location            = coalesce(each.value.location, var.location)
+  resource_group_name = local.resource_group_names[each.value.resource_group_key]
+  sku                 = each.value.sku
+
+  immutability                                   = each.value.immutability
+  soft_delete_enabled                            = each.value.soft_delete_enabled
+  storage_mode_type                              = each.value.storage_mode_type
+  cross_region_restore_enabled                   = each.value.cross_region_restore_enabled
+  public_network_access_enabled                  = each.value.public_network_access_enabled
+  classic_vmware_replication_enabled             = each.value.classic_vmware_replication_enabled
+  alerts_for_all_job_failures_enabled            = each.value.alerts_for_all_job_failures_enabled
+  alerts_for_critical_operation_failures_enabled = each.value.alerts_for_critical_operation_failures_enabled
+
+  customer_managed_key = each.value.customer_managed_key != null ? {
+    key_vault_resource_id = (
+      each.value.customer_managed_key.key_vault_key != null
+      ? local.key_vault_resource_ids[each.value.customer_managed_key.key_vault_key]
+      : each.value.customer_managed_key.key_vault_resource_id
+    )
+    key_name = (
+      each.value.customer_managed_key.key_key != null
+      ? var.key_vaults[each.value.customer_managed_key.key_vault_key].keys[each.value.customer_managed_key.key_key].name
+      : each.value.customer_managed_key.key_name
+    )
+    key_version = each.value.customer_managed_key.key_version
+    user_assigned_identity = each.value.customer_managed_key.user_assigned_identity != null ? {
+      resource_id = (
+        each.value.customer_managed_key.user_assigned_identity.key != null
+        ? local.managed_identity_resource_ids[each.value.customer_managed_key.user_assigned_identity.key]
+        : each.value.customer_managed_key.user_assigned_identity.resource_id
+      )
+    } : null
+  } : null
+
+  vm_backup_policy            = each.value.vm_backup_policy
+  file_share_backup_policy    = each.value.file_share_backup_policy
+  workload_backup_policy      = each.value.workload_backup_policy
+  backup_protected_vm         = each.value.backup_protected_vm
+  backup_protected_file_share = each.value.backup_protected_file_share
+
+  managed_identities = {
+    system_assigned = each.value.managed_identities.system_assigned
+    user_assigned_resource_ids = setunion(
+      each.value.managed_identities.user_assigned_resource_ids,
+      toset([for k in each.value.managed_identities.user_assigned_keys : local.managed_identity_resource_ids[k]])
+    )
+  }
+
+  role_assignments = {
+    for ra_key, ra in each.value.role_assignments : ra_key => {
+      role_definition_id_or_name             = ra.role_definition_id_or_name
+      principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+      description                            = ra.description
+      skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+      condition                              = ra.condition
+      condition_version                      = ra.condition_version
+      delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+      principal_type                         = ra.principal_type
+    }
+  }
+
+  private_endpoints = {
+    for pe_k, pe in each.value.private_endpoints : pe_k => {
+      name = pe.name
+      role_assignments = {
+        for ra_key, ra in pe.role_assignments : ra_key => {
+          role_definition_id_or_name             = ra.role_definition_id_or_name
+          principal_id                           = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
+          description                            = ra.description
+          skip_service_principal_aad_check       = ra.skip_service_principal_aad_check
+          condition                              = ra.condition
+          condition_version                      = ra.condition_version
+          delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
+          principal_type                         = ra.principal_type
+        }
+      }
+      lock = pe.lock
+      tags = pe.tags
+      subnet_resource_id = coalesce(
+        pe.network_configuration.subnet_resource_id,
+        try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
+      )
+      subresource_name = pe.subresource_name
+      private_dns_zone_resource_ids = setunion(
+        coalesce(try(pe.private_dns_zone.resource_ids, null), toset([])),
+        toset([for k in coalesce(try(pe.private_dns_zone.keys, null), toset([])) : local.pe_dns_zone_ids[k]])
+      )
+      private_dns_zone_group_name             = pe.private_dns_zone_group_name
+      application_security_group_associations = pe.application_security_group_associations
+      private_service_connection_name         = pe.private_service_connection_name
+      network_interface_name                  = pe.network_interface_name
+      location                                = pe.location
+      resource_group_name                     = pe.resource_group_name
+      ip_configurations                       = pe.ip_configurations
+    }
+  }
+
+  lock = each.value.lock
+
+  diagnostic_settings = {
+    for dk, dv in each.value.diagnostic_settings : dk => {
+      name                                     = dv.name
+      log_categories                           = dv.log_categories
+      log_groups                               = dv.log_groups
+      metric_categories                        = dv.metric_categories
+      log_analytics_destination_type           = dv.log_analytics_destination_type
+      workspace_resource_id                    = dv.use_default_log_analytics ? local.default_log_analytics_workspace_resource_id : dv.workspace_resource_id
+      storage_account_resource_id              = dv.storage_account_resource_id
+      event_hub_authorization_rule_resource_id = dv.event_hub_authorization_rule_resource_id
+      event_hub_name                           = dv.event_hub_name
+      marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
+    }
+  }
+
+  tags = merge(var.tags, each.value.tags)
+}
+
 module "role_assignment" {
   source  = "Azure/avm-res-authorization-roleassignment/azurerm"
   version = "0.3.0"

@@ -238,3 +238,37 @@ FR-031 adds `user_assigned_keys` to the inline `managed_identities` object in `s
 | `examples/*/variables.tf` | CMK type definitions mirrored (LAW: 4 files, storage: full only). MI type definition mirrored (full only). |
 | `examples/full/terraform.tfvars` | Added key vault `keys` entry, storage account CMK with key-based references, `managed_identities` with `user_assigned_keys`. |
 | `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |
+
+---
+
+## Phase 7: FR-032 & FR-033 — Backup Vault and Recovery Services Vault (Complete)
+
+**Prerequisites**: Phase 6 complete (key-based CMK and MI locals established).
+
+### Summary
+
+Added two new AVM resource modules to the pattern for application landing zone shared services: Azure Data Protection Backup Vault (`avm-res-dataprotection-backupvault` v2.0.3) and Azure Recovery Services Vault (`avm-res-recoveryservices-vault` v0.3.3). Both modules fully integrate with the existing pattern linking behaviour.
+
+FR-032 adds `backup_vaults` — a `map(object({}))` variable with support for backup policies, backup instances, CMK key-based references, managed identities with `user_assigned_keys`, role assignments with 3-way resolution, diagnostic settings with `use_default_log_analytics`, and resource locks.
+
+FR-033 adds `recovery_services_vaults` — a `map(object({}))` variable with support for VM/file-share/workload backup policies, protected items, private endpoints with `vnet_key`/`subnet_key` and DNS zone `keys` resolution, CMK, managed identities, role assignments, diagnostic settings, and locks.
+
+### Key Decisions
+
+1. **No private endpoints for Backup Vault** — The `avm-res-dataprotection-backupvault` module does not expose a `private_endpoints` variable, so the pattern omits PE support for backup vaults.
+2. **Recovery Services Vault has private endpoints** — The RSV module supports `private_endpoints` with `subresource_name` (e.g., `"AzureBackup"`, `"AzureSiteRecovery"`), following the same PE resolution pattern as storage accounts and key vaults.
+3. **Backup policies/instances passed through** — Complex nested objects like `backup_policies`, `backup_instances`, `vm_backup_policy`, `file_share_backup_policy`, `workload_backup_policy`, `backup_protected_vm`, and `backup_protected_file_share` are passed through to the underlying modules without transformation.
+4. **Full pattern linking** — Both resources use `resource_group_key`, `location` defaulting to `var.location`, tags merged with `var.tags`, `enable_telemetry` passthrough, and all established key-based resolution patterns (CMK, MI, role assignments).
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `variables.tf` | Added `backup_vaults` variable with type definition, AVM-style description, and 6 validation blocks. Added `recovery_services_vaults` variable with type definition, AVM-style description, and 6 validation blocks. |
+| `main.tf` | Added `module "backup_vault"` with full pattern resolution (resource_group_key, CMK key refs, MI user_assigned_keys, role_assignments, diagnostic_settings, lock, tags). Added `module "recovery_services_vault"` with full pattern resolution including private_endpoints. |
+| `outputs.tf` | Added `backup_vaults` output (resource_id, name). Added `recovery_services_vaults` output (resource_id). |
+| `examples/full/variables.tf` | Added `backup_vaults` and `recovery_services_vaults` variable type definitions. |
+| `examples/full/terraform.tfvars` | Added demo entries for both vault types with role_assignments (assign_to_caller), diagnostic_settings (use_default_log_analytics), and managed_identities (system_assigned). |
+| `specs/003-avm-variable-descriptions/spec.md` | Added FR-032 and FR-033. |
+| `specs/003-avm-variable-descriptions/tasks.md` | Added Phase 14 (T091–T102). |
+| `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |

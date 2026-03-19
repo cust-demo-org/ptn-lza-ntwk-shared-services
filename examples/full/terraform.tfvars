@@ -415,6 +415,19 @@ storage_accounts = {
         metric_categories = ["Capacity", "Transaction"]
       }
     }
+
+    private_endpoints = {
+      pe_blob = {
+        name = "pe-blob-shared-full"
+        network_configuration = {
+          vnet_key   = "vnet_spoke"
+          subnet_key = "snet_pe"
+        }
+        private_dns_zone = {
+          keys = ["link_kv_to_spoke"]
+        }
+      }
+    }
   }
 }
 
@@ -450,3 +463,68 @@ storage_accounts = {
 #     }
 #   }
 # }
+
+# ──────────────────────────────────────────────────────────────
+# Backup Vaults (Azure Data Protection)
+# ──────────────────────────────────────────────────────────────
+# Creates an Azure Data Protection Backup Vault for disk, blob,
+# AKS, or PostgreSQL backups. Links to the pattern via
+# resource_group_key, diagnostic_settings.use_default_log_analytics,
+# managed_identities.user_assigned_keys, and CMK key-based refs.
+
+backup_vaults = {
+  bv_shared = {
+    name               = "bv-shared-services"
+    resource_group_key = "rg_shared"
+    datastore_type     = "OperationalStore"
+    redundancy         = "LocallyRedundant"
+    managed_identities = {
+      system_assigned = true
+    }
+    role_assignments = {
+      deployer_reader = {
+        role_definition_id_or_name = "Reader"
+        assign_to_caller           = true
+      }
+    }
+    diagnostic_settings = {
+      default = {
+        use_default_log_analytics = true
+      }
+    }
+  }
+}
+
+# ──────────────────────────────────────────────────────────────
+# Recovery Services Vaults
+# ──────────────────────────────────────────────────────────────
+# Creates an Azure Recovery Services Vault for VM, file share, or
+# workload (SQL/SAP HANA) backups. Links to the pattern via
+# resource_group_key, private_endpoints (vnet_key/subnet_key),
+# diagnostic_settings.use_default_log_analytics,
+# managed_identities.user_assigned_keys, and CMK key-based refs.
+
+recovery_services_vaults = {
+  rsv_shared = {
+    name                         = "rsv-shared-services"
+    resource_group_key           = "rg_shared"
+    sku                          = "Standard"
+    storage_mode_type            = "LocallyRedundant"
+    cross_region_restore_enabled = false
+    soft_delete_enabled          = false
+    managed_identities = {
+      system_assigned = true
+    }
+    role_assignments = {
+      deployer_reader = {
+        role_definition_id_or_name = "Reader"
+        assign_to_caller           = true
+      }
+    }
+    diagnostic_settings = {
+      default = {
+        use_default_log_analytics = true
+      }
+    }
+  }
+}

@@ -273,6 +273,25 @@
 
 ---
 
+## Phase 14: FR-032 & FR-033 — Backup Vault and Recovery Services Vault (Complete)
+
+- [x] T091 [FR-032] Research AVM module interfaces for `avm-res-dataprotection-backupvault` v2.0.3 and `avm-res-recoveryservices-vault` v0.3.3
+- [x] T092 [FR-032] Study existing pattern linking behaviour (resource_group_key, role_assignments, private_endpoints, diagnostic_settings, managed_identities, CMK)
+- [x] T093 [FR-032] Add `backup_vaults` variable to root `variables.tf` with full type definition, AVM-style description, and validation blocks (role assignment XOR, CMK mutual exclusivity)
+- [x] T094 [FR-033] Add `recovery_services_vaults` variable to root `variables.tf` with full type definition, AVM-style description, and validation blocks
+- [x] T095 [FR-032] Add `module "backup_vault"` call in `main.tf` with all pattern resolution logic (resource_group_key, location, tags, CMK key refs, managed_identities user_assigned_keys, role_assignments 3-way, diagnostic_settings use_default_log_analytics)
+- [x] T096 [FR-033] Add `module "recovery_services_vault"` call in `main.tf` with all pattern resolution logic including private_endpoints (vnet_key/subnet_key, DNS zone keys)
+- [x] T097 [FR-032/FR-033] Add outputs for `backup_vaults` (resource_id, name) and `recovery_services_vaults` (resource_id) in `outputs.tf`
+- [x] T098 [FR-032/FR-033] Add variable type definitions to full example `variables.tf`
+- [x] T099 [FR-032/FR-033] Add demo entries in full example `terraform.tfvars`
+- [x] T100 [FR-032/FR-033] Run `terraform init -upgrade` and `terraform validate` on root + all 4 examples (all pass)
+- [x] T101 [FR-032/FR-033] Update spec.md (FR-032, FR-033), plan.md (Phase 7), and tasks.md (Phase 14)
+- [x] T102 [FR-032/FR-033] Regenerate terraform-docs README for root + all 4 example directories
+
+**Checkpoint**: Backup Vault and Recovery Services Vault modules fully integrated with all pattern linking behaviours. All configs validate. READMEs regenerated.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -290,6 +309,7 @@
 - **Phase 11 (FR-028 name_random_suffix_configuration)**: Depends on Phase 10 completion
 - **Phase 12 (FR-029 assign_to_caller)**: Depends on Phase 11 completion
 - **Phase 13 (FR-030/FR-031 CMK keys & MI keys)**: Depends on Phase 12 completion
+- **Phase 14 (FR-032/FR-033 Backup Vault & Recovery Services Vault)**: Depends on Phase 13 completion (uses locals, CMK key refs, MI user_assigned_keys patterns established in prior phases)
 
 ### User Story Dependencies
 
