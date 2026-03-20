@@ -272,3 +272,29 @@ FR-033 adds `recovery_services_vaults` — a `map(object({}))` variable with sup
 | `specs/003-avm-variable-descriptions/spec.md` | Added FR-032 and FR-033. |
 | `specs/003-avm-variable-descriptions/tasks.md` | Added Phase 14 (T091–T102). |
 | `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |
+
+---
+
+## Phase 8: FR-034 — principal_type Auto-Resolution (Complete)
+
+**Prerequisites**: Phase 7 complete (all role_assignment blocks established across all resource modules).
+
+### Summary
+
+Auto-resolves `principal_type` to `"ServicePrincipal"` when a role assignment uses `managed_identity_key`, removing the burden of manually setting it. When `managed_identity_key` is null (i.e., caller-assigned or explicit principal_id), the user-supplied `principal_type` is preserved.
+
+### Key Decisions
+
+1. **Conditional expression over variable default** — Used inline ternary `ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type` in `main.tf` rather than changing the variable default, since the resolution depends on runtime context (whether a managed identity key is provided).
+2. **resource_groups excluded** — The `resource_groups` role_assignments type does not include `managed_identity_key` (circular dependency prevention), so its `principal_type = ra.principal_type` is left unchanged.
+3. **Example tfvars annotated** — All `assign_to_caller = true` entries in the full example now include `principal_type = "User"` with an inline comment explaining the assumption.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `main.tf` | Updated 22 `principal_type` lines across all role_assignment blocks (resource modules + private_endpoints + standalone role_assignment module) with auto-resolution logic. |
+| `examples/full/terraform.tfvars` | Added `principal_type = "User"` with inline comment to 3 `assign_to_caller` entries (kv_admin_caller, BV deployer_reader, RSV deployer_reader). |
+| `specs/003-avm-variable-descriptions/spec.md` | Added FR-034. |
+| `specs/003-avm-variable-descriptions/tasks.md` | Added Phase 15 (T103–T108). |
+| `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |

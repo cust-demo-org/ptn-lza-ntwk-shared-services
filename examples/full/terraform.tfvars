@@ -229,7 +229,7 @@ private_dns_zones = {
 }
 
 byo_private_dns_zone_links = {
-  link_kv_to_spoke = {
+  byo_dns_kv = {
     name                = "link-kv-to-spoke"
     private_dns_zone_id = "placeholder" # overridden in main.tf with computed azurerm_private_dns_zone.kv.id
     virtual_network_key = "vnet_spoke"
@@ -259,6 +259,11 @@ key_vaults = {
       append_with_hyphen = true
     }
 
+    public_network_access_enabled = true
+    network_acls = {
+      default_action = "Allow"
+    }
+
     diagnostic_settings = {
       to_law = {
         name              = "kv-shared-diag"
@@ -269,12 +274,13 @@ key_vaults = {
 
     role_assignments = {
       kv_secrets_user = {
-        role_definition_id_or_name = "Key Vault Secrets User"
+        role_definition_id_or_name = "Key Vault Crypto Service Encryption User"
         managed_identity_key       = "mi_app"
       }
       kv_admin_caller = {
         role_definition_id_or_name = "Key Vault Administrator"
         assign_to_caller           = true
+        principal_type             = "User" # Assumes a user identity runs Terraform. Change to "ServicePrincipal" or "Group" to match your deployment runner.
       }
     }
 
@@ -284,19 +290,6 @@ key_vaults = {
         key_type = "RSA"
         key_size = 2048
         key_opts = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
-      }
-    }
-
-    private_endpoints = {
-      pe_kv = {
-        name = "pe-kv-shared-full"
-        network_configuration = {
-          vnet_key   = "vnet_spoke"
-          subnet_key = "snet_pe"
-        }
-        private_dns_zone = {
-          keys = ["link_kv_to_spoke"]
-        }
       }
     }
   }
@@ -418,13 +411,14 @@ storage_accounts = {
 
     private_endpoints = {
       pe_blob = {
-        name = "pe-blob-shared-full"
+        name             = "pe-blob-shared-full"
+        subresource_name = "blob"
         network_configuration = {
           vnet_key   = "vnet_spoke"
           subnet_key = "snet_pe"
         }
         private_dns_zone = {
-          keys = ["link_kv_to_spoke"]
+          keys = ["dns_blob"]
         }
       }
     }
@@ -485,6 +479,7 @@ backup_vaults = {
       deployer_reader = {
         role_definition_id_or_name = "Reader"
         assign_to_caller           = true
+        principal_type             = "User" # Assumes a user identity runs Terraform. Change to "ServicePrincipal" or "Group" to match your deployment runner.
       }
     }
     diagnostic_settings = {
@@ -519,6 +514,7 @@ recovery_services_vaults = {
       deployer_reader = {
         role_definition_id_or_name = "Reader"
         assign_to_caller           = true
+        principal_type             = "User" # Assumes a user identity runs Terraform. Change to "ServicePrincipal" or "Group" to match your deployment runner.
       }
     }
     diagnostic_settings = {

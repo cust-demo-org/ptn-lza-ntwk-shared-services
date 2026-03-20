@@ -292,6 +292,19 @@
 
 ---
 
+## Phase 15: FR-034 — principal_type Auto-Resolution (Complete)
+
+- [x] T103 [FR-034] Update all role_assignment blocks in `main.tf` (22 occurrences across all resource modules and their private_endpoints) to auto-resolve `principal_type` to `"ServicePrincipal"` when `managed_identity_key` is not null, falling back to `ra.principal_type` otherwise. Skip `resource_groups` role_assignments (no `managed_identity_key`).
+- [x] T104 [FR-034] Update standalone `module "role_assignment"` in `main.tf` with the same auto-resolution logic.
+- [x] T105 [FR-034] Add `principal_type = "User"` with inline comment to all `assign_to_caller = true` entries in `examples/full/terraform.tfvars` (3 entries: kv_admin_caller, BV deployer_reader, RSV deployer_reader).
+- [x] T106 [FR-034] Update spec.md (FR-034), plan.md (Phase 8), and tasks.md (Phase 15).
+- [x] T107 [FR-034] Run `terraform validate` on root + all 4 examples.
+- [x] T108 [FR-034] Regenerate terraform-docs README for root + all 4 example directories.
+
+**Checkpoint**: principal_type auto-resolved to "ServicePrincipal" for managed-identity-backed role assignments. Examples annotated with User principal_type. All configs validate. READMEs regenerated.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -310,6 +323,7 @@
 - **Phase 12 (FR-029 assign_to_caller)**: Depends on Phase 11 completion
 - **Phase 13 (FR-030/FR-031 CMK keys & MI keys)**: Depends on Phase 12 completion
 - **Phase 14 (FR-032/FR-033 Backup Vault & Recovery Services Vault)**: Depends on Phase 13 completion (uses locals, CMK key refs, MI user_assigned_keys patterns established in prior phases)
+- **Phase 15 (FR-034 principal_type Auto-Resolution)**: Depends on Phase 14 completion (modifies role_assignment blocks established in prior phases)
 
 ### User Story Dependencies
 

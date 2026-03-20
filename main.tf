@@ -150,7 +150,7 @@ module "log_analytics_workspace" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 
@@ -168,7 +168,7 @@ module "log_analytics_workspace" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
       lock = pe.lock
@@ -228,7 +228,7 @@ module "network_security_group" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 }
@@ -255,7 +255,7 @@ module "route_table" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
   tags = merge(var.tags, each.value.tags)
@@ -301,7 +301,7 @@ module "virtual_network" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
     })
@@ -333,7 +333,7 @@ module "virtual_network" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 }
@@ -368,7 +368,7 @@ module "private_dns_zone" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 }
@@ -455,7 +455,7 @@ module "key_vault" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
     })
@@ -471,7 +471,7 @@ module "key_vault" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
     })
@@ -505,7 +505,7 @@ module "key_vault" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 
@@ -521,7 +521,7 @@ module "key_vault" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
       lock = pe.lock
@@ -611,7 +611,7 @@ module "storage_account" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
     })
@@ -627,7 +627,7 @@ module "storage_account" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
     })
@@ -643,7 +643,7 @@ module "storage_account" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
     })
@@ -670,7 +670,7 @@ module "storage_account" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
     })
@@ -684,7 +684,7 @@ module "storage_account" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
   lock = each.value.lock
@@ -772,7 +772,7 @@ module "storage_account" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
       lock = pe.lock
@@ -867,7 +867,7 @@ module "backup_vault" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 
@@ -960,7 +960,7 @@ module "recovery_services_vault" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 
@@ -976,7 +976,7 @@ module "recovery_services_vault" {
           condition                              = ra.condition
           condition_version                      = ra.condition_version
           delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-          principal_type                         = ra.principal_type
+          principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
       lock = pe.lock
@@ -1033,7 +1033,7 @@ module "role_assignment" {
       scope                = ra.scope
       principal_id         = ra.assign_to_caller ? data.azurerm_client_config.current.object_id : ra.managed_identity_key != null ? local.managed_identity_principal_ids[ra.managed_identity_key] : ra.principal_id
       description          = ra.description
-      principal_type       = ra.principal_type
+      principal_type       = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 }
@@ -1117,7 +1117,7 @@ module "bastion_host" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
 }
@@ -1167,7 +1167,7 @@ module "network_watcher" {
       condition                              = ra.condition
       condition_version                      = ra.condition_version
       delegated_managed_identity_resource_id = ra.delegated_managed_identity_resource_id
-      principal_type                         = ra.principal_type
+      principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
   tags = merge(var.tags, var.flowlog_configuration.tags)
