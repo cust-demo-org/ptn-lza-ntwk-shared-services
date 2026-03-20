@@ -229,7 +229,7 @@ private_dns_zones = {
 }
 
 byo_private_dns_zone_links = {
-  link_kv_to_spoke = {
+  byo_dns_kv = {
     name                = "link-kv-to-spoke"
     private_dns_zone_id = "placeholder" # overridden in main.tf with computed azurerm_private_dns_zone.kv.id
     virtual_network_key = "vnet_spoke"
@@ -254,6 +254,15 @@ key_vaults = {
     name               = "kv-shared-full"
     resource_group_key = "rg_shared"
     sku_name           = "premium"
+    name_random_suffix_configuration = {
+      length             = 4
+      append_with_hyphen = true
+    }
+
+    public_network_access_enabled = true
+    network_acls = {
+      default_action = "Allow"
+    }
 
     diagnostic_settings = {
       to_law = {
@@ -265,21 +274,22 @@ key_vaults = {
 
     role_assignments = {
       kv_secrets_user = {
-        role_definition_id_or_name = "Key Vault Secrets User"
+        role_definition_id_or_name = "Key Vault Crypto Service Encryption User"
         managed_identity_key       = "mi_app"
+      }
+      kv_admin_caller = {
+        role_definition_id_or_name = "Key Vault Administrator"
+        assign_to_caller           = true
+        principal_type             = "User" # Assumes a user identity runs Terraform. Change to "ServicePrincipal" or "Group" to match your deployment runner.
       }
     }
 
-    private_endpoints = {
-      pe_kv = {
-        name = "pe-kv-shared-full"
-        network_configuration = {
-          vnet_key   = "vnet_spoke"
-          subnet_key = "snet_pe"
-        }
-        private_dns_zone = {
-          keys = ["link_kv_to_spoke"]
-        }
+    keys = {
+      cmk_sa = {
+        name     = "cmk-storage"
+        key_type = "RSA"
+        key_size = 2048
+        key_opts = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
       }
     }
   }
@@ -341,6 +351,24 @@ storage_accounts = {
     account_replication_type      = "LRS"
     shared_access_key_enabled     = false
     public_network_access_enabled = true
+    name_random_suffix_configuration = {
+      length = 4
+    }
+
+    # Demonstrates key-based CMK referencing a pattern key vault and key by map key
+    customer_managed_key = {
+      key_vault_key = "kv_shared"
+      key_key       = "cmk_sa"
+      user_assigned_identity = {
+        key = "mi_app"
+      }
+    }
+
+    # Demonstrates user_assigned_keys referencing a pattern managed identity by map key
+    managed_identities = {
+      system_assigned    = false
+      user_assigned_keys = ["mi_app"]
+    }
 
     diagnostic_settings = {
       to_law = {
@@ -380,6 +408,20 @@ storage_accounts = {
         metric_categories = ["Capacity", "Transaction"]
       }
     }
+
+    private_endpoints = {
+      pe_blob = {
+        name             = "pe-blob-shared-full"
+        subresource_name = "blob"
+        network_configuration = {
+          vnet_key   = "vnet_spoke"
+          subnet_key = "snet_pe"
+        }
+        private_dns_zone = {
+          keys = ["dns_blob"]
+        }
+      }
+    }
   }
 }
 
@@ -415,3 +457,70 @@ storage_accounts = {
 #     }
 #   }
 # }
+
+# ──────────────────────────────────────────────────────────────
+# Backup Vaults (Azure Data Protection)
+# ──────────────────────────────────────────────────────────────
+# Creates an Azure Data Protection Backup Vault for disk, blob,
+# AKS, or PostgreSQL backups. Links to the pattern via
+# resource_group_key, diagnostic_settings.use_default_log_analytics,
+# managed_identities.user_assigned_keys, and CMK key-based refs.
+
+backup_vaults = {
+  bv_shared = {
+    name               = "bv-shared-services"
+    resource_group_key = "rg_shared"
+    datastore_type     = "OperationalStore"
+    redundancy         = "LocallyRedundant"
+    managed_identities = {
+      system_assigned = true
+    }
+    role_assignments = {
+      deployer_reader = {
+        role_definition_id_or_name = "Reader"
+        assign_to_caller           = true
+        principal_type             = "User" # Assumes a user identity runs Terraform. Change to "ServicePrincipal" or "Group" to match your deployment runner.
+      }
+    }
+    diagnostic_settings = {
+      default = {
+        use_default_log_analytics = true
+      }
+    }
+  }
+}
+
+# ──────────────────────────────────────────────────────────────
+# Recovery Services Vaults
+# ──────────────────────────────────────────────────────────────
+# Creates an Azure Recovery Services Vault for VM, file share, or
+# workload (SQL/SAP HANA) backups. Links to the pattern via
+# resource_group_key, private_endpoints (vnet_key/subnet_key),
+# diagnostic_settings.use_default_log_analytics,
+# managed_identities.user_assigned_keys, and CMK key-based refs.
+
+recovery_services_vaults = {
+  rsv_shared = {
+    name                         = "rsv-shared-services"
+    resource_group_key           = "rg_shared"
+    sku                          = "Standard"
+    storage_mode_type            = "LocallyRedundant"
+    cross_region_restore_enabled = false
+    soft_delete_enabled          = false
+    managed_identities = {
+      system_assigned = true
+    }
+    role_assignments = {
+      deployer_reader = {
+        role_definition_id_or_name = "Reader"
+        assign_to_caller           = true
+        principal_type             = "User" # Assumes a user identity runs Terraform. Change to "ServicePrincipal" or "Group" to match your deployment runner.
+      }
+    }
+    diagnostic_settings = {
+      default = {
+        use_default_log_analytics = true
+      }
+    }
+  }
+}

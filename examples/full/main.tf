@@ -60,7 +60,7 @@ locals {
 
   # BYO DNS zone links with computed private DNS zone ID
   byo_private_dns_zone_links = merge(var.byo_private_dns_zone_links, {
-    link_kv_to_spoke = merge(var.byo_private_dns_zone_links.link_kv_to_spoke, {
+    byo_dns_kv = merge(var.byo_private_dns_zone_links.byo_dns_kv, {
       private_dns_zone_id = azurerm_private_dns_zone.kv.id
     })
   })
@@ -82,6 +82,7 @@ module "pattern" {
 
   location                              = var.location
   tags                                  = var.tags
+  enable_telemetry                      = var.enable_telemetry
   resource_groups                       = var.resource_groups
   byo_log_analytics_workspace           = var.byo_log_analytics_workspace
   log_analytics_workspace_configuration = var.log_analytics_workspace_configuration
@@ -97,6 +98,8 @@ module "pattern" {
   bastion_hosts                         = var.bastion_hosts
   storage_accounts                      = var.storage_accounts
   flowlog_configuration                 = var.flowlog_configuration
+  recovery_services_vaults              = var.recovery_services_vaults
+  backup_vaults                         = var.backup_vaults
 
   depends_on = [azurerm_virtual_network.hub, azurerm_private_dns_zone.kv]
 }

@@ -51,6 +51,8 @@ The following requirements are needed by this module:
 
 - <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) (= 4.63.0)
 
+- <a name="requirement_random"></a> [random](#requirement\_random) (= 3.8.1)
+
 ## Resources
 
 The following resources are used by this module:
@@ -68,6 +70,136 @@ No required inputs.
 ## Optional Inputs
 
 The following input variables are optional (have default values):
+
+### <a name="input_backup_vaults"></a> [backup\_vaults](#input\_backup\_vaults)
+
+Description: Map of Azure Data Protection Backup Vaults to create. Refer to the main pattern module variable descriptions for complete details.
+
+Type:
+
+```hcl
+map(object({
+    name                                    = string
+    resource_group_key                      = string
+    location                                = optional(string)
+    datastore_type                          = string
+    redundancy                              = string
+    immutability                            = optional(string, "Disabled")
+    soft_delete                             = optional(string, "AlwaysOn")
+    retention_duration_in_days              = optional(number, 14)
+    cross_region_restore_enabled            = optional(bool, false)
+    cross_subscription_restore_state        = optional(string, null)
+    alerts_for_all_job_failures             = optional(string, null)
+    resource_guard_enabled                  = optional(bool, false)
+    resource_guard_name                     = optional(string, null)
+    vault_critical_operation_exclusion_list = optional(list(string), [])
+    replicated_regions                      = optional(list(string), [])
+    permanent_delete_on_destroy             = optional(bool, true)
+    customer_managed_key = optional(object({
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
+      key_version           = optional(string)
+      user_assigned_identity = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+    }))
+    backup_policies = optional(map(object({
+      type                                   = string
+      name                                   = string
+      backup_repeating_time_intervals        = optional(list(string), [])
+      default_retention_duration             = optional(string, "P30D")
+      time_zone                              = optional(string, "UTC")
+      operational_default_retention_duration = optional(string)
+      vault_default_retention_duration       = optional(string)
+      default_retention_life_cycle = optional(object({
+        data_store_type = optional(string, "OperationalStore")
+        duration        = optional(string, "P14D")
+      }))
+      retention_rules = optional(list(object({
+        name     = string
+        priority = number
+        duration = optional(string, "P30D")
+        criteria = list(object({
+          absolute_criteria      = optional(string)
+          days_of_month          = optional(list(number))
+          days_of_week           = optional(list(string))
+          months_of_year         = optional(list(string))
+          scheduled_backup_times = optional(list(string))
+          weeks_of_month         = optional(list(string))
+        }))
+        life_cycle = optional(list(object({
+          data_store_type = string
+          duration        = string
+        })), [])
+      })), [])
+    })), {})
+    backup_instances = optional(map(object({
+      type                            = string
+      name                            = string
+      backup_policy_key               = string
+      disk_id                         = optional(string)
+      snapshot_resource_group_name    = optional(string)
+      storage_account_id              = optional(string)
+      storage_account_container_names = optional(list(string), [])
+      kubernetes_cluster_id           = optional(string)
+      backup_datasource_parameters = optional(object({
+        excluded_namespaces              = optional(list(string), [])
+        included_namespaces              = optional(list(string), [])
+        excluded_resource_types          = optional(list(string), [])
+        included_resource_types          = optional(list(string), [])
+        label_selectors                  = optional(list(string), [])
+        cluster_scoped_resources_enabled = optional(bool, false)
+        volume_snapshot_enabled          = optional(bool, false)
+      }))
+      postgresql_server_id                    = optional(string)
+      postgresql_database_id                  = optional(string)
+      postgresql_key_vault_secret_id          = optional(string)
+      postgresql_flexible_server_id           = optional(string)
+      postgresql_flexible_database_id         = optional(string)
+      postgresql_flexible_key_vault_secret_id = optional(string)
+    })), {})
+    managed_identities = optional(object({
+      system_assigned            = optional(bool, false)
+      user_assigned_resource_ids = optional(set(string), [])
+      user_assigned_keys         = optional(set(string), [])
+    }), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    lock = optional(object({
+      kind = string
+      name = optional(string, null)
+    }))
+    tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+      use_default_log_analytics                = optional(bool, true)
+    })), {})
+  }))
+```
+
+Default: `{}`
 
 ### <a name="input_bastion_hosts"></a> [bastion\_hosts](#input\_bastion\_hosts)
 
@@ -115,7 +247,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -176,6 +309,14 @@ map(object({
 
 Default: `{}`
 
+### <a name="input_enable_telemetry"></a> [enable\_telemetry](#input\_enable\_telemetry)
+
+Description: Controls whether telemetry is enabled for all AVM modules. Refer to the main pattern module variable descriptions for complete details.
+
+Type: `bool`
+
+Default: `true`
+
 ### <a name="input_flowlog_configuration"></a> [flowlog\_configuration](#input\_flowlog\_configuration)
 
 Description: Network Watcher flow log configuration. Null disables flow logs. Refer to the main pattern module variable descriptions for complete details.
@@ -215,7 +356,8 @@ object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -237,7 +379,11 @@ Type:
 
 ```hcl
 map(object({
-    name                            = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length             = number
+      append_with_hyphen = optional(bool, true)
+    }))
     resource_group_key              = string
     location                        = optional(string)
     sku_name                        = optional(string, "premium")
@@ -257,6 +403,7 @@ map(object({
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -268,7 +415,9 @@ map(object({
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -317,7 +466,9 @@ map(object({
       tags            = optional(map(string))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -342,7 +493,9 @@ map(object({
       expiration_date = optional(string)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -354,15 +507,15 @@ map(object({
     wait_for_rbac_before_key_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_secret_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_contact_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     tags = optional(map(string), {})
     lock = optional(object({
       kind = string
@@ -420,11 +573,14 @@ object({
       identity_ids = optional(set(string))
     }))
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     data_exports = optional(map(object({
@@ -473,7 +629,8 @@ object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -485,7 +642,9 @@ object({
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -595,7 +754,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -645,7 +805,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -654,6 +815,236 @@ map(object({
       principal_type                         = optional(string, null)
     })), {})
     tags = optional(map(string), {})
+  }))
+```
+
+Default: `{}`
+
+### <a name="input_recovery_services_vaults"></a> [recovery\_services\_vaults](#input\_recovery\_services\_vaults)
+
+Description: Map of Azure Recovery Services Vaults to create. Refer to the main pattern module variable descriptions for complete details.
+
+Type:
+
+```hcl
+map(object({
+    name                                           = string
+    resource_group_key                             = string
+    location                                       = optional(string)
+    sku                                            = optional(string, "Standard")
+    immutability                                   = optional(string, "Unlocked")
+    soft_delete_enabled                            = optional(bool, true)
+    storage_mode_type                              = optional(string, "GeoRedundant")
+    cross_region_restore_enabled                   = optional(bool, true)
+    public_network_access_enabled                  = optional(bool, true)
+    classic_vmware_replication_enabled             = optional(bool, false)
+    alerts_for_all_job_failures_enabled            = optional(bool, true)
+    alerts_for_critical_operation_failures_enabled = optional(bool, true)
+    customer_managed_key = optional(object({
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
+      key_version           = optional(string, null)
+      user_assigned_identity = optional(object({
+        resource_id = optional(string)
+        key         = optional(string)
+      }))
+    }))
+    vm_backup_policy = optional(map(object({
+      name                           = string
+      timezone                       = string
+      instant_restore_retention_days = optional(number, null)
+      instant_restore_resource_group = optional(map(object({
+        prefix = optional(string, null)
+        suffix = optional(string, null)
+      })), {})
+      policy_type     = string
+      frequency       = string
+      retention_daily = optional(number, null)
+      backup = object({
+        time          = string
+        hour_interval = optional(number, null)
+        hour_duration = optional(number, null)
+        weekdays      = optional(list(string), [])
+      })
+      retention_weekly = optional(object({
+        count    = optional(number, 7)
+        weekdays = optional(list(string), [])
+      }), {})
+      retention_monthly = optional(object({
+        count             = optional(number, 0)
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+      retention_yearly = optional(object({
+        count             = optional(number, 0)
+        months            = optional(list(string), [])
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+    })), null)
+    file_share_backup_policy = optional(map(object({
+      name            = string
+      timezone        = string
+      frequency       = string
+      retention_daily = optional(number, null)
+      backup = object({
+        time = string
+        hourly = optional(object({
+          interval        = number
+          start_time      = string
+          window_duration = number
+        }))
+      })
+      retention_weekly = optional(object({
+        count    = optional(number, 7)
+        weekdays = optional(list(string), [])
+      }), {})
+      retention_monthly = optional(object({
+        count             = optional(number, 0)
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+      retention_yearly = optional(object({
+        count             = optional(number, 0)
+        months            = optional(list(string), [])
+        weekdays          = optional(list(string), [])
+        weeks             = optional(list(string), [])
+        days              = optional(list(number), [])
+        include_last_days = optional(bool, false)
+      }), {})
+    })), null)
+    workload_backup_policy = optional(map(object({
+      name          = string
+      workload_type = string
+      settings = object({
+        time_zone           = string
+        compression_enabled = bool
+      })
+      backup_frequency = string
+      protection_policy = map(object({
+        policy_type           = string
+        retention_daily_count = number
+        retention_weekly = optional(object({
+          count    = optional(number, null)
+          weekdays = optional(set(string), null)
+        }), null)
+        backup = optional(object({
+          time                 = optional(string)
+          frequency_in_minutes = optional(number)
+          weekdays             = optional(set(string))
+        }), null)
+        retention_monthly = optional(object({
+          count             = optional(number, null)
+          weekdays          = optional(set(string), null)
+          weeks             = optional(set(string), null)
+          monthdays         = optional(set(number), null)
+          include_last_days = optional(bool, false)
+        }), null)
+        retention_yearly = optional(object({
+          count             = optional(number, null)
+          months            = optional(set(string), null)
+          weekdays          = optional(set(string), null)
+          weeks             = optional(set(string), null)
+          monthdays         = optional(set(number), null)
+          include_last_days = optional(bool, false)
+        }), null)
+      }))
+    })), null)
+    backup_protected_vm = optional(map(object({
+      source_vm_id          = string
+      vm_backup_policy_name = string
+      sleep_timer           = optional(string, "60s")
+    })), null)
+    backup_protected_file_share = optional(map(object({
+      source_storage_account_id     = string
+      backup_file_share_policy_name = string
+      source_file_share_name        = string
+      disable_registration          = optional(bool, false)
+      sleep_timer                   = optional(string, "60s")
+    })), null)
+    managed_identities = optional(object({
+      system_assigned            = optional(bool, false)
+      user_assigned_resource_ids = optional(set(string), [])
+      user_assigned_keys         = optional(set(string), [])
+    }), {})
+    role_assignments = optional(map(object({
+      role_definition_id_or_name             = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
+      description                            = optional(string, null)
+      skip_service_principal_aad_check       = optional(bool, false)
+      condition                              = optional(string, null)
+      condition_version                      = optional(string, null)
+      delegated_managed_identity_resource_id = optional(string, null)
+      principal_type                         = optional(string, null)
+    })), {})
+    private_endpoints = optional(map(object({
+      name = optional(string, null)
+      role_assignments = optional(map(object({
+        role_definition_id_or_name             = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
+        description                            = optional(string, null)
+        skip_service_principal_aad_check       = optional(bool, false)
+        condition                              = optional(string, null)
+        condition_version                      = optional(string, null)
+        delegated_managed_identity_resource_id = optional(string, null)
+        principal_type                         = optional(string, null)
+      })), {})
+      lock = optional(object({
+        kind = string
+        name = optional(string, null)
+      }), null)
+      network_configuration = object({
+        subnet_resource_id = optional(string)
+        vnet_key           = optional(string)
+        subnet_key         = optional(string)
+      })
+      subresource_name = string
+      private_dns_zone = optional(object({
+        resource_ids = optional(set(string))
+        keys         = optional(set(string))
+      }))
+      private_dns_zone_group_name             = optional(string, "default")
+      application_security_group_associations = optional(map(string), {})
+      private_service_connection_name         = optional(string, null)
+      network_interface_name                  = optional(string, null)
+      location                                = optional(string, null)
+      resource_group_name                     = optional(string, null)
+      ip_configurations = optional(map(object({
+        name               = string
+        private_ip_address = string
+      })), {})
+      tags = optional(map(string), null)
+    })), {})
+    lock = optional(object({
+      kind = string
+      name = optional(string, null)
+    }))
+    tags = optional(map(string), {})
+    diagnostic_settings = optional(map(object({
+      name                                     = optional(string, null)
+      log_categories                           = optional(set(string), [])
+      log_groups                               = optional(set(string), ["allLogs"])
+      metric_categories                        = optional(set(string), ["AllMetrics"])
+      log_analytics_destination_type           = optional(string, "Dedicated")
+      workspace_resource_id                    = optional(string, null)
+      storage_account_resource_id              = optional(string, null)
+      event_hub_authorization_rule_resource_id = optional(string, null)
+      event_hub_name                           = optional(string, null)
+      marketplace_partner_resource_id          = optional(string, null)
+      use_default_log_analytics                = optional(bool, true)
+    })), {})
   }))
 ```
 
@@ -676,7 +1067,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -701,6 +1093,7 @@ map(object({
     scope                      = string
     principal_id               = optional(string)
     managed_identity_key       = optional(string)
+    assign_to_caller           = optional(bool, false)
     description                = optional(string, null)
     principal_type             = optional(string, null)
   }))
@@ -732,7 +1125,8 @@ map(object({
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -754,7 +1148,10 @@ Type:
 
 ```hcl
 map(object({
-    name                              = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length = number
+    }))
     resource_group_key                = string
     location                          = optional(string)
     account_tier                      = optional(string, "Standard")
@@ -775,11 +1172,14 @@ map(object({
     is_hns_enabled                    = optional(bool)
     large_file_share_enabled          = optional(bool)
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     sas_policy = optional(object({
@@ -888,7 +1288,9 @@ map(object({
       name     = string
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -909,7 +1311,9 @@ map(object({
       })))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -935,7 +1339,9 @@ map(object({
       })))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1004,6 +1410,7 @@ map(object({
     managed_identities = optional(object({
       system_assigned            = optional(bool, false)
       user_assigned_resource_ids = optional(set(string), [])
+      user_assigned_keys         = optional(set(string), [])
     }), {})
     containers = optional(map(object({
       name                           = string
@@ -1018,7 +1425,9 @@ map(object({
       }))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1031,7 +1440,9 @@ map(object({
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1067,7 +1478,9 @@ map(object({
     })), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -1297,7 +1710,9 @@ map(object({
       private_endpoint_network_policies             = optional(string, "Enabled")
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -1308,7 +1723,9 @@ map(object({
     })), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)

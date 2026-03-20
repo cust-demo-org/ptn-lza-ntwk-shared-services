@@ -40,6 +40,12 @@ locals {
   # Managed identity principal ID lookup: resolve MI key → principal ID for role assignments
   managed_identity_principal_ids = { for key, mod in module.managed_identity : key => mod.principal_id }
 
+  # Managed identity resource ID lookup: resolve MI key → resource ID for user_assigned_keys / CMK identity
+  managed_identity_resource_ids = { for key, mod in module.managed_identity : key => mod.resource_id }
+
+  # Key vault resource ID lookup: resolve key vault key → resource ID for CMK key_vault_key
+  key_vault_resource_ids = { for key, mod in module.key_vault : key => mod.resource_id }
+
   # Storage account resource ID lookup: resolve storage account key → resource ID
   storage_account_resource_ids = { for key, mod in module.storage_account : key => mod.resource_id }
 

@@ -4,6 +4,12 @@ variable "location" {
   description = "Azure region for all resources. Refer to the main pattern module variable descriptions for complete details."
 }
 
+variable "enable_telemetry" {
+  type        = bool
+  default     = true
+  description = "Controls whether telemetry is enabled for all AVM modules. Refer to the main pattern module variable descriptions for complete details."
+}
+
 variable "tags" {
   type        = map(string)
   default     = {}
@@ -21,7 +27,8 @@ variable "resource_groups" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -63,11 +70,14 @@ variable "log_analytics_workspace_configuration" {
       identity_ids = optional(set(string))
     }))
     customer_managed_key = optional(object({
-      key_vault_resource_id = string
-      key_name              = string
+      key_vault_resource_id = optional(string)
+      key_vault_key         = optional(string)
+      key_name              = optional(string)
+      key_key               = optional(string)
       key_version           = optional(string)
       user_assigned_identity = optional(object({
-        resource_id = string
+        resource_id = optional(string)
+        key         = optional(string)
       }))
     }))
     data_exports = optional(map(object({
@@ -115,7 +125,8 @@ variable "log_analytics_workspace_configuration" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -127,7 +138,9 @@ variable "log_analytics_workspace_configuration" {
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -195,7 +208,8 @@ variable "network_security_groups" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -239,7 +253,8 @@ variable "route_tables" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -355,7 +370,9 @@ variable "virtual_networks" {
       private_endpoint_network_policies             = optional(string, "Enabled")
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -366,7 +383,9 @@ variable "virtual_networks" {
     })), {})
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -414,7 +433,8 @@ variable "private_dns_zones" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -474,7 +494,11 @@ variable "managed_identities" {
 
 variable "key_vaults" {
   type = map(object({
-    name                            = string
+    name = string
+    name_random_suffix_configuration = optional(object({
+      length             = number
+      append_with_hyphen = optional(bool, true)
+    }))
     resource_group_key              = string
     location                        = optional(string)
     sku_name                        = optional(string, "premium")
@@ -494,6 +518,7 @@ variable "key_vaults" {
       role_definition_id_or_name             = string
       principal_id                           = optional(string)
       managed_identity_key                   = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -505,7 +530,9 @@ variable "key_vaults" {
       name = optional(string, null)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -554,7 +581,9 @@ variable "key_vaults" {
       tags            = optional(map(string))
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -579,7 +608,9 @@ variable "key_vaults" {
       expiration_date = optional(string)
       role_assignments = optional(map(object({
         role_definition_id_or_name             = string
-        principal_id                           = string
+        principal_id                           = optional(string)
+        managed_identity_key                   = optional(string)
+        assign_to_caller                       = optional(bool, false)
         description                            = optional(string, null)
         skip_service_principal_aad_check       = optional(bool, false)
         condition                              = optional(string, null)
@@ -591,15 +622,15 @@ variable "key_vaults" {
     wait_for_rbac_before_key_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_secret_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     wait_for_rbac_before_contact_operations = optional(object({
       create  = optional(string, "30s")
       destroy = optional(string, "0s")
-    }))
+    }), {})
     tags = optional(map(string), {})
     lock = optional(object({
       kind = string
@@ -629,6 +660,7 @@ variable "role_assignments" {
     scope                      = string
     principal_id               = optional(string)
     managed_identity_key       = optional(string)
+    assign_to_caller           = optional(bool, false)
     description                = optional(string, null)
     principal_type             = optional(string, null)
   }))
@@ -701,7 +733,8 @@ variable "bastion_hosts" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
@@ -760,7 +793,8 @@ variable "flowlog_configuration" {
     }))
     role_assignments = optional(map(object({
       role_definition_id_or_name             = string
-      principal_id                           = string
+      principal_id                           = optional(string)
+      assign_to_caller                       = optional(bool, false)
       description                            = optional(string, null)
       skip_service_principal_aad_check       = optional(bool, false)
       condition                              = optional(string, null)
