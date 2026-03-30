@@ -5,7 +5,7 @@ locals {
   # Resource group ID lookup: resolve resource_group_key → resource group resource ID
   resource_group_resource_ids = { for key, mod in module.resource_group : key => mod.resource_id }
 
-  # Log Analytics workspace ID: use external ID if provided, otherwise use auto-created workspace
+  # Log Analytics workspace ID: use external ID if provided, otherwise use pattern-managed workspace
   default_log_analytics_workspace_resource_id = coalesce(
     try(var.byo_log_analytics_workspace.resource_id, null),
     try(module.log_analytics_workspace[0].resource_id, null)

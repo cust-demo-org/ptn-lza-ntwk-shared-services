@@ -25,7 +25,7 @@ resource_groups = {
 }
 
 # --------------------------------------------------------------------------
-# Log Analytics (auto-create for diagnostics)
+# Log Analytics (pattern-managed for diagnostics)
 # --------------------------------------------------------------------------
 log_analytics_workspace_configuration = {
   name               = "law-spoke-shared-vnethub"

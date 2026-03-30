@@ -28,7 +28,7 @@ resource_groups = {
   }
 }
 
-# ─── Log Analytics (auto-create) ────────────────────────────
+# ─── Log Analytics (pattern-managed) ────────────────────────────
 
 log_analytics_workspace_configuration = {
   name               = "law-shared-full"

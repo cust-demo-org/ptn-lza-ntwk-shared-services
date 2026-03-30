@@ -127,7 +127,7 @@ Default: `{}`
 
 ### <a name="input_byo_log_analytics_workspace"></a> [byo\_log\_analytics\_workspace](#input\_byo\_log\_analytics\_workspace)
 
-Description: Bring-your-own Log Analytics workspace. Null auto-creates one. Refer to the main pattern module variable descriptions for complete details.
+Description: Bring-your-own Log Analytics workspace. Null creates a pattern-managed one. Refer to the main pattern module variable descriptions for complete details.
 
 Type:
 
@@ -400,7 +400,7 @@ Default: `"southeastasia"`
 
 ### <a name="input_log_analytics_workspace_configuration"></a> [log\_analytics\_workspace\_configuration](#input\_log\_analytics\_workspace\_configuration)
 
-Description: Configuration for auto-created Log Analytics workspace. Refer to the main pattern module variable descriptions for complete details.
+Description: Configuration for pattern-managed Log Analytics workspace. Refer to the main pattern module variable descriptions for complete details.
 
 Type:
 

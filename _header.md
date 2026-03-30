@@ -10,7 +10,7 @@ This Terraform root module provisions Azure Application Landing Zone (ALZ) spoke
 - Virtual WAN hub connections (alternative to hub VNet peering)
 - Azure Bastion for secure remote access (optional)
 - Network Watcher VNet flow logs (optional)
-- Log Analytics workspace (auto-created or externally provided)
+- Log Analytics workspace (pattern-managed or externally provided)
 - Resource locks, diagnostic settings, and common tagging on all resources
 - Storage accounts with sub-resource diagnostic settings (blob, file, queue, table)
 

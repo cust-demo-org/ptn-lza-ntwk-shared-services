@@ -17,7 +17,7 @@ resource_groups = {
   }
 }
 
-# Auto-create a Log Analytics workspace for diagnostic settings
+# Pattern-managed Log Analytics workspace for diagnostic settings
 log_analytics_workspace_configuration = {
   name               = "law-spoke-shared-min"
   resource_group_key = "rg_spoke"

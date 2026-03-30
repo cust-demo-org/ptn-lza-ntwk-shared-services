@@ -4,8 +4,8 @@ This deploys the simplest viable spoke networking configuration using the patter
 
 ## Features Tested
 
-- Resource groups (auto-created by the pattern module)
-- Log Analytics workspace (auto-created)
+- Resource groups (pattern-managed)
+- Log Analytics workspace (pattern-managed)
 - Network Security Groups with security rules
 - Route tables with routes
 - Virtual networks with subnets (no peering)
