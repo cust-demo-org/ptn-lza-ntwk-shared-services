@@ -12,7 +12,7 @@ This Terraform root module provisions Azure Application Landing Zone (ALZ) spoke
 - Virtual WAN hub connections (alternative to hub VNet peering)
 - Azure Bastion for secure remote access (optional)
 - Network Watcher VNet flow logs (optional)
-- Log Analytics workspace (auto-created or externally provided)
+- Log Analytics workspace (pattern-managed or externally provided)
 - Resource locks, diagnostic settings, and common tagging on all resources
 - Storage accounts with sub-resource diagnostic settings (blob, file, queue, table)
 
@@ -487,7 +487,7 @@ Description: Configuration for a bring-your-own Log Analytics workspace which wi
 - `resource_id` - (Required) The Azure resource ID of the existing Log Analytics workspace.
 - `location` - (Required) The Azure region of the existing Log Analytics workspace.
 
-> **Pattern note:** When `null` (the default), the pattern auto-creates a Log Analytics workspace using `log_analytics_workspace_configuration`.
+> **Pattern note:** When `null` (the default), the pattern creates a pattern-managed Log Analytics workspace using `log_analytics_workspace_configuration`.
 
 Type:
 
@@ -582,7 +582,7 @@ Description: Network Watcher and VNet flow log configuration. When `null` (the d
 
 - `tags` - (Optional) Tags to apply to the Network Watcher. Defaults to `{}`.
 
-> **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. If `network_watcher_id`, `network_watcher_name`, and `resource_group_name` are not specified, defaults to the Azure auto-created `NetworkWatcher_<location>` in `NetworkWatcherRG`. For `traffic_analytics`, `workspace_id`, `workspace_region`, and `workspace_resource_id` default to the pattern's Log Analytics workspace (BYO or auto-created).
+> **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. If `network_watcher_id`, `network_watcher_name`, and `resource_group_name` are not specified, defaults to the Azure auto-created `NetworkWatcher_<location>` in `NetworkWatcherRG`. For `traffic_analytics`, `workspace_id`, `workspace_region`, and `workspace_resource_id` default to the pattern's Log Analytics workspace (BYO or pattern-managed).
 
 Type:
 
@@ -913,7 +913,7 @@ Default: `{}`
 
 ### <a name="input_log_analytics_workspace_configuration"></a> [log\_analytics\_workspace\_configuration](#input\_log\_analytics\_workspace\_configuration)
 
-Description: Configuration for the auto-created Log Analytics workspace which will be set as default log analytics workspace for the pattern. The following attributes are supported:
+Description: Configuration for the pattern-managed Log Analytics workspace which will be set as default log analytics workspace for the pattern. The following attributes are supported:
 
 - `name` - (Required) The name of the Log Analytics workspace.
 - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this workspace will be deployed.
@@ -2870,7 +2870,7 @@ Description: Map of Key Vault keys to their resource IDs, names, and URIs.
 
 ### <a name="output_log_analytics_workspace"></a> [log\_analytics\_workspace](#output\_log\_analytics\_workspace)
 
-Description: Log Analytics workspace resource ID and name (auto-created or externally provided). Name is derived from the resource ID.
+Description: Log Analytics workspace resource ID and name (pattern-managed or externally provided). Name is derived from the resource ID.
 
 ### <a name="output_managed_identities"></a> [managed\_identities](#output\_managed\_identities)
 

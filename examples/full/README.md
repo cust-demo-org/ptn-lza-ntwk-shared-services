@@ -10,7 +10,7 @@ Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_links`
 ## Features Tested
 
 - Resource groups with per-RG lock overrides
-- Log Analytics workspace (auto-created)
+- Log Analytics workspace (pattern-managed)
 - Network Security Groups with security rules
 - Route tables with routes
 - Virtual networks with subnets and VNet-to-VNet hub peering
@@ -19,7 +19,7 @@ Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_links`
 - Managed identities
 - Key Vaults with RBAC role assignments and private endpoints (key-based references)
 - Standalone role assignments with computed scope
-- Azure Bastion with key-based subnet/VNet references and auto-created public IP
+- Azure Bastion with key-based subnet/VNet references and pattern-managed public IP
 - Storage accounts (for flow log target)
 - Diagnostic settings on all supported resources (LAW, NSGs, VNet, Key Vault, Bastion, Storage Account)
 - Storage account sub-resource diagnostic settings (blob, file, queue, table)
@@ -276,7 +276,7 @@ Default: `{}`
 
 ### <a name="input_byo_log_analytics_workspace"></a> [byo\_log\_analytics\_workspace](#input\_byo\_log\_analytics\_workspace)
 
-Description: Bring-your-own Log Analytics workspace. Null auto-creates one. Refer to the main pattern module variable descriptions for complete details.
+Description: Bring-your-own Log Analytics workspace. Null creates a pattern-managed one. Refer to the main pattern module variable descriptions for complete details.
 
 Type:
 
@@ -549,7 +549,7 @@ Default: `"southeastasia"`
 
 ### <a name="input_log_analytics_workspace_configuration"></a> [log\_analytics\_workspace\_configuration](#input\_log\_analytics\_workspace\_configuration)
 
-Description: Configuration for auto-created Log Analytics workspace. Refer to the main pattern module variable descriptions for complete details.
+Description: Configuration for pattern-managed Log Analytics workspace. Refer to the main pattern module variable descriptions for complete details.
 
 Type:
 

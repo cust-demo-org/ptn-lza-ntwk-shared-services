@@ -11,7 +11,7 @@ output "log_analytics_workspace" {
     resource_id = local.default_log_analytics_workspace_resource_id
     name        = split("/", local.default_log_analytics_workspace_resource_id)[length(split("/", local.default_log_analytics_workspace_resource_id)) - 1]
   }
-  description = "Log Analytics workspace resource ID and name (auto-created or externally provided). Name is derived from the resource ID."
+  description = "Log Analytics workspace resource ID and name (pattern-managed or externally provided). Name is derived from the resource ID."
 }
 
 output "network_security_groups" {

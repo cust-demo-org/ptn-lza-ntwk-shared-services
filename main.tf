@@ -15,7 +15,7 @@ resource "terraform_data" "validation" {
   lifecycle {
     precondition {
       condition     = var.byo_log_analytics_workspace != null || var.log_analytics_workspace_configuration != null
-      error_message = "log_analytics_workspace_configuration must be provided when byo_log_analytics_workspace is null, so that a Log Analytics workspace can be auto-created."
+      error_message = "log_analytics_workspace_configuration must be provided when byo_log_analytics_workspace is null, so that a pattern-managed Log Analytics workspace can be created."
     }
 
     precondition {

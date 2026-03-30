@@ -47,7 +47,7 @@ variable "byo_log_analytics_workspace" {
     location    = string
   })
   default     = null
-  description = "Bring-your-own Log Analytics workspace. Null auto-creates one. Refer to the main pattern module variable descriptions for complete details."
+  description = "Bring-your-own Log Analytics workspace. Null creates a pattern-managed one. Refer to the main pattern module variable descriptions for complete details."
 }
 
 variable "log_analytics_workspace_configuration" {
@@ -175,7 +175,7 @@ variable "log_analytics_workspace_configuration" {
     })), {})
   })
   default     = null
-  description = "Configuration for auto-created Log Analytics workspace. Refer to the main pattern module variable descriptions for complete details."
+  description = "Configuration for pattern-managed Log Analytics workspace. Refer to the main pattern module variable descriptions for complete details."
 }
 
 variable "network_security_groups" {
