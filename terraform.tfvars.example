@@ -1,16 +1,23 @@
 # ──────────────────────────────────────────────────────────────
 # ALZ Spoke Networking & Shared Services – Variable Definitions
 # ──────────────────────────────────────────────────────────────
-# This file documents every input variable with its type, shape,
-# defaults, and security implications.  Uncomment and fill in
-# the sections you need.
+# This file documents every root-level input variable with its
+# type, defaults, and key nested attributes.  Uncomment and fill
+# in the sections you need.
+#
+# For a working deployment with all features enabled, see
+# examples/full/terraform.tfvars.
 # ──────────────────────────────────────────────────────────────
 
 # ─── Global ──────────────────────────────────────────────────
 
 # (Required) Azure region for all resources.
 # Changing this forces recreation of all resources.
-location = "australiaeast"
+location = "southeastasia"
+
+# (Optional) Controls whether telemetry is enabled for all AVM
+# modules deployed by this pattern. Default: true
+# enable_telemetry = false
 
 # (Optional) Common tags applied to every taggable resource.
 # Per-resource tags are merged on top. Default: {}
@@ -26,27 +33,39 @@ tags = {
 resource_groups = {
   rg_networking = {
     name = "rg-spoke-networking"
-    # location = "australiaeast"   # defaults to var.location
+    # location = "southeastasia"   # defaults to var.location
     # tags     = {}                # merged with var.tags
   }
 }
 
 # ─── Log Analytics Workspace ────────────────────────────────
 
-# (Optional) Resource ID of an existing Log Analytics workspace.
-# When null, the pattern auto-creates one using the configuration below.
-# Default: null
-# log_analytics_workspace_id = "/subscriptions/.../providers/Microsoft.OperationalInsights/workspaces/..."
+# (Optional) Bring-your-own Log Analytics workspace.
+# When set, the pattern skips creation of a workspace and uses this workspace
+# as the default for diagnostic_settings.  Default: null
+# byo_log_analytics_workspace = {
+#   resource_id = "/subscriptions/.../providers/Microsoft.OperationalInsights/workspaces/..."
+#   location    = "southeastasia"
+# }
 
-# (Required when log_analytics_workspace_id is null)
-# Configuration for the auto-created workspace.
+# (Required when byo_log_analytics_workspace is null)
+# Configuration for the pattern-managed workspace.
 log_analytics_workspace_configuration = {
   name               = "law-shared-services"
   resource_group_key = "rg_networking"
-  # location         = "australiaeast"        # defaults to var.location
+  # location         = "southeastasia"        # defaults to var.location
   # sku              = "PerGB2018"            # default
   # retention_in_days = 30                    # default
   # tags             = {}
+
+  # role_assignments = {
+  #   ra_reader = {
+  #     role_definition_id_or_name = "Log Analytics Reader"
+  #     managed_identity_key       = "mi_app"    # XOR principal_id / assign_to_caller
+  #   }
+  # }
+  # private_endpoints   = { ... }
+  # diagnostic_settings = { ... }
 }
 
 # ─── Network Security Groups ────────────────────────────────
@@ -57,7 +76,7 @@ log_analytics_workspace_configuration = {
 #   nsg_app = {
 #     name               = "nsg-app-subnet"
 #     resource_group_key = "rg_networking"
-#     # location         = "australiaeast"
+#     # location         = "southeastasia"
 #     security_rules = {
 #       allow_https = {
 #         name                       = "AllowHTTPS"
@@ -71,15 +90,9 @@ log_analytics_workspace_configuration = {
 #         source_port_range          = "*"
 #       }
 #     }
+#     # role_assignments    = { ... }
+#     # diagnostic_settings = { ... }
 #     # tags = {}
-#     # diagnostic_settings = {
-#     #   to_law = {
-#     #     name = "diag-nsg-to-law"
-#     #     # storage_account = {
-#     #     #   key = "sa_diag"    # OR resource_id = "/subscriptions/.../storageAccounts/..."
-#     #     # }
-#     #   }
-#     # }
 #   }
 # }
 
@@ -100,6 +113,8 @@ log_analytics_workspace_configuration = {
 #         next_hop_in_ip_address = "10.0.0.4"
 #       }
 #     }
+#     # role_assignments    = { ... }
+#     # diagnostic_settings = { ... }
 #     # tags = {}
 #   }
 # }
@@ -113,7 +128,7 @@ log_analytics_workspace_configuration = {
 #     name               = "vnet-spoke-shared"
 #     address_space      = ["10.1.0.0/16"]
 #     resource_group_key = "rg_networking"
-#     # location         = "australiaeast"
+#     # location         = "southeastasia"
 #     # dns_servers      = ["10.0.0.5"]
 #
 #     subnets = {
@@ -125,6 +140,7 @@ log_analytics_workspace_configuration = {
 #         # route_table_key            = "rt_default"
 #         # default_outbound_access_enabled   = false   # default
 #         # private_endpoint_network_policies = "Enabled"
+#         # role_assignments = { ... }
 #       }
 #     }
 #
@@ -136,12 +152,31 @@ log_analytics_workspace_configuration = {
 #     #     use_remote_gateways                = false
 #     #   }
 #     # }
+#     # role_assignments    = { ... }
+#     # diagnostic_settings = { ... }
 #     # tags = {}
-#     # diagnostic_settings = {
-#     #   to_law = {
-#     #     name = "diag-vnet-to-law"
-#     #   }
-#     # }
+#   }
+# }
+
+# ─── Private DNS Zones ──────────────────────────────────
+
+# (Optional) Create Private DNS Zones and link to pattern VNets.
+# PE configurations reference these zone keys via private_dns_zone.keys.
+# Default: {}
+# private_dns_zones = {
+#   dns_blob = {
+#     domain_name        = "privatelink.blob.core.windows.net"
+#     resource_group_key = "rg_networking"
+#     virtual_network_links = {
+#       link_to_spoke = {
+#         name                = "link-blob-to-spoke"
+#         virtual_network_key = "vnet_spoke"
+#         # registration_enabled = false
+#       }
+#     }
+#     # role_assignments = { ... }
+#     # lock = { kind = "CanNotDelete" }
+#     # tags = {}
 #   }
 # }
 
@@ -168,14 +203,15 @@ log_analytics_workspace_configuration = {
 #   mi_app = {
 #     name               = "mi-shared-services"
 #     resource_group_key = "rg_networking"
-#     # location = "australiaeast"
+#     # location = "southeastasia"
 #     # tags     = {}
 #   }
 # }
 
 # ─── Key Vaults ──────────────────────────────────────────────
 
-# (Optional) Map of Key Vaults with RBAC role assignments and private endpoints.
+# (Optional) Map of Key Vaults with RBAC role assignments, private
+# endpoints, keys, secrets, and optional random name suffix.
 # public_network_access_enabled defaults to false (secure-by-default).
 # Default: {}
 # key_vaults = {
@@ -186,26 +222,109 @@ log_analytics_workspace_configuration = {
 #     # public_network_access_enabled = false         # default
 #     # purge_protection_enabled      = true          # default
 #
+#     # name_random_suffix_configuration = {
+#     #   length = 4     # appends e.g. "-a1b2" to the name
+#     # }
+#
+#     # keys = {
+#     #   cmk_sa = {
+#     #     name     = "cmk-storage"
+#     #     key_type = "RSA"
+#     #     key_size = 2048
+#     #     key_opts = ["decrypt", "encrypt", "sign", "unwrapKey", "verify", "wrapKey"]
+#     #   }
+#     # }
+#
 #     # role_assignments = {
 #     #   kv_reader = {
 #     #     role_definition_id_or_name = "Key Vault Secrets User"
-#     #     managed_identity_key       = "mi_app"    # XOR principal_id
+#     #     managed_identity_key       = "mi_app"    # XOR principal_id / assign_to_caller
 #     #     # principal_id             = "00000000-0000-0000-0000-000000000000"
+#     #     # assign_to_caller         = true
 #     #   }
+#     # }
+#
+#     # customer_managed_key = {
+#     #   key_vault_key = "kv_shared"   # reference by key vault map key
+#     #   key_key       = "cmk_sa"      # reference by key map key
+#     #   user_assigned_identity = {
+#     #     key = "mi_app"              # reference by managed identity map key
+#     #   }
+#     # }
+#
+#     # managed_identities = {
+#     #   system_assigned    = true
+#     #   user_assigned_keys = ["mi_app"]    # resolved from managed_identities variable
 #     # }
 #
 #     # private_endpoints = {
 #     #   pe_kv = {
-#     #     subnet_resource_id            = "/subscriptions/.../subnets/snet-pe"
-#     #     private_dns_zone_resource_ids = ["/subscriptions/.../privateDnsZones/privatelink.vaultcore.azure.net"]
+#     #     name = "pe-kv-shared"
+#     #     network_configuration = {
+#     #       vnet_key   = "vnet_spoke"
+#     #       subnet_key = "snet_pe"
+#     #     }
+#     #     private_dns_zone = {
+#     #       keys = ["dns_kv"]
+#     #     }
+#     #     # role_assignments = { ... }
 #     #   }
 #     # }
+#     # diagnostic_settings = { ... }
+#     # lock = { kind = "CanNotDelete" }
 #     # tags = {}
-#     # diagnostic_settings = {
-#     #   to_law = {
-#     #     name = "diag-kv-to-law"
+#   }
+# }
+
+# ─── Storage Accounts ────────────────────────────────────────
+
+# (Optional) Map of storage accounts with private endpoints,
+# customer-managed key encryption, managed identities, containers,
+# queues, tables, shares, and per-sub-service diagnostic settings.
+# Default: {}
+# storage_accounts = {
+#   sa_shared = {
+#     name                          = "sasharedservices"
+#     resource_group_key            = "rg_networking"
+#     # account_replication_type    = "ZRS"           # default
+#     # shared_access_key_enabled   = false           # default (secure)
+#     # public_network_access_enabled = false         # default (secure)
+#
+#     # name_random_suffix_configuration = {
+#     #   length = 4     # appends e.g. "a1b2" (no separator for SA names)
+#     # }
+#
+#     # customer_managed_key = {
+#     #   key_vault_key = "kv_shared"
+#     #   key_key       = "cmk_sa"
+#     #   user_assigned_identity = { key = "mi_app" }
+#     # }
+#
+#     # managed_identities = {
+#     #   system_assigned    = false
+#     #   user_assigned_keys = ["mi_app"]
+#     # }
+#
+#     # containers = {
+#     #   logs = { name = "logs" }
+#     # }
+#
+#     # private_endpoints = {
+#     #   pe_blob = {
+#     #     name             = "pe-blob-shared"
+#     #     subresource_name = "blob"
+#     #     network_configuration = {
+#     #       vnet_key   = "vnet_spoke"
+#     #       subnet_key = "snet_pe"
+#     #     }
+#     #     private_dns_zone = {
+#     #       keys = ["dns_blob"]
+#     #     }
 #     #   }
 #     # }
+#     # role_assignments    = { ... }
+#     # diagnostic_settings = { ... }
+#     # tags = {}
 #   }
 # }
 
@@ -218,8 +337,9 @@ log_analytics_workspace_configuration = {
 #   ra_reader = {
 #     role_definition_id_or_name = "Reader"
 #     scope                      = "/subscriptions/..."
-#     managed_identity_key       = "mi_app"  # XOR principal_id
+#     managed_identity_key       = "mi_app"  # XOR principal_id / assign_to_caller
 #     # principal_id             = "00000000-0000-0000-0000-000000000000"
+#     # assign_to_caller         = true
 #   }
 # }
 
@@ -278,12 +398,86 @@ log_analytics_workspace_configuration = {
 #     # tunneling_enabled         = false         # default
 #     # private_only_enabled      = false         # default
 #     # scale_units               = 2             # default
+#     # role_assignments    = { ... }
+#     # diagnostic_settings = { ... }
 #     # tags = {}
-#     # diagnostic_settings = {
-#     #   to_law = {
-#     #     name = "diag-bastion-to-law"
+#   }
+# }
+
+# ─── Backup Vaults (Azure Data Protection) ───────────────────
+
+# (Optional) Map of Azure Data Protection Backup Vaults for disk,
+# blob, AKS, or PostgreSQL backups.  Supports CMK, managed
+# identities, backup policies, and backup instances.
+# Default: {}
+# backup_vaults = {
+#   bv_shared = {
+#     name               = "bv-shared-services"
+#     resource_group_key = "rg_networking"
+#     datastore_type     = "VaultStore"
+#     redundancy         = "LocallyRedundant"
+#     # immutability       = "Disabled"            # default
+#     # soft_delete        = "AlwaysOn"             # default
+#
+#     # managed_identities = {
+#     #   system_assigned    = true
+#     #   user_assigned_keys = ["mi_app"]
+#     # }
+#
+#     # customer_managed_key = {
+#     #   key_vault_key = "kv_shared"
+#     #   key_key       = "cmk_bv"
+#     #   user_assigned_identity = { key = "mi_app" }
+#     # }
+#
+#     # role_assignments    = { ... }
+#     # diagnostic_settings = { ... }
+#     # lock = { kind = "CanNotDelete" }
+#     # tags = {}
+#   }
+# }
+
+# ─── Recovery Services Vaults ─────────────────────────────────
+
+# (Optional) Map of Azure Recovery Services Vaults for VM,
+# file share, or workload (SQL/SAP HANA) backups.  Supports
+# private endpoints, CMK, managed identities, and backup policies.
+# Default: {}
+# recovery_services_vaults = {
+#   rsv_shared = {
+#     name                         = "rsv-shared-services"
+#     resource_group_key           = "rg_networking"
+#     # sku                        = "Standard"           # default
+#     # storage_mode_type          = "GeoRedundant"       # default
+#     # cross_region_restore_enabled = true                # default
+#     # soft_delete_enabled          = true                # default
+#
+#     # managed_identities = {
+#     #   system_assigned    = true
+#     #   user_assigned_keys = ["mi_app"]
+#     # }
+#
+#     # customer_managed_key = {
+#     #   key_vault_key = "kv_shared"
+#     #   key_key       = "cmk_rsv"
+#     #   user_assigned_identity = { key = "mi_app" }
+#     # }
+#
+#     # private_endpoints = {
+#     #   pe_rsv = {
+#     #     name             = "pe-rsv-shared"
+#     #     subresource_name = "AzureBackup"
+#     #     network_configuration = {
+#     #       vnet_key   = "vnet_spoke"
+#     #       subnet_key = "snet_pe"
+#     #     }
 #     #   }
 #     # }
+#
+#     # role_assignments    = { ... }
+#     # diagnostic_settings = { ... }
+#     # lock = { kind = "CanNotDelete" }
+#     # tags = {}
 #   }
 # }
 
@@ -293,17 +487,19 @@ log_analytics_workspace_configuration = {
 # References an existing Network Watcher (typically auto-created by Azure).
 # Default: null
 # flowlog_configuration = {
-#   network_watcher_id   = "/subscriptions/.../providers/Microsoft.Network/networkWatchers/NetworkWatcher_australiaeast"
-#   network_watcher_name = "NetworkWatcher_australiaeast"
+#   network_watcher_id   = "/subscriptions/.../providers/Microsoft.Network/networkWatchers/NetworkWatcher_southeastasia"
+#   network_watcher_name = "NetworkWatcher_southeastasia"
 #   resource_group_name  = "NetworkWatcherRG"
-#   # location           = "australiaeast"     # defaults to var.location
+#   # location           = "southeastasia"     # defaults to var.location
 #
 #   flow_logs = {
 #     vnet_flow = {
-#       enabled            = true
-#       name               = "fl-spoke-vnet"
-#       target_resource_id = "/subscriptions/.../providers/Microsoft.Network/virtualNetworks/vnet-spoke-shared"
-#       storage_account_id = "/subscriptions/.../providers/Microsoft.Storage/storageAccounts/stflowlogs"
+#       enabled = true
+#       name    = "fl-spoke-vnet"
+#       vnet_key = "vnet_spoke"     # resolved to VNet resource ID
+#       storage_account = {
+#         key = "sa_flowlog"        # XOR resource_id
+#       }
 #       retention_policy = {
 #         enabled = true
 #         days    = 90
@@ -311,12 +507,10 @@ log_analytics_workspace_configuration = {
 #       # traffic_analytics = {
 #       #   enabled               = true
 #       #   interval_in_minutes   = 10
-#       #   workspace_id          = "guid"
-#       #   workspace_region      = "australiaeast"
-#       #   workspace_resource_id = "/subscriptions/.../providers/Microsoft.OperationalInsights/workspaces/..."
 #       # }
 #       # version = 2
 #     }
 #   }
+#   # role_assignments = { ... }
 #   # tags = {}
 # }
