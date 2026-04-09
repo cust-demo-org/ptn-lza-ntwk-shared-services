@@ -636,11 +636,17 @@ variable "virtual_networks" {
       sync_remote_address_space_triggers = optional(any, null)
     })), {})
     subnets = optional(map(object({
-      name                       = string
-      address_prefix             = optional(string)
-      address_prefixes           = optional(list(string))
-      network_security_group_key = optional(string)
-      route_table_key            = optional(string)
+      name             = string
+      address_prefix   = optional(string)
+      address_prefixes = optional(list(string))
+      network_security_group = optional(object({
+        key         = optional(string)
+        resource_id = optional(string)
+      }))
+      route_table = optional(object({
+        key         = optional(string)
+        resource_id = optional(string)
+      }))
       service_endpoints_with_location = optional(list(object({
         service   = string
         locations = optional(list(string), ["*"])
@@ -772,8 +778,12 @@ variable "virtual_networks" {
       - `name` - (Required) The name of the subnet.
       - `address_prefix` - (Optional) The CIDR address prefix for the subnet. Mutually exclusive with `address_prefixes`.
       - `address_prefixes` - (Optional) A list of CIDR address prefixes for the subnet. Mutually exclusive with `address_prefix`.
-      - `network_security_group_key` - (Optional) The key of the NSG in the `network_security_groups` variable to associate with this subnet.
-      - `route_table_key` - (Optional) The key of the route table in the `route_tables` variable to associate with this subnet.
+      - `network_security_group` - (Optional) NSG association for this subnet. Specify exactly one of `key` or `resource_id`.
+        - `key` - (Optional) The key of the NSG in the `network_security_groups` variable. Mutually exclusive with `resource_id`.
+        - `resource_id` - (Optional) The Azure resource ID of an existing NSG not managed by this pattern. Mutually exclusive with `key`.
+      - `route_table` - (Optional) Route table association for this subnet. Specify exactly one of `key` or `resource_id`.
+        - `key` - (Optional) The key of the route table in the `route_tables` variable. Mutually exclusive with `resource_id`.
+        - `resource_id` - (Optional) The Azure resource ID of an existing route table not managed by this pattern. Mutually exclusive with `key`.
       - `service_endpoints_with_location` - (Optional) A list of service endpoint configurations. Defaults to `[]`.
         - `service` - (Required) The service endpoint type (e.g., `"Microsoft.Storage"`).
         - `locations` - (Optional) A list of locations for the service endpoint. Defaults to `["*"]`.
@@ -841,6 +851,26 @@ variable "virtual_networks" {
   validation {
     condition = alltrue([
       for vnet_key, vnet in var.virtual_networks : alltrue([
+        for sk, subnet in vnet.subnets :
+        subnet.network_security_group == null ? true : (subnet.network_security_group.key != null ? 1 : 0) + (subnet.network_security_group.resource_id != null ? 1 : 0) == 1
+      ])
+    ])
+    error_message = "Each subnet network_security_group must set exactly one of key or resource_id."
+  }
+
+  validation {
+    condition = alltrue([
+      for vnet_key, vnet in var.virtual_networks : alltrue([
+        for sk, subnet in vnet.subnets :
+        subnet.route_table == null ? true : (subnet.route_table.key != null ? 1 : 0) + (subnet.route_table.resource_id != null ? 1 : 0) == 1
+      ])
+    ])
+    error_message = "Each subnet route_table must set exactly one of key or resource_id."
+  }
+
+  validation {
+    condition = alltrue([
+      for vnet_key, vnet in var.virtual_networks : alltrue([
         for ra_key, ra in vnet.role_assignments : ((ra.principal_id != null ? 1 : 0) + (ra.managed_identity_key != null ? 1 : 0) + (ra.assign_to_caller ? 1 : 0)) == 1
       ])
     ])
@@ -853,8 +883,11 @@ variable "private_dns_zones" {
     domain_name        = string
     resource_group_key = string
     virtual_network_links = optional(map(object({
-      name                                   = string
-      virtual_network_key                    = string
+      name = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
       registration_enabled                   = optional(bool, false)
       resolution_policy                      = optional(string, "Default")
       private_dns_zone_supports_private_link = optional(bool, false)
@@ -886,7 +919,9 @@ variable "private_dns_zones" {
     - `resource_group_key` - (Required) The key of the resource group in the `resource_groups` variable where this DNS zone will be deployed.
     - `virtual_network_links` - (Optional) A map of VNet links to create for this DNS zone. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
       - `name` - (Required) The name of the virtual network link.
-      - `virtual_network_key` - (Required) The key of the virtual network in the `virtual_networks` variable to link to this DNS zone.
+      - `virtual_network` - (Required) The virtual network to link to this DNS zone. Specify exactly one of `key` or `resource_id`.
+        - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Mutually exclusive with `resource_id`.
+        - `resource_id` - (Optional) The Azure resource ID of an existing virtual network not managed by this pattern. Mutually exclusive with `key`.
       - `registration_enabled` - (Optional) Whether auto-registration of VM DNS records is enabled for this link. Defaults to `false`.
       - `resolution_policy` - (Optional) The resolution policy for the link. Defaults to `"Default"`.
       - `private_dns_zone_supports_private_link` - (Optional) Whether the DNS zone supports private link resolution. Defaults to `false`.
@@ -921,13 +956,26 @@ variable "private_dns_zones" {
     ])
     error_message = "Each private DNS zone role assignment must set exactly one of principal_id, managed_identity_key, or assign_to_caller."
   }
+
+  validation {
+    condition = alltrue([
+      for dns_key, dns in var.private_dns_zones : alltrue([
+        for vnl_key, vnl in dns.virtual_network_links :
+        (vnl.virtual_network.key != null ? 1 : 0) + (vnl.virtual_network.resource_id != null ? 1 : 0) == 1
+      ])
+    ])
+    error_message = "Each private DNS zone virtual_network_link must set exactly one of virtual_network.key or virtual_network.resource_id."
+  }
 }
 
 variable "byo_private_dns_zone_links" {
   type = map(object({
-    name                                   = string
-    private_dns_zone_id                    = string
-    virtual_network_key                    = string
+    name                = string
+    private_dns_zone_id = string
+    virtual_network = object({
+      key         = optional(string)
+      resource_id = optional(string)
+    })
     registration_enabled                   = optional(bool, false)
     resolution_policy                      = optional(string, "Default")
     private_dns_zone_supports_private_link = optional(bool, false)
@@ -939,7 +987,9 @@ variable "byo_private_dns_zone_links" {
 
     - `name` - (Required) The name of the virtual network link.
     - `private_dns_zone_id` - (Required) The Azure resource ID of the existing Private DNS Zone to link.
-    - `virtual_network_key` - (Required) The key of the virtual network in the `virtual_networks` variable to link to the DNS zone.
+    - `virtual_network` - (Required) The virtual network to link to the DNS zone. Specify exactly one of `key` or `resource_id`.
+      - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Mutually exclusive with `resource_id`.
+      - `resource_id` - (Optional) The Azure resource ID of an existing virtual network not managed by this pattern. Mutually exclusive with `key`.
     - `registration_enabled` - (Optional) Whether auto-registration of DNS records is enabled for this link. Defaults to `false`.
     - `resolution_policy` - (Optional) The resolution policy for the link. Defaults to `"Default"`.
     - `private_dns_zone_supports_private_link` - (Optional) Whether the DNS zone supports private link resolution. Defaults to `false`.
@@ -947,6 +997,14 @@ variable "byo_private_dns_zone_links" {
 
     > **Pattern note:** Use this variable for DNS zones NOT managed by this pattern. For creating DNS zones as part of this pattern, use `private_dns_zones` instead. Tags in `tags` are merged with `var.tags`.
   EOT
+
+  validation {
+    condition = alltrue([
+      for k, link in var.byo_private_dns_zone_links :
+      (link.virtual_network.key != null ? 1 : 0) + (link.virtual_network.resource_id != null ? 1 : 0) == 1
+    ])
+    error_message = "Each byo_private_dns_zone_link must set exactly one of virtual_network.key or virtual_network.resource_id."
+  }
 }
 
 variable "managed_identities" {
@@ -2907,9 +2965,12 @@ variable "flowlog_configuration" {
     resource_group_name  = optional(string)
     location             = optional(string)
     flow_logs = optional(map(object({
-      enabled  = bool
-      name     = string
-      vnet_key = string
+      enabled = bool
+      name    = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
       retention_policy = object({
         days    = number
         enabled = bool
@@ -2956,7 +3017,9 @@ variable "flowlog_configuration" {
     - `flow_logs` - (Optional) A map of flow logs to create for the Network Watcher. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `null`.
       - `enabled` - (Required) Whether Network Flow Logging should be enabled.
       - `name` - (Required) The name of the Network Watcher Flow Log. Changing this forces a new resource to be created.
-      - `vnet_key` - (Required) The key of the virtual network in the `virtual_networks` variable for which to enable flow logs.
+      - `virtual_network` - (Required) The virtual network for which to enable flow logs. Specify exactly one of `key` or `resource_id`.
+        - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Mutually exclusive with `resource_id`.
+        - `resource_id` - (Optional) The Azure resource ID of an existing virtual network not managed by this pattern. Mutually exclusive with `key`.
       - `retention_policy` - (Required) The retention policy for flow log records.
         - `days` - (Required) The number of days to retain flow log records.
         - `enabled` - (Required) Whether retention is enabled.
@@ -2997,5 +3060,13 @@ variable "flowlog_configuration" {
       for ra_key, ra in var.flowlog_configuration.role_assignments : ((ra.principal_id != null ? 1 : 0) + (ra.managed_identity_key != null ? 1 : 0) + (ra.assign_to_caller ? 1 : 0)) == 1
     ])
     error_message = "Each flowlog configuration role assignment must set exactly one of principal_id, managed_identity_key, or assign_to_caller."
+  }
+
+  validation {
+    condition = var.flowlog_configuration == null ? true : alltrue([
+      for fl_key, fl in try(var.flowlog_configuration.flow_logs, {}) :
+      (fl.virtual_network.key != null ? 1 : 0) + (fl.virtual_network.resource_id != null ? 1 : 0) == 1
+    ])
+    error_message = "Each flow log must set exactly one of virtual_network.key or virtual_network.resource_id."
   }
 }

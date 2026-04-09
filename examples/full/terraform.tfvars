@@ -191,21 +191,29 @@ virtual_networks = {
 
     subnets = {
       snet_app = {
-        name                       = "snet-app"
-        address_prefix             = "10.1.1.0/24"
-        network_security_group_key = "nsg_app"
-        route_table_key            = "rt_default"
+        name           = "snet-app"
+        address_prefix = "10.1.1.0/24"
+        network_security_group = {
+          key = "nsg_app"
+        }
+        route_table = {
+          key = "rt_default"
+        }
       }
       snet_pe = {
-        name                              = "snet-private-endpoints"
-        address_prefix                    = "10.1.2.0/24"
-        network_security_group_key        = "nsg_pe"
+        name           = "snet-private-endpoints"
+        address_prefix = "10.1.2.0/24"
+        network_security_group = {
+          key = "nsg_pe"
+        }
         private_endpoint_network_policies = "Enabled"
       }
       AzureBastionSubnet = {
-        name                       = "AzureBastionSubnet"
-        address_prefix             = "10.1.255.0/26"
-        network_security_group_key = "nsg_bastion"
+        name           = "AzureBastionSubnet"
+        address_prefix = "10.1.255.0/26"
+        network_security_group = {
+          key = "nsg_bastion"
+        }
       }
     }
   }
@@ -221,8 +229,10 @@ private_dns_zones = {
     resource_group_key = "rg_networking"
     virtual_network_links = {
       link_to_spoke = {
-        name                = "link-blob-to-spoke"
-        virtual_network_key = "vnet_spoke"
+        name = "link-blob-to-spoke"
+        virtual_network = {
+          key = "vnet_spoke"
+        }
       }
     }
   }
@@ -232,7 +242,9 @@ byo_private_dns_zone_links = {
   byo_dns_kv = {
     name                = "link-kv-to-spoke"
     private_dns_zone_id = "placeholder" # overridden in main.tf with computed azurerm_private_dns_zone.kv.id
-    virtual_network_key = "vnet_spoke"
+    virtual_network = {
+      key = "vnet_spoke"
+    }
   }
 }
 
@@ -439,9 +451,11 @@ storage_accounts = {
 # flowlog_configuration = {
 #   flow_logs = {
 #     fl_spoke_vnet = {
-#       enabled  = true
-#       name     = "fl-spoke-vnet"
-#       vnet_key = "vnet_spoke"
+#       enabled = true
+#       name    = "fl-spoke-vnet"
+#       virtual_network = {
+#         key = "vnet_spoke"
+#       }
 #       storage_account = {
 #         key = "sa_flowlog"
 #       }

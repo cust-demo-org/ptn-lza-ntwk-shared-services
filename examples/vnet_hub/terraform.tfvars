@@ -88,16 +88,24 @@ virtual_networks = {
 
     subnets = {
       snet_app = {
-        name                       = "snet-app"
-        address_prefix             = "10.1.1.0/24"
-        network_security_group_key = "nsg_app"
-        route_table_key            = "rt_default"
+        name           = "snet-app"
+        address_prefix = "10.1.1.0/24"
+        network_security_group = {
+          key = "nsg_app"
+        }
+        route_table = {
+          key = "rt_default"
+        }
       }
       snet_data = {
-        name                       = "snet-data"
-        address_prefix             = "10.1.2.0/24"
-        network_security_group_key = "nsg_data"
-        route_table_key            = "rt_default"
+        name           = "snet-data"
+        address_prefix = "10.1.2.0/24"
+        network_security_group = {
+          key = "nsg_data"
+        }
+        route_table = {
+          key = "rt_default"
+        }
       }
     }
 
