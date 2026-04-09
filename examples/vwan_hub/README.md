@@ -886,9 +886,9 @@ map(object({
       sync_remote_address_space_triggers = optional(any, null)
     })), {})
     subnets = optional(map(object({
-      name                       = string
-      address_prefix             = optional(string)
-      address_prefixes           = optional(list(string))
+      name             = string
+      address_prefix   = optional(string)
+      address_prefixes = optional(list(string))
       network_security_group = optional(object({
         key         = optional(string)
         resource_id = optional(string)
