@@ -136,8 +136,8 @@ log_analytics_workspace_configuration = {
 #         name           = "snet-app"
 #         address_prefix = "10.1.1.0/24"    # XOR address_prefixes — exactly one
 #         # address_prefixes           = ["10.1.1.0/24"]
-#         # network_security_group_key = "nsg_app"
-#         # route_table_key            = "rt_default"
+#         # network_security_group = { key = "nsg_app" }
+#         # route_table            = { key = "rt_default" }
 #         # default_outbound_access_enabled   = false   # default
 #         # private_endpoint_network_policies = "Enabled"
 #         # role_assignments = { ... }
@@ -169,8 +169,10 @@ log_analytics_workspace_configuration = {
 #     resource_group_key = "rg_networking"
 #     virtual_network_links = {
 #       link_to_spoke = {
-#         name                = "link-blob-to-spoke"
-#         virtual_network_key = "vnet_spoke"
+#         name = "link-blob-to-spoke"
+#         virtual_network = {
+#           key = "vnet_spoke"
+#         }
 #         # registration_enabled = false
 #       }
 #     }
@@ -188,7 +190,9 @@ log_analytics_workspace_configuration = {
 #   link_blob = {
 #     name                = "link-blob-to-spoke"
 #     private_dns_zone_id = "/subscriptions/.../providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
-#     virtual_network_key = "vnet_spoke"     # must exist in virtual_networks
+#     virtual_network = {
+#       key = "vnet_spoke"     # must exist in virtual_networks
+#     }
 #     # registration_enabled = false
 #     # resolution_policy    = "Default"
 #     # tags = {}
@@ -496,7 +500,9 @@ log_analytics_workspace_configuration = {
 #     vnet_flow = {
 #       enabled = true
 #       name    = "fl-spoke-vnet"
-#       vnet_key = "vnet_spoke"     # resolved to VNet resource ID
+#       virtual_network = {
+#         key = "vnet_spoke"     # resolved to VNet resource ID
+#       }
 #       storage_account = {
 #         key = "sa_flowlog"        # XOR resource_id
 #       }

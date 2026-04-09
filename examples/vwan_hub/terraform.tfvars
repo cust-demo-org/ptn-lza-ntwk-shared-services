@@ -82,10 +82,14 @@ virtual_networks = {
     address_space      = ["10.1.0.0/16"]
     subnets = {
       snet_app = {
-        name                       = "snet-app"
-        address_prefixes           = ["10.1.1.0/24"]
-        network_security_group_key = "nsg_app"
-        route_table_key            = "rt_default"
+        name             = "snet-app"
+        address_prefixes = ["10.1.1.0/24"]
+        network_security_group = {
+          key = "nsg_app"
+        }
+        route_table = {
+          key = "rt_default"
+        }
       }
     }
   }

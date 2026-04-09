@@ -64,18 +64,14 @@ These pattern-specific keys reference other variable maps and need the `> **Patt
 | Key Attribute | Found In Variables | References |
 |---------------|-------------------|------------|
 | `resource_group_key` | network_security_groups, route_tables, virtual_networks, private_dns_zones, managed_identities, key_vaults, bastion_hosts, storage_accounts | `resource_groups` variable |
-| `vnet_key` | vhub_connectivity_definitions (virtual_network), flowlog_configuration (flow_logs) | `virtual_networks` variable |
-| `virtual_network_key` | private_dns_zones (virtual_network_links), byo_private_dns_zone_links | `virtual_networks` variable |
+| `virtual_network.key` | vhub_connectivity_definitions, flowlog_configuration (flow_logs), private_dns_zones (virtual_network_links), byo_private_dns_zone_links, bastion_hosts (virtual_network) | `virtual_networks` variable |
+| `network_security_group.key` | virtual_networks (subnets) | `network_security_groups` variable |
+| `route_table.key` | virtual_networks (subnets) | `route_tables` variable |
 | `subnet_key` | bastion_hosts (ip_configuration), key_vaults (private_endpoints), storage_accounts (private_endpoints) | `virtual_networks[].subnets` |
-| `network_security_group_key` | virtual_networks (subnets) | `network_security_groups` variable |
-| `route_table_key` | virtual_networks (subnets) | `route_tables` variable |
 | `managed_identity_key` | key_vaults, role_assignments (standalone, L821) | `managed_identities` variable |
+| `storage_account.key` | flowlog_configuration (flow_logs) | `storage_accounts` variable |
 
-> **Removed (incorrect in prior version)**:
-> - ~~`log_analytics_workspace_key`~~ — does not exist; flowlog `traffic_analytics` uses `workspace_id`/`workspace_resource_id` (resource IDs, not map keys)
-> - ~~`storage_account_key`~~ — does not exist as an attribute; flowlog uses `storage_account.key` (nested field named `key` inside a `storage_account` object)
-> - ~~`key_vault_key`~~ — does not exist; storage CMK uses `key_vault_resource_id` (resource ID, not key reference)
-> - ~~`private_dns_zone_key`~~ — does not exist; the actual attribute is `virtual_network_key` (listed above)
+> **Note on object-based cross-references**: As of the chore/docs-fix branch, all cross-reference pairs (key + resource_id) are encapsulated in consistent `object({ key = optional(string), resource_id = optional(string) })` structures. The flat `_key` / `_resource_id` suffix convention has been replaced with nested objects (e.g., `network_security_group = { key = "nsg_app" }` instead of `network_security_group_key = "nsg_app"`). This matches the existing patterns used by `storage_account`, `virtual_network` (bastion/vhub), and `customer_managed_key`.
 
 ---
 

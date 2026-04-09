@@ -127,8 +127,14 @@ variable "virtual_networks" {
       name                                = string
       address_prefix                      = optional(string)
       address_prefixes                    = optional(list(string))
-      network_security_group_key          = optional(string)
-      route_table_key                     = optional(string)
+      network_security_group = optional(object({
+        key         = optional(string)
+        resource_id = optional(string)
+      }))
+      route_table = optional(object({
+        key         = optional(string)
+        resource_id = optional(string)
+      }))
       service_endpoints_with_location     = optional(list(object({
         service   = string
         locations = optional(list(string), ["*"])
@@ -232,8 +238,11 @@ variable "private_dns_zones" {
     domain_name        = string
     resource_group_key = string
     virtual_network_links = optional(map(object({
-      name                 = string
-      virtual_network_key  = string
+      name = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
       registration_enabled = optional(bool, false)
       resolution_policy    = optional(string, "Default")
       tags                 = optional(map(string), {})
@@ -254,8 +263,11 @@ variable "private_dns_zones" {
 ```hcl
 variable "byo_private_dns_zone_links" {
   type = map(object({
-    private_dns_zone_id  = string
-    virtual_network_key  = string
+    private_dns_zone_id = string
+    virtual_network = object({
+      key         = optional(string)
+      resource_id = optional(string)
+    })
     registration_enabled = optional(bool, false)
     resolution_policy    = optional(string, "Default")
     tags                 = optional(map(string), {})

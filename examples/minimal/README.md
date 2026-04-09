@@ -143,9 +143,12 @@ Type:
 
 ```hcl
 map(object({
-    name                                   = string
-    private_dns_zone_id                    = string
-    virtual_network_key                    = string
+    name                = string
+    private_dns_zone_id = string
+    virtual_network = object({
+      key         = optional(string)
+      resource_id = optional(string)
+    })
     registration_enabled                   = optional(bool, false)
     resolution_policy                      = optional(string, "Default")
     private_dns_zone_supports_private_link = optional(bool, false)
@@ -176,9 +179,12 @@ object({
     resource_group_name  = optional(string)
     location             = optional(string)
     flow_logs = optional(map(object({
-      enabled  = bool
-      name     = string
-      vnet_key = string
+      enabled = bool
+      name    = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
       retention_policy = object({
         days    = number
         enabled = bool
@@ -637,8 +643,11 @@ map(object({
     domain_name        = string
     resource_group_key = string
     virtual_network_links = optional(map(object({
-      name                                   = string
-      virtual_network_key                    = string
+      name = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
       registration_enabled                   = optional(bool, false)
       resolution_policy                      = optional(string, "Default")
       private_dns_zone_supports_private_link = optional(bool, false)
@@ -870,11 +879,17 @@ map(object({
       sync_remote_address_space_triggers = optional(any, null)
     })), {})
     subnets = optional(map(object({
-      name                       = string
-      address_prefix             = optional(string)
-      address_prefixes           = optional(list(string))
-      network_security_group_key = optional(string)
-      route_table_key            = optional(string)
+      name                                = string
+      address_prefix                      = optional(string)
+      address_prefixes                    = optional(list(string))
+      network_security_group = optional(object({
+        key         = optional(string)
+        resource_id = optional(string)
+      }))
+      route_table = optional(object({
+        key         = optional(string)
+        resource_id = optional(string)
+      }))
       service_endpoints_with_location = optional(list(object({
         service   = string
         locations = optional(list(string), ["*"])

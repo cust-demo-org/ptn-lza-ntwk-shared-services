@@ -21,9 +21,9 @@ resource "terraform_data" "validation" {
     precondition {
       condition = alltrue([
         for k, link in var.byo_private_dns_zone_links :
-        contains(keys(var.virtual_networks), link.virtual_network_key)
+        link.virtual_network.key == null || contains(keys(var.virtual_networks), link.virtual_network.key)
       ])
-      error_message = "DNS zone link references a virtual_network_key that does not exist in virtual_networks."
+      error_message = "DNS zone link references a virtual_network.key that does not exist in virtual_networks."
     }
 
     precondition {
@@ -63,9 +63,9 @@ resource "terraform_data" "validation" {
     precondition {
       condition = alltrue([
         for fl_key, fl in try(var.flowlog_configuration.flow_logs, {}) :
-        contains(keys(var.virtual_networks), fl.vnet_key)
+        fl.virtual_network.key == null || contains(keys(var.virtual_networks), fl.virtual_network.key)
       ])
-      error_message = "Flow log references a vnet_key that does not exist in virtual_networks."
+      error_message = "Flow log references a virtual_network.key that does not exist in virtual_networks."
     }
   }
 }
@@ -173,9 +173,10 @@ module "log_analytics_workspace" {
       }
       lock = pe.lock
       tags = pe.tags
-      subnet_resource_id = coalesce(
-        pe.network_configuration.subnet_resource_id,
-        try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
+      subnet_resource_id = (
+        pe.network_configuration.subnet_resource_id != null
+        ? pe.network_configuration.subnet_resource_id
+        : local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key]
       )
       private_dns_zone_resource_ids = setunion(
         coalesce(try(pe.private_dns_zone.resource_ids, null), toset([])),
@@ -286,12 +287,20 @@ module "virtual_network" {
 
   subnets = {
     for sk, sv in each.value.subnets : sk => merge(sv, {
-      network_security_group = sv.network_security_group_key != null ? {
-        id = local.nsg_resource_ids[sv.network_security_group_key]
-      } : null
-      route_table = sv.route_table_key != null ? {
-        id = local.rt_resource_ids[sv.route_table_key]
-      } : null
+      network_security_group = sv.network_security_group != null ? (
+        sv.network_security_group.key != null ? {
+          id = local.nsg_resource_ids[sv.network_security_group.key]
+          } : sv.network_security_group.resource_id != null ? {
+          id = sv.network_security_group.resource_id
+        } : null
+      ) : null
+      route_table = sv.route_table != null ? (
+        sv.route_table.key != null ? {
+          id = local.rt_resource_ids[sv.route_table.key]
+          } : sv.route_table.resource_id != null ? {
+          id = sv.route_table.resource_id
+        } : null
+      ) : null
       role_assignments = {
         for ra_key, ra in sv.role_assignments : ra_key => {
           role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -349,8 +358,12 @@ module "private_dns_zone" {
   parent_id        = local.resource_group_resource_ids[each.value.resource_group_key]
   virtual_network_links = {
     for vnl_k, vnl in each.value.virtual_network_links : vnl_k => {
-      name                                   = vnl.name
-      virtual_network_id                     = local.vnet_resource_ids[vnl.virtual_network_key]
+      name = vnl.name
+      virtual_network_id = (
+        vnl.virtual_network.key != null
+        ? local.vnet_resource_ids[vnl.virtual_network.key]
+        : vnl.virtual_network.resource_id
+      )
       registration_enabled                   = vnl.registration_enabled
       resolution_policy                      = vnl.resolution_policy
       private_dns_zone_supports_private_link = vnl.private_dns_zone_supports_private_link
@@ -379,9 +392,13 @@ module "private_dns_zone_link" {
 
   for_each = var.byo_private_dns_zone_links
 
-  name                                   = each.value.name
-  parent_id                              = each.value.private_dns_zone_id
-  virtual_network_id                     = local.vnet_resource_ids[each.value.virtual_network_key]
+  name      = each.value.name
+  parent_id = each.value.private_dns_zone_id
+  virtual_network_id = (
+    each.value.virtual_network.key != null
+    ? local.vnet_resource_ids[each.value.virtual_network.key]
+    : each.value.virtual_network.resource_id
+  )
   registration_enabled                   = each.value.registration_enabled
   resolution_policy                      = each.value.resolution_policy
   private_dns_zone_supports_private_link = each.value.private_dns_zone_supports_private_link
@@ -526,9 +543,10 @@ module "key_vault" {
       }
       lock = pe.lock
       tags = pe.tags
-      subnet_resource_id = coalesce(
-        pe.network_configuration.subnet_resource_id,
-        try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
+      subnet_resource_id = (
+        pe.network_configuration.subnet_resource_id != null
+        ? pe.network_configuration.subnet_resource_id
+        : local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key]
       )
       private_dns_zone_resource_ids = setunion(
         coalesce(try(pe.private_dns_zone.resource_ids, null), toset([])),
@@ -777,9 +795,10 @@ module "storage_account" {
       }
       lock = pe.lock
       tags = pe.tags
-      subnet_resource_id = coalesce(
-        pe.network_configuration.subnet_resource_id,
-        try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
+      subnet_resource_id = (
+        pe.network_configuration.subnet_resource_id != null
+        ? pe.network_configuration.subnet_resource_id
+        : local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key]
       )
       subresource_name = pe.subresource_name
       private_dns_zone_resource_ids = setunion(
@@ -981,9 +1000,10 @@ module "recovery_services_vault" {
       }
       lock = pe.lock
       tags = pe.tags
-      subnet_resource_id = coalesce(
-        pe.network_configuration.subnet_resource_id,
-        try(local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key], null)
+      subnet_resource_id = (
+        pe.network_configuration.subnet_resource_id != null
+        ? pe.network_configuration.subnet_resource_id
+        : local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key]
       )
       subresource_name = pe.subresource_name
       private_dns_zone_resource_ids = setunion(
@@ -1069,9 +1089,10 @@ module "bastion_host" {
   zones            = each.value.zones
   ip_configuration = each.value.ip_configuration != null ? {
     name = each.value.ip_configuration.name
-    subnet_id = coalesce(
-      each.value.ip_configuration.network_configuration.subnet_resource_id,
-      try(local.subnet_resource_ids[each.value.ip_configuration.network_configuration.vnet_key][each.value.ip_configuration.network_configuration.subnet_key], null)
+    subnet_id = (
+      each.value.ip_configuration.network_configuration.subnet_resource_id != null
+      ? each.value.ip_configuration.network_configuration.subnet_resource_id
+      : local.subnet_resource_ids[each.value.ip_configuration.network_configuration.vnet_key][each.value.ip_configuration.network_configuration.subnet_key]
     )
     create_public_ip                 = each.value.ip_configuration.create_public_ip
     public_ip_tags                   = each.value.ip_configuration.public_ip_tags
@@ -1079,10 +1100,11 @@ module "bastion_host" {
     public_ip_address_name           = each.value.ip_configuration.public_ip_address_name
     public_ip_address_id             = each.value.ip_configuration.public_ip_address_id
   } : null
-  virtual_network_id = try(coalesce(
-    try(each.value.virtual_network.resource_id, null),
-    try(local.vnet_resource_ids[each.value.virtual_network.key], null)
-  ), null)
+  virtual_network_id = try(
+    each.value.virtual_network.key != null
+    ? local.vnet_resource_ids[each.value.virtual_network.key]
+    : each.value.virtual_network.resource_id,
+  null)
   copy_paste_enabled        = each.value.copy_paste_enabled
   file_copy_enabled         = each.value.file_copy_enabled
   ip_connect_enabled        = each.value.ip_connect_enabled
@@ -1139,13 +1161,18 @@ module "network_watcher" {
   location             = coalesce(var.flowlog_configuration.location, var.location)
   flow_logs = var.flowlog_configuration.flow_logs != null ? {
     for k, fl in var.flowlog_configuration.flow_logs : k => {
-      enabled            = fl.enabled
-      name               = fl.name
-      target_resource_id = local.vnet_resource_ids[fl.vnet_key]
-      retention_policy   = fl.retention_policy
-      storage_account_id = coalesce(
-        fl.storage_account.resource_id,
-        try(local.storage_account_resource_ids[fl.storage_account.key], null)
+      enabled = fl.enabled
+      name    = fl.name
+      target_resource_id = (
+        fl.virtual_network.key != null
+        ? local.vnet_resource_ids[fl.virtual_network.key]
+        : fl.virtual_network.resource_id
+      )
+      retention_policy = fl.retention_policy
+      storage_account_id = (
+        fl.storage_account.key != null
+        ? local.storage_account_resource_ids[fl.storage_account.key]
+        : fl.storage_account.resource_id
       )
       traffic_analytics = fl.traffic_analytics != null ? {
         enabled               = fl.traffic_analytics.enabled
