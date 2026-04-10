@@ -204,12 +204,12 @@ private_dns_zones = {
 }
 ```
 
-### Adding BYO Private DNS Zone Links
+### Adding BYO private dns zone virtual network links
 
 Link existing (externally managed) Private DNS Zones to the spoke VNet:
 
 ```hcl
-byo_private_dns_zone_links = {
+byo_private_dns_zone_virtual_network_links = {
   "blob" = {
     private_dns_zone_id  = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
     virtual_network_key  = "vnet-spoke"

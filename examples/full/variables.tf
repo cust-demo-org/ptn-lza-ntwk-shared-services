@@ -458,7 +458,7 @@ variable "private_dns_zones" {
   description = "Map of Private DNS Zones to create. Refer to the main pattern module variable descriptions for complete details."
 }
 
-variable "byo_private_dns_zone_links" {
+variable "byo_private_dns_zone_virtual_network_links" {
   type = map(object({
     name                = string
     private_dns_zone_id = string

@@ -500,7 +500,7 @@ object({
 
 Default: `null`
 
-### <a name="input_byo_private_dns_zone_links"></a> [byo\_private\_dns\_zone\_links](#input\_byo\_private\_dns\_zone\_links)
+### <a name="input_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_links](#input\_byo\_private\_dns\_zone\_links)
 
 Description: A map of VNet links to existing (bring-your-own) Private DNS Zones. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
@@ -1365,7 +1365,7 @@ Description: A map of Private DNS Zones to create and optionally link to VNets c
 
 - `tags` - (Optional) Tags to apply to this DNS zone. Defaults to `{}`.
 
-> **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zone_links` instead.
+> **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zone_virtual_network_links` instead.
 
 Type:
 
@@ -1465,7 +1465,7 @@ Description: A map of Azure Recovery Services Vaults to create. The map key is d
   - `subresource_name` - (Required) The sub-resource name for the PE (e.g., `"AzureBackup"`, `"AzureSiteRecovery"`).
   - `private_dns_zone` - (Optional) DNS zone configuration.
     - `resource_ids` - (Optional) Explicit DNS zone resource IDs.
-    - `keys` - (Optional) Keys from `private_dns_zones` or `byo_private_dns_zone_links`.
+    - `keys` - (Optional) Keys from `private_dns_zones` or `byo_private_dns_zone_virtual_network_links`.
   - Additional PE fields: `private_dns_zone_group_name`, `application_security_group_associations`, `private_service_connection_name`, `network_interface_name`, `location`, `resource_group_name`, `ip_configurations`, `tags`.
 - `lock` - (Optional) Resource lock configuration.
   - `kind` - (Required) `"CanNotDelete"` or `"ReadOnly"`.
@@ -2885,7 +2885,7 @@ Description: Map of backup vault keys to their resource IDs and names.
 
 Description: Map of Bastion host resource IDs and names, keyed by bastion\_hosts map key. Empty map when no Bastion hosts are deployed.
 
-### <a name="output_byo_private_dns_zone_links"></a> [byo\_private\_dns\_zone\_links](#output\_byo\_private\_dns\_zone\_links)
+### <a name="output_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_links](#output\_byo\_private\_dns\_zone\_links)
 
 Description: Map of BYO Private DNS Zone VNet link keys to their resource IDs and names.
 
@@ -2993,7 +2993,7 @@ Source: Azure/avm-res-network-privatednszone/azurerm
 
 Version: 0.5.0
 
-### <a name="module_private_dns_zone_link"></a> [private\_dns\_zone\_link](#module\_private\_dns\_zone\_link)
+### <a name="module_private_dns_zone_virtual_network_link"></a> [private\_dns\_zone\_link](#module\_private\_dns\_zone\_link)
 
 Source: Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link
 

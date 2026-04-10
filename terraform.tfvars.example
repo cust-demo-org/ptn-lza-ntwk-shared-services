@@ -182,11 +182,11 @@ log_analytics_workspace_configuration = {
 #   }
 # }
 
-# ─── Private DNS Zone Links (BYO) ───────────────────────────
+# ─── Private DNS Zone Virtual Network Links (BYO) ───────────────────────────
 
 # (Optional) Link existing Private DNS Zones to spoke VNets.
 # Default: {}
-# byo_private_dns_zone_links = {
+# byo_private_dns_zone_virtual_network_links = {
 #   link_blob = {
 #     name                = "link-blob-to-spoke"
 #     private_dns_zone_id = "/subscriptions/.../providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"

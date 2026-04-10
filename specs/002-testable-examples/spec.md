@@ -96,7 +96,7 @@ Examples should run with zero required input variables. All variables declared i
 - What about the vwan_hub example's dependency on a vHub? — The vwan_hub example deploys its own `azurerm_virtual_wan` and `azurerm_virtual_hub` resources inline before calling the module.
 - What about `flowlog_configuration` which references an external Network Watcher and storage? — The full example deploys an `azurerm_network_watcher` and an `azurerm_storage_account` inline to satisfy the flow log dependencies.
 - What about `bastion_hosts` which needs a public IP and subnet? — The full example deploys the AzureBastionSubnet within the VNet and an `azurerm_public_ip` inline.
-- What about `byo_private_dns_zone_links` which reference external Private DNS Zones? — The example deploys an `azurerm_private_dns_zone` inline to satisfy the reference.
+- What about `byo_private_dns_zone_virtual_network_links` which reference external Private DNS Zones? — The example deploys an `azurerm_private_dns_zone` inline to satisfy the reference.
 - Should `.terraform.lock.hcl` files be committed in examples? — No. Lock files are gitignored in example directories. Exact provider version pins (FR-018) provide version reproducibility; lock file hash verification adds cross-platform friction without meaningful benefit.
 
 ## Clarifications
@@ -202,7 +202,7 @@ Examples should run with zero required input variables. All variables declared i
 - The repository has been merged to `main` with the `001-spoke-shared-services` feature complete (all 15 root module variables, 13 AVM module blocks).
 - Provider version constraints in examples will use exact pins (e.g., `= 4.63.0`, `= 2.8.0`, `= 3.8.1`) for reproducibility, matching the latest versions at time of authoring.
 - Resource naming is the responsibility of pattern consumers; examples supply explicit names via `terraform.tfvars`.
-- For features requiring external resources that are impractical to deploy inline (e.g., existing Private DNS Zones for the `byo_private_dns_zone_links` variable), examples will deploy a minimal `azurerm_private_dns_zone` inline.
+- For features requiring external resources that are impractical to deploy inline (e.g., existing Private DNS Zones for the `byo_private_dns_zone_virtual_network_links` variable), examples will deploy a minimal `azurerm_private_dns_zone` inline.
 - Examples are not CI-automated in this feature — CI integration would be a follow-up concern. This feature focuses on making examples locally runnable.
 - The `vhub_connectivity_definitions` feature requires a vWAN + vHub, which are relatively expensive and slow to deploy. The vwan_hub example accepts this cost as a trade-off for testability.
 - Each example's `variables.tf` mirrors the root module's variable interface (all 17 variables, some with expanded type definitions per FR-021, all with defaults). `terraform.tfvars` provides the scenario-specific overrides. This enables both `terraform plan` with no flags (defaults) and realistic deployments (via tfvars).

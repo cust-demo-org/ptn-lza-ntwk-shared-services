@@ -250,18 +250,18 @@ variable "private_dns_zones" {
     tags = optional(map(string), {})
   }))
   default     = {}
-  description = "Map of Private DNS Zones to create and optionally link to VNets. For BYO zones, use byo_private_dns_zone_links."
+  description = "Map of Private DNS Zones to create and optionally link to VNets. For BYO zones, use byo_private_dns_zone_virtual_network_links."
 }
 ```
 
 ---
 
-## BYO Private DNS Zone Link Variables
+## BYO private dns zone virtual network link Variables
 
-### `byo_private_dns_zone_links`
+### `byo_private_dns_zone_virtual_network_links`
 
 ```hcl
-variable "byo_private_dns_zone_links" {
+variable "byo_private_dns_zone_virtual_network_links" {
   type = map(object({
     private_dns_zone_id = string
     virtual_network = object({
@@ -525,4 +525,4 @@ variable "role_assignments" {
 | Standalone `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Standalone role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
 | Key Vault `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Key Vault role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
 | `private_dns_zones[*].virtual_network_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "DNS zone virtual_network_link references virtual_network_key '{key}' which does not exist in virtual_networks." |
-| `byo_private_dns_zone_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "BYO DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |
+| `byo_private_dns_zone_virtual_network_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "BYO DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |

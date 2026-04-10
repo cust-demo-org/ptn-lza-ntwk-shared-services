@@ -9,7 +9,7 @@ Resource Group 1───* Virtual Network
 Virtual Network 1───* Subnet
 Virtual Network 1───0..* VNet Peering (via peerings map)
 Virtual Network 1───0..* Virtual Hub Connection (via vhub_connectivity_definitions)
-Virtual Network 1───* Private DNS Zone Link (via byo_private_dns_zone_links)
+Virtual Network 1───* private dns zone virtual network link (via byo_private_dns_zone_virtual_network_links)
 Virtual Network 1───* Private DNS Zone VNet Link (via private_dns_zones[*].virtual_network_links)
 Resource Group 1───* Private DNS Zone (via private_dns_zones)
 Subnet *───1 Network Security Group
@@ -173,7 +173,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 
 ---
 
-### Private DNS Zone Link (BYO)
+### private dns zone virtual network link (BYO)
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
@@ -185,7 +185,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | tags | `map(string)` | No | `{}` | Tags. |
 
 **AVM Module**: `Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link` v0.5.0 (submodule).
-**Map Key**: User-defined key in `byo_private_dns_zone_links` input variable.
+**Map Key**: User-defined key in `byo_private_dns_zone_virtual_network_links` input variable.
 **Dependencies**: Virtual Network.
 
 ---
@@ -311,7 +311,7 @@ resolved_id = coalesce(ref.id, local.resource_map[ref.key].resource_id)
 5. Virtual Networks (with subnets referencing NSG/RT IDs, and peering config)
 6. Virtual Hub VNet Connection (depends on VNet, if vhub_connectivity_definitions is non-empty)
 7. Private DNS Zones (depends on Resource Group and VNet for links)
-8. BYO Private DNS Zone Links (depends on VNet)
+8. BYO private dns zone virtual network links (depends on VNet)
 9. Network Watcher flow logs (optional, if flowlog_configuration is non-null)
 9. User-Assigned Managed Identities
 10. Key Vaults (with role assignments referencing identity principal IDs)

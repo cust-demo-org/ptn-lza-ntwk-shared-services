@@ -12,7 +12,7 @@ Rewrite all 17 variable `description` attributes in the root `variables.tf` to f
 ## Technical Context
 
 **Language/Version**: HCL (Terraform ~> 1.9)
-**Primary Dependencies**: 14 AVM modules (resource_group v0.2.2, log_analytics_workspace v0.5.1, NSG v0.5.1, route_table v0.5.0, virtual_network v0.17.1, private_dns_zone v0.5.0, managed_identity v0.4.0, key_vault v0.10.2, storage_account v0.6.7, role_assignment v0.3.0, vhub_vnet_connection submodule v0.13.5, bastion_host v0.9.0, network_watcher v0.3.2, private_dns_zone_link submodule v0.5.0)
+**Primary Dependencies**: 14 AVM modules (resource_group v0.2.2, log_analytics_workspace v0.5.1, NSG v0.5.1, route_table v0.5.0, virtual_network v0.17.1, private_dns_zone v0.5.0, managed_identity v0.4.0, key_vault v0.10.2, storage_account v0.6.7, role_assignment v0.3.0, vhub_vnet_connection submodule v0.13.5, bastion_host v0.9.0, network_watcher v0.3.2, private_dns_zone_virtual_network_link submodule v0.5.0)
 **Storage**: N/A (documentation-only change)
 **Testing**: `terraform validate` on root + 4 examples (minimal, vnet_hub, vwan_hub, full); `terraform-docs .` rendering inspection
 **Target Platform**: Terraform Registry / Azure
@@ -150,14 +150,14 @@ Extended `managed_identity_key` support from only `key_vaults` and standalone `r
 
 ### Summary
 
-Added a global `enable_telemetry` variable (type `bool`, default `true`) to the root module and wired it through to 12 of 14 AVM module calls in `main.tf` (2 submodules — `private_dns_zone_link` and `vhub_vnet_connection` — don't expose `enable_telemetry`). Previously, only `storage_account` had `enable_telemetry` (hardcoded to `false`). Also added to all 4 example `variables.tf` and `main.tf` files.
+Added a global `enable_telemetry` variable (type `bool`, default `true`) to the root module and wired it through to 12 of 14 AVM module calls in `main.tf` (2 submodules — `private_dns_zone_virtual_network_link` and `vhub_vnet_connection` — don't expose `enable_telemetry`). Previously, only `storage_account` had `enable_telemetry` (hardcoded to `false`). Also added to all 4 example `variables.tf` and `main.tf` files.
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
 | `variables.tf` | Added `variable "enable_telemetry"` (type `bool`, default `true`) between `location` and `tags`. |
-| `main.tf` | Added `enable_telemetry = var.enable_telemetry` to 12 module calls (excluding `private_dns_zone_link` and `vhub_vnet_connection` submodules). Replaced hardcoded `false` in `storage_account`. |
+| `main.tf` | Added `enable_telemetry = var.enable_telemetry` to 12 module calls (excluding `private_dns_zone_virtual_network_link` and `vhub_vnet_connection` submodules). Replaced hardcoded `false` in `storage_account`. |
 | `examples/*/variables.tf` | Added `enable_telemetry` variable (4 files). |
 | `examples/*/main.tf` | Added `enable_telemetry = var.enable_telemetry` pass-through (4 files). |
 | `README.md` (5 files) | Regenerated via `terraform-docs .` using `.terraform-docs.yml` configs. |

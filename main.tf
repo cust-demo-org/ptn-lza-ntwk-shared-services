@@ -20,7 +20,7 @@ resource "terraform_data" "validation" {
 
     precondition {
       condition = alltrue([
-        for k, link in var.byo_private_dns_zone_links :
+        for k, link in var.byo_private_dns_zone_virtual_network_links :
         link.virtual_network.key == null || contains(keys(var.virtual_networks), link.virtual_network.key)
       ])
       error_message = "DNS zone link references a virtual_network.key that does not exist in virtual_networks."
@@ -386,11 +386,11 @@ module "private_dns_zone" {
   }
 }
 
-module "private_dns_zone_link" {
+module "private_dns_zone_virtual_network_link" {
   source  = "Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link"
   version = "0.5.0"
 
-  for_each = var.byo_private_dns_zone_links
+  for_each = var.byo_private_dns_zone_virtual_network_links
 
   name      = each.value.name
   parent_id = each.value.private_dns_zone_id

@@ -59,8 +59,8 @@ locals {
   }
 
   # BYO DNS zone links with computed private DNS zone ID
-  byo_private_dns_zone_links = merge(var.byo_private_dns_zone_links, {
-    byo_dns_kv = merge(var.byo_private_dns_zone_links.byo_dns_kv, {
+  byo_private_dns_zone_virtual_network_links = merge(var.byo_private_dns_zone_virtual_network_links, {
+    byo_dns_kv = merge(var.byo_private_dns_zone_virtual_network_links.byo_dns_kv, {
       private_dns_zone_id = azurerm_private_dns_zone.kv.id
     })
   })
@@ -80,26 +80,26 @@ locals {
 module "pattern" {
   source = "../.."
 
-  location                              = var.location
-  tags                                  = var.tags
-  enable_telemetry                      = var.enable_telemetry
-  resource_groups                       = var.resource_groups
-  byo_log_analytics_workspace           = var.byo_log_analytics_workspace
-  log_analytics_workspace_configuration = var.log_analytics_workspace_configuration
-  network_security_groups               = var.network_security_groups
-  route_tables                          = var.route_tables
-  virtual_networks                      = local.virtual_networks
-  private_dns_zones                     = var.private_dns_zones
-  byo_private_dns_zone_links            = local.byo_private_dns_zone_links
-  managed_identities                    = var.managed_identities
-  key_vaults                            = var.key_vaults
-  role_assignments                      = local.role_assignments
-  vhub_connectivity_definitions         = var.vhub_connectivity_definitions
-  bastion_hosts                         = var.bastion_hosts
-  storage_accounts                      = var.storage_accounts
-  flowlog_configuration                 = var.flowlog_configuration
-  recovery_services_vaults              = var.recovery_services_vaults
-  backup_vaults                         = var.backup_vaults
+  location                                   = var.location
+  tags                                       = var.tags
+  enable_telemetry                           = var.enable_telemetry
+  resource_groups                            = var.resource_groups
+  byo_log_analytics_workspace                = var.byo_log_analytics_workspace
+  log_analytics_workspace_configuration      = var.log_analytics_workspace_configuration
+  network_security_groups                    = var.network_security_groups
+  route_tables                               = var.route_tables
+  virtual_networks                           = local.virtual_networks
+  private_dns_zones                          = var.private_dns_zones
+  byo_private_dns_zone_virtual_network_links = local.byo_private_dns_zone_virtual_network_links
+  managed_identities                         = var.managed_identities
+  key_vaults                                 = var.key_vaults
+  role_assignments                           = local.role_assignments
+  vhub_connectivity_definitions              = var.vhub_connectivity_definitions
+  bastion_hosts                              = var.bastion_hosts
+  storage_accounts                           = var.storage_accounts
+  flowlog_configuration                      = var.flowlog_configuration
+  recovery_services_vaults                   = var.recovery_services_vaults
+  backup_vaults                              = var.backup_vaults
 
   depends_on = [azurerm_virtual_network.hub, azurerm_private_dns_zone.kv]
 }

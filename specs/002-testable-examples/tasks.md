@@ -56,7 +56,7 @@
 - [X] T021 [P] Convert `network_security_groups` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T022 [P] Convert `route_tables` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T023 [P] Convert `virtual_networks` variable description to heredoc format with AVM module reference in `variables.tf`
-- [X] T024 [P] Convert `private_dns_zone_links` variable description to heredoc format with AVM module reference in `variables.tf`
+- [X] T024 [P] Convert `private_dns_zone_virtual_network_links` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T025 [P] Convert `managed_identities` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T026 [P] Convert `key_vaults` variable description to heredoc format with AVM module reference in `variables.tf`
 - [X] T027 [P] Convert `role_assignments` variable description to heredoc format with AVM module reference in `variables.tf`
@@ -110,7 +110,7 @@
 - [X] T046 [P] [US1] Create `examples/full/terraform.tf` with exact provider pins per contracts/example-layout.md
 - [X] T047 [P] [US1] Create `examples/full/variables.tf` declaring all 17 pattern module variables with descriptions and defaults appropriate for full-feature scenario
 - [X] T048 [US1] Create `examples/full/main.tf` with naming module, inline `azurerm_resource_group` (hub RG), inline `azurerm_virtual_network` (hub VNet), inline `azurerm_private_dns_zone`, inline `azurerm_network_watcher`, inline `azurerm_public_ip` (Bastion), inline `azurerm_storage_account` (flow logs), and pattern module call (`source = "../.."`, `depends_on` on all inline resources) passing all variables. Use locals to merge computed resource IDs into variable values for peering, DNS links, Bastion, and flow log configuration
-- [X] T049 [US1] Update `examples/full/terraform.tfvars` with scenario-specific overrides exercising ALL pattern features (resource_groups, LAW, NSGs, route_tables, virtual_networks with peering, private_dns_zone_links, managed_identities, key_vaults, role_assignments, bastion_hosts, flowlog_configuration)
+- [X] T049 [US1] Update `examples/full/terraform.tfvars` with scenario-specific overrides exercising ALL pattern features (resource_groups, LAW, NSGs, route_tables, virtual_networks with peering, private_dns_zone_virtual_network_links, managed_identities, key_vaults, role_assignments, bastion_hosts, flowlog_configuration)
 
 ### Validation
 
