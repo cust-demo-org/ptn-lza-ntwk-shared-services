@@ -121,7 +121,7 @@ specs/001-spoke-shared-services/
 
 | Submodule | Parent Module | Version | When Used | Key Inputs |
 |---|---|---|---|---|
-| `private_dns_virtual_network_link` | `avm-res-network-privatednszone` | 0.5.0 | When `byo_private_dns_zone_links` is non-empty | `parent_id` (DNS zone ID), `virtual_network_id`, `registration_enabled`, `resolution_policy` |
+| `private_dns_virtual_network_link` | `avm-res-network-privatednszone` | 0.5.0 | When `byo_private_dns_zone_virtual_network_links` is non-empty | `parent_id` (DNS zone ID), `virtual_network_id`, `registration_enabled`, `resolution_policy` |
 | `virtual-network-connection` | `avm-ptn-alz-connectivity-virtual-wan` | 0.13.5 | When `vhub_connectivity_definitions` is non-empty | `virtual_network_connections` map: `name`, `virtual_hub_id`, `remote_virtual_network_id`, `internet_security_enabled`, `routing` |
 
 ## Deployment Order
@@ -133,7 +133,7 @@ specs/001-spoke-shared-services/
 5. Virtual networks (including subnets referencing NSG/RT IDs, and peering config)
 6. VNet peering (via VNet module `peerings` map, per-VNet) AND/OR Virtual Hub connection (via `virtual-network-connection` submodule, from `vhub_connectivity_definitions`)
 7. Private DNS Zones (via `avm-res-network-privatednszone` root module, from `private_dns_zones`)
-8. BYO Private DNS zone VNet links (via `private_dns_virtual_network_link` submodule, from `byo_private_dns_zone_links`)
+8. BYO Private DNS zone VNet links (via `private_dns_virtual_network_link` submodule, from `byo_private_dns_zone_virtual_network_links`)
 9. Network Watcher flow logs (optional, via `avm-res-network-networkwatcher`, from `flowlog_configuration`)
 9. Managed identities
 10. Key Vaults (with RBAC role assignments referencing managed identities)

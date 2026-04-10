@@ -49,8 +49,8 @@ output "private_dns_zones" {
   description = "Map of Private DNS Zone keys to their resource IDs and names. Empty map when no private_dns_zones are configured."
 }
 
-output "byo_private_dns_zone_links" {
-  value = { for key, mod in module.private_dns_zone_link : key => {
+output "byo_private_dns_zone_virtual_network_links" {
+  value = { for key, mod in module.private_dns_zone_virtual_network_link : key => {
     resource_id = mod.resource_id
     name        = mod.resource.name
   } }

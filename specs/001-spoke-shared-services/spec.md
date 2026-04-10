@@ -33,13 +33,13 @@ A platform engineer creates a new application landing zone by editing a single `
 
 ---
 
-### User Story 2 — Add Private DNS Zone Links to Spoke (Priority: P2)
+### User Story 2 — Add private dns zone virtual network links to Spoke (Priority: P2)
 
 A platform engineer links one or more existing Azure Private DNS Zones to the spoke VNet so that workloads in the spoke can resolve private endpoints. They specify DNS zone references (by map key or explicit resource ID) in `terraform.tfvars`.
 
 **Why this priority**: Private DNS resolution is the second most critical capability after network connectivity. Without it, workloads cannot reach Private Link-enabled services.
 
-**Independent Test**: Deploy a spoke VNet (from US1) and add Private DNS Zone links. Verify the VNet links exist in each specified DNS zone.
+**Independent Test**: Deploy a spoke VNet (from US1) and add private dns zone virtual network links. Verify the VNet links exist in each specified DNS zone.
 
 **Acceptance Scenarios**:
 
@@ -144,9 +144,9 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **FR-013**: Virtual WAN hub connections MUST be configured via a `vhub_connectivity_definitions` map variable (implicit toggle — empty map `{}` = no vWAN connections). Each entry links a spoke VNet to a vWAN hub by specifying `vhub_resource_id` and a `virtual_network` reference (by `key` from the `virtual_networks` map or by explicit `id`). This supports multiple VNets connecting to multiple hubs.
 - **FR-014**: Each `vhub_connectivity_definitions` entry MUST set exactly one of `virtual_network.key` or `virtual_network.id`. A validation rule MUST enforce this mutual exclusivity.
 
-#### Private DNS Zone Links
+#### private dns zone virtual network links
 
-- **FR-015**: The pattern MUST support two modes for Private DNS Zone integration: (a) **Create zones** — the `private_dns_zones` variable creates Private DNS Zones using the AVM `avm-res-network-privatednszone` root module (v0.5.0) and optionally links them to spoke VNets via `virtual_network_links`; (b) **BYO zones** — the `byo_private_dns_zone_links` variable links one or more existing (externally managed) Azure Private DNS Zones to the spoke VNet by resource ID. Both use the implicit map-based toggle pattern (empty map = disabled).
+- **FR-015**: The pattern MUST support two modes for Private DNS Zone integration: (a) **Create zones** — the `private_dns_zones` variable creates Private DNS Zones using the AVM `avm-res-network-privatednszone` root module (v0.5.0) and optionally links them to spoke VNets via `virtual_network_links`; (b) **BYO zones** — the `byo_private_dns_zone_virtual_network_links` variable links one or more existing (externally managed) Azure Private DNS Zones to the spoke VNet by resource ID. Both use the implicit map-based toggle pattern (empty map = disabled).
 
 #### Managed Identities
 
@@ -193,7 +193,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **FR-029**: End users MUST only need to edit `terraform.tfvars` to customise the deployment. All `.tf` files MUST be reusable without modification.
 - **FR-030**: All input variables MUST have a descriptive name, explicit type constraint (no `any`), a non-empty `description` attribute, and a secure default value. Sensitive values MUST be marked `sensitive = true`. Note: the current pattern accepts no sensitive inputs (no passwords, connection strings, or secrets); this requirement applies if future variables introduce sensitive values.
 - **FR-031**: Example `.tfvars` files MUST be provided with rich inline comments explaining each variable, its object shape, and why defaults are secure. A `examples/full/terraform.tfvars` with all features enabled MUST be maintained as an integration-level design validation tool — if a variable is difficult to express in an example, the variable interface SHOULD be reconsidered.
-- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Implicit null-toggle** where `null` disables the feature and a non-null object enables it (e.g., `flowlog_configuration`, `log_analytics_workspace_configuration`); (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `bastion_hosts`, `private_dns_zones`, `byo_private_dns_zone_links`, `managed_identities`, `key_vaults`, `role_assignments`). Standalone `enable_*` boolean variables MUST NOT be introduced alongside a configuration object — the configuration object itself serves as the toggle. The chosen pattern for each feature MUST be documented in the variable description.
+- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Implicit null-toggle** where `null` disables the feature and a non-null object enables it (e.g., `flowlog_configuration`, `log_analytics_workspace_configuration`); (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `bastion_hosts`, `private_dns_zones`, `byo_private_dns_zone_virtual_network_links`, `managed_identities`, `key_vaults`, `role_assignments`). Standalone `enable_*` boolean variables MUST NOT be introduced alongside a configuration object — the configuration object itself serves as the toggle. The chosen pattern for each feature MUST be documented in the variable description.
 
 #### Documentation
 
@@ -234,7 +234,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **VNet Peering**: A bidirectional link between two VNets, configured via the AVM VNet module's `peerings` map. Attributes: spoke VNet reference, hub VNet reference, allow forwarded traffic, allow gateway transit, use remote gateways, create reverse peering.
 - **Virtual Hub Connection**: A link from a spoke VNet to a vWAN hub, configured via `vhub_connectivity_definitions`. Attributes: Virtual Hub ID, spoke VNet reference (by key or ID), internet security enabled, routing configuration.
 - **Private DNS Zone**: A DNS zone created by the pattern for private endpoint resolution. Attributes: domain name, resource group, VNet links, tags. Provisioned via AVM module `avm-res-network-privatednszone`.
-- **Private DNS Zone Link (BYO)**: Binds a VNet to an existing (externally managed) Private DNS Zone for name resolution. Attributes: DNS zone resource ID, VNet reference, registration enabled flag.
+- **private dns zone virtual network link (BYO)**: Binds a VNet to an existing (externally managed) Private DNS Zone for name resolution. Attributes: DNS zone resource ID, VNet reference, registration enabled flag.
 - **User-Assigned Managed Identity**: An Azure identity for workloads. Attributes: name, location, tags.
 - **Key Vault**: A secrets/keys/certificates store. Attributes: name, SKU, public network access, soft delete, purge protection, RBAC role assignments, diagnostics.
 - **Azure Bastion**: Secure remote access service. Attributes: name, SKU (zone-redundant default), subnet, diagnostics.
@@ -247,7 +247,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - The pattern is structured as a flat root module (no nested sub-modules). Each Azure resource is already abstracted by its AVM module; an additional sub-module layer is unnecessary.
 - An Azure subscription and appropriate RBAC permissions are available before deployment.
 - A hub VNet or Virtual WAN hub already exists when spoke connectivity is configured.
-- Private DNS Zones already exist (provisioned by a platform team) when BYO DNS zone links (`byo_private_dns_zone_links`) are configured. Alternatively, the pattern can create Private DNS Zones directly via the `private_dns_zones` variable.
+- Private DNS Zones already exist (provisioned by a platform team) when BYO DNS zone links (`byo_private_dns_zone_virtual_network_links`) are configured. Alternatively, the pattern can create Private DNS Zones directly via the `private_dns_zones` variable.
 - Consumers are familiar with Terraform CLI workflows (`init`, `plan`, `apply`).
 - The pattern targets Terraform >= 1.13, < 2.0 and AzureRM provider ~> 4.0 (exact versions pinned in the pattern).
 - `terraform-docs` and `tflint` are available in the CI environment.

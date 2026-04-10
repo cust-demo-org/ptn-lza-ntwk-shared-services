@@ -945,7 +945,7 @@ variable "private_dns_zones" {
 
     - `tags` - (Optional) Tags to apply to this DNS zone. Defaults to `{}`.
 
-    > **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zone_links` instead.
+    > **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zone_virtual_network_links` instead.
   EOT
 
   validation {
@@ -968,7 +968,7 @@ variable "private_dns_zones" {
   }
 }
 
-variable "byo_private_dns_zone_links" {
+variable "byo_private_dns_zone_virtual_network_links" {
   type = map(object({
     name                = string
     private_dns_zone_id = string
@@ -1000,10 +1000,10 @@ variable "byo_private_dns_zone_links" {
 
   validation {
     condition = alltrue([
-      for k, link in var.byo_private_dns_zone_links :
+      for k, link in var.byo_private_dns_zone_virtual_network_links :
       (link.virtual_network.key != null ? 1 : 0) + (link.virtual_network.resource_id != null ? 1 : 0) == 1
     ])
-    error_message = "Each byo_private_dns_zone_link must set exactly one of virtual_network.key or virtual_network.resource_id."
+    error_message = "Each byo_private_dns_zone_virtual_network_link must set exactly one of virtual_network.key or virtual_network.resource_id."
   }
 }
 
@@ -2891,7 +2891,7 @@ variable "recovery_services_vaults" {
       - `subresource_name` - (Required) The sub-resource name for the PE (e.g., `"AzureBackup"`, `"AzureSiteRecovery"`).
       - `private_dns_zone` - (Optional) DNS zone configuration.
         - `resource_ids` - (Optional) Explicit DNS zone resource IDs.
-        - `keys` - (Optional) Keys from `private_dns_zones` or `byo_private_dns_zone_links`.
+        - `keys` - (Optional) Keys from `private_dns_zones` or `byo_private_dns_zone_virtual_network_links`.
       - Additional PE fields: `private_dns_zone_group_name`, `application_security_group_associations`, `private_service_connection_name`, `network_interface_name`, `location`, `resource_group_name`, `ip_configurations`, `tags`.
     - `lock` - (Optional) Resource lock configuration.
       - `kind` - (Required) `"CanNotDelete"` or `"ReadOnly"`.

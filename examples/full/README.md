@@ -5,7 +5,7 @@
 This deploys every optional feature of the pattern module, exercising the complete interface end-to-end.
 It demonstrates both pattern-managed and BYO (Bring Your Own) Private DNS zones:
 blob DNS zone is created by the pattern module via `private_dns_zones`, while
-Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_links`.
+Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_virtual_network_links`.
 
 ## Features Tested
 
@@ -28,7 +28,7 @@ Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_links`
 
 - `azurerm_resource_group` — hub resource group
 - `azurerm_virtual_network` — hub VNet (peering target)
-- `azurerm_private_dns_zone` — Key Vault DNS zone (BYO, linked to spoke via `byo_private_dns_zone_links`)
+- `azurerm_private_dns_zone` — Key Vault DNS zone (BYO, linked to spoke via `byo_private_dns_zone_virtual_network_links`)
 
 ## Usage
 
@@ -289,7 +289,7 @@ object({
 
 Default: `null`
 
-### <a name="input_byo_private_dns_zone_links"></a> [byo\_private\_dns\_zone\_links](#input\_byo\_private\_dns\_zone\_links)
+### <a name="input_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_links](#input\_byo\_private\_dns\_zone\_links)
 
 Description: Map of BYO Private DNS Zone VNet links. Refer to the main pattern module variable descriptions for complete details.
 

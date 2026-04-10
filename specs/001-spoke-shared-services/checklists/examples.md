@@ -14,11 +14,11 @@
 - [x] CHK003 - Are optional peering fields (`allow_forwarded_traffic`, `create_reverse_peering`, etc.) shown with their defaults documented in inline comments? [Clarity, Spec §FR-031]
 - [x] CHK004 - Does the minimal example show that `network_security_group_key` and `route_table_key` are optional fields on subnets (not required), consistent with the contract's `optional(string)` type? [Clarity, Contracts §virtual_networks.subnets]
 
-## Requirement Completeness — Private DNS Zone Links Example
+## Requirement Completeness — Private DNS Zone Virtual Network Links Example
 
-- [x] CHK005 - Does the Private DNS Zone links example include the required `virtual_network_key` field per the variable contract? [Completeness, Quickstart §Adding Private DNS Zone Links vs Contracts §private_dns_zone_links]
-- [x] CHK006 - Does the example show the `resolution_policy` optional field or document its default (`"Default"`) in an inline comment? [Clarity, Contracts §private_dns_zone_links]
-- [x] CHK007 - Does the example show per-link `tags` or document that they are optional and merge with common tags? [Clarity, Contracts §private_dns_zone_links]
+- [x] CHK005 - Does the Private DNS Zone Virtual Network links example include the required `virtual_network_key` field per the variable contract? [Completeness, Quickstart §Adding private dns zone virtual network links vs Contracts §private_dns_zone_virtual_network_links]
+- [x] CHK006 - Does the example show the `resolution_policy` optional field or document its default (`"Default"`) in an inline comment? [Clarity, Contracts §private_dns_zone_virtual_network_links]
+- [x] CHK007 - Does the example show per-link `tags` or document that they are optional and merge with common tags? [Clarity, Contracts §private_dns_zone_virtual_network_links]
 
 ## Requirement Completeness — vWAN Connectivity Example
 

@@ -64,7 +64,7 @@
 
 ---
 
-## Phase 4: User Story 2 — Add Private DNS Zone Links to Spoke (Priority: P2)
+## Phase 4: User Story 2 — Add private dns zone virtual network links to Spoke (Priority: P2)
 
 **Goal**: A platform engineer links existing Private DNS Zones to the spoke VNet for private endpoint resolution.
 
@@ -72,9 +72,9 @@
 
 ### Implementation for User Story 2
 
-- [X] T019 [US2] Add `private_dns_zone_links` variable to variables.tf per contracts/variables.md §private_dns_zone_links — map of objects with private_dns_zone_id (string), virtual_network_key (string), registration_enabled (optional bool, default `false`), resolution_policy (optional string, default `"Default"`), and tags (optional)
-- [X] T020 [US2] Add private_dns_zone_links for_each module block to main.tf using AVM submodule `Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link` v0.5.0 — iterate over `var.private_dns_zone_links`, pass parent_id (from private_dns_zone_id), name (computed as `dnslink-{domain}-{vnet-name}` per data-model.md §Private DNS Zone Link), virtual_network_id (resolved from virtual_network_key via `module.virtual_network[link.virtual_network_key].resource_id`), registration_enabled, resolution_policy, and tags
-- [X] T021 [P] [US2] Add `private_dns_zone_links` output to outputs.tf per contracts/outputs.md — map of keys → {resource_id, name}
+- [X] T019 [US2] Add `private_dns_zone_virtual_network_links` variable to variables.tf per contracts/variables.md §private_dns_zone_virtual_network_links — map of objects with private_dns_zone_id (string), virtual_network_key (string), registration_enabled (optional bool, default `false`), resolution_policy (optional string, default `"Default"`), and tags (optional)
+- [X] T020 [US2] Add private_dns_zone_virtual_network_links for_each module block to main.tf using AVM submodule `Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link` v0.5.0 — iterate over `var.private_dns_zone_virtual_network_links`, pass parent_id (from private_dns_zone_id), name (computed as `dnslink-{domain}-{vnet-name}` per data-model.md §private dns zone virtual network link), virtual_network_id (resolved from virtual_network_key via `module.virtual_network[link.virtual_network_key].resource_id`), registration_enabled, resolution_policy, and tags
+- [X] T021 [P] [US2] Add `private_dns_zone_virtual_network_links` output to outputs.tf per contracts/outputs.md — map of keys → {resource_id, name}
 
 **Checkpoint**: User Story 2 complete — DNS zone VNet links are deployable alongside US1.
 
@@ -155,7 +155,7 @@
 
 **Purpose**: Validation rules, example files, documentation, and quality gates.
 
-- [X] T038 Add cross-variable validation preconditions to module blocks in main.tf — (1) Key Vault role_assignments: exactly one of principal_id or managed_identity_key set, and managed_identity_key exists in var.managed_identities, (2) private_dns_zone_links: virtual_network_key exists in var.virtual_networks, (3) subnets: each address_prefix XOR address_prefixes set (per contracts/variables.md §Validation Rules Summary), (4) log_analytics_workspace_configuration must be non-null when log_analytics_workspace_id is null (FR-028), (5) standalone role_assignments: exactly one of principal_id or managed_identity_key set, and managed_identity_key exists in var.managed_identities
+- [X] T038 Add cross-variable validation preconditions to module blocks in main.tf — (1) Key Vault role_assignments: exactly one of principal_id or managed_identity_key set, and managed_identity_key exists in var.managed_identities, (2) private_dns_zone_virtual_network_links: virtual_network_key exists in var.virtual_networks, (3) subnets: each address_prefix XOR address_prefixes set (per contracts/variables.md §Validation Rules Summary), (4) log_analytics_workspace_configuration must be non-null when log_analytics_workspace_id is null (FR-028), (5) standalone role_assignments: exactly one of principal_id or managed_identity_key set, and managed_identity_key exists in var.managed_identities
 - [X] T039 [P] Create terraform.tfvars with rich inline comments for all variables — document each variable's purpose, type, object shape, defaults, and security implications per FR-031
 - [X] T040 [P] Create examples/full/terraform.tfvars with all features enabled (all user stories) — resource groups, VNet with subnets/NSGs/route tables/peering, DNS zone links, managed identities, Key Vault with role assignments, vWAN connection, Bastion, flowlog_configuration, resource locks, random suffix
 - [X] T041 Run all quality gates: `terraform fmt -check -recursive`, `terraform validate`, `terraform plan` (against a CI subscription or mock backend), `tflint --init && tflint` per FR-036/FR-037. Verify no public IP resources appear in the plan output unless bastion_hosts is non-empty (SC-003).

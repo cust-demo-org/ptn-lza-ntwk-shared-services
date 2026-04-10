@@ -27,7 +27,7 @@
 | 7 | `route_tables` | L287 | `map(object)` | route_table v0.5.0 | ~12 (routes, lock, role_assignments, resource_group_key) |
 | 8 | `virtual_networks` | L333 | `map(object)` | virtual_network v0.17.1 | ~55 (subnets, peerings, diag, lock, role_assignments, dns_servers) |
 | 9 | `private_dns_zones` | L511 | `map(object)` | private_dns_zone v0.5.0 + link submodule | ~15 (virtual_network_links, lock, role_assignments) |
-| 10 | `byo_private_dns_zone_links` | L562 | `map(object)` | private_dns_zone_link submodule v0.5.0 | ~5 (zone_key, vnet_key, registration_enabled) |
+| 10 | `byo_private_dns_zone_virtual_network_links` | L562 | `map(object)` | private_dns_zone_virtual_network_link submodule v0.5.0 | ~5 (zone_key, vnet_key, registration_enabled) |
 | 11 | `managed_identities` | L591 | `map(object)` | managed_identity v0.4.0 | ~12 (lock, role_assignments w/scope, federated_identity_credentials) |
 | 12 | `key_vaults` | L634 | `map(object)` | key_vault v0.10.2 | ~50 (contacts, keys, secrets, PE, diag, lock, role_assignments, network_acls) |
 | 13 | `role_assignments` | L821 | `map(object)` | role_assignment v0.3.0 | ~6 (scope, role_definition, principal_id/managed_identity_key, description, principal_type) |  
@@ -64,7 +64,7 @@ These pattern-specific keys reference other variable maps and need the `> **Patt
 | Key Attribute | Found In Variables | References |
 |---------------|-------------------|------------|
 | `resource_group_key` | network_security_groups, route_tables, virtual_networks, private_dns_zones, managed_identities, key_vaults, bastion_hosts, storage_accounts | `resource_groups` variable |
-| `virtual_network.key` | vhub_connectivity_definitions, flowlog_configuration (flow_logs), private_dns_zones (virtual_network_links), byo_private_dns_zone_links, bastion_hosts (virtual_network) | `virtual_networks` variable |
+| `virtual_network.key` | vhub_connectivity_definitions, flowlog_configuration (flow_logs), private_dns_zones (virtual_network_links), byo_private_dns_zone_virtual_network_links, bastion_hosts (virtual_network) | `virtual_networks` variable |
 | `network_security_group.key` | virtual_networks (subnets) | `network_security_groups` variable |
 | `route_table.key` | virtual_networks (subnets) | `route_tables` variable |
 | `subnet_key` | bastion_hosts (ip_configuration), key_vaults (private_endpoints), storage_accounts (private_endpoints) | `virtual_networks[].subnets` |
@@ -85,7 +85,7 @@ These pattern-specific keys reference other variable maps and need the `> **Patt
 | route_table v0.5.0 | `variables.tf` | `route_table/` |
 | virtual_network v0.17.1 | `variables.tf` | `virtual_network/` |
 | private_dns_zone v0.5.0 | `variables.tf` | `private_dns_zone/` |
-| private_dns_zone_link submodule v0.5.0 | `variables.tf` | `private_dns_zone_link/` or `private_dns_zone/modules/...` |
+| private_dns_zone_virtual_network_link submodule v0.5.0 | `variables.tf` | `private_dns_zone_virtual_network_link/` or `private_dns_zone/modules/...` |
 | managed_identity v0.4.0 | `variables.tf` | `managed_identity/` |
 | key_vault v0.10.2 | `variables.tf` | `key_vault/` |
 | storage_account v0.6.7 | `variables.tf`, `variables.storageaccount.tf`, `variables.diagnostics.tf`, `variables.container.tf`, `variables.queue.tf`, `variables.share.tf` | `storage_account/` |
@@ -106,7 +106,7 @@ Recommended implementation order by complexity (simplest first):
 | 2 | `tags` | Trivial | Light polish only (FR-018) |
 | 3 | `resource_groups` | Low | ~5 attrs, good template to establish pattern |
 | 4 | `byo_log_analytics_workspace` | Low | ~2 attrs, simple object |
-| 5 | `byo_private_dns_zone_links` | Low | ~5 attrs, cross-ref keys |
+| 5 | `byo_private_dns_zone_virtual_network_links` | Low | ~5 attrs, cross-ref keys |
 | 6 | `route_tables` | Low | ~12 attrs, standard interfaces |
 | 7 | `role_assignments` | Low | ~6 attrs, standalone role assignment module |
 | 8 | `network_security_groups` | Medium | ~18 attrs, security_rules nested object |
