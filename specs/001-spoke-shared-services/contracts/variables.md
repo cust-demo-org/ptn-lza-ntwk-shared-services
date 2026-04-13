@@ -250,30 +250,34 @@ variable "private_dns_zones" {
     tags = optional(map(string), {})
   }))
   default     = {}
-  description = "Map of Private DNS Zones to create and optionally link to VNets. For BYO zones, use byo_private_dns_zone_virtual_network_links."
+  description = "Map of Private DNS Zones to create and optionally link to VNets. For BYO zones, use byo_private_dns_zones."
 }
 ```
 
 ---
 
-## BYO private dns zone virtual network link Variables
+## BYO Private DNS Zones
 
-### `byo_private_dns_zone_virtual_network_links`
+### `byo_private_dns_zones`
 
 ```hcl
-variable "byo_private_dns_zone_virtual_network_links" {
+variable "byo_private_dns_zones" {
   type = map(object({
     private_dns_zone_id = string
-    virtual_network = object({
-      key         = optional(string)
-      resource_id = optional(string)
-    })
-    registration_enabled = optional(bool, false)
-    resolution_policy    = optional(string, "Default")
-    tags                 = optional(map(string), {})
+    virtual_network_links = optional(map(object({
+      name = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
+      registration_enabled                   = optional(bool, false)
+      resolution_policy                      = optional(string, "Default")
+      private_dns_zone_supports_private_link = optional(bool, false)
+      tags                                   = optional(map(string), {})
+    })), {})
   }))
   default     = {}
-  description = "Map of BYO (Bring Your Own) Private DNS Zone VNet links. Each links an existing DNS zone (by resource ID) to a spoke VNet (by map key). Uses avm-res-network-privatednszone submodule private_dns_virtual_network_link. For creating new DNS zones, use private_dns_zones instead."
+  description = "Map of BYO (Bring Your Own) Private DNS Zones with VNet links. Mirrors private_dns_zones structure. Each entry represents an existing DNS zone (by resource ID) with optional VNet links. Uses avm-res-network-privatednszone submodule private_dns_virtual_network_link."
 }
 ```
 
@@ -525,4 +529,4 @@ variable "role_assignments" {
 | Standalone `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Standalone role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
 | Key Vault `role_assignments[*].managed_identity_key` | When set, must exist as a key in `var.managed_identities` | "Key Vault role assignment references managed_identity_key '{key}' which does not exist in managed_identities." |
 | `private_dns_zones[*].virtual_network_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "DNS zone virtual_network_link references virtual_network_key '{key}' which does not exist in virtual_networks." |
-| `byo_private_dns_zone_virtual_network_links[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "BYO DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |
+| `byo_private_dns_zones[*].virtual_network_key` | Must exist as a key in `var.virtual_networks` | "BYO DNS zone link references virtual_network_key '{key}' which does not exist in virtual_networks." |

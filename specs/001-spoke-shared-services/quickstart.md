@@ -204,22 +204,33 @@ private_dns_zones = {
 }
 ```
 
-### Adding BYO private dns zone virtual network links
+### Adding BYO Private DNS Zones
 
 Link existing (externally managed) Private DNS Zones to the spoke VNet:
 
 ```hcl
-byo_private_dns_zone_virtual_network_links = {
-  "blob" = {
-    private_dns_zone_id  = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
-    virtual_network_key  = "vnet-spoke"
-    registration_enabled = false
-    # resolution_policy  = "Default"  # optional — "Default" or "NxDomainRedirect"
+byo_private_dns_zones = {
+  byo_dns_blob = {
+    private_dns_zone_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
+    virtual_network_links = {
+      link_to_spoke = {
+        name = "link-blob-to-spoke"
+        virtual_network = {
+          key = "vnet_spoke"
+        }
+      }
+    }
   }
-  "sql" = {
-    private_dns_zone_id  = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net"
-    virtual_network_key  = "vnet-spoke"
-    registration_enabled = false
+  byo_dns_sql = {
+    private_dns_zone_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/privateDnsZones/privatelink.database.windows.net"
+    virtual_network_links = {
+      link_to_spoke = {
+        name = "link-sql-to-spoke"
+        virtual_network = {
+          key = "vnet_spoke"
+        }
+      }
+    }
   }
 }
 ```

@@ -458,21 +458,23 @@ variable "private_dns_zones" {
   description = "Map of Private DNS Zones to create. Refer to the main pattern module variable descriptions for complete details."
 }
 
-variable "byo_private_dns_zone_virtual_network_links" {
+variable "byo_private_dns_zones" {
   type = map(object({
-    name                = string
     private_dns_zone_id = string
-    virtual_network = object({
-      key         = optional(string)
-      resource_id = optional(string)
-    })
-    registration_enabled                   = optional(bool, false)
-    resolution_policy                      = optional(string, "Default")
-    private_dns_zone_supports_private_link = optional(bool, false)
-    tags                                   = optional(map(string), {})
+    virtual_network_links = optional(map(object({
+      name = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
+      registration_enabled                   = optional(bool, false)
+      resolution_policy                      = optional(string, "Default")
+      private_dns_zone_supports_private_link = optional(bool, false)
+      tags                                   = optional(map(string), {})
+    })), {})
   }))
   default     = {}
-  description = "Map of BYO Private DNS Zone VNet links. Refer to the main pattern module variable descriptions for complete details."
+  description = "Map of BYO Private DNS Zones with VNet links. Refer to the main pattern module variable descriptions for complete details."
 }
 
 variable "managed_identities" {

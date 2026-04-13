@@ -65,7 +65,7 @@
 
 | Variable | Field | Reason |
 |----------|-------|--------|
-| `byo_private_dns_zone_virtual_network_links` | `lock` | Submodule doesn't support lock interface |
+| `byo_private_dns_zones` | `lock` | Submodule doesn't support lock interface |
 | `vhub_connectivity_definitions` | `tags` | Azure vHub connections don't support tagging |
 | All modules | `customer_managed_key` | Scope creep — CMK is a separate feature concern |
 | Route tables | `diagnostic_settings` | Auto-default diagnostic settings already applied |
@@ -99,9 +99,9 @@ private_endpoints = optional(map(object({
 
 **Resolution logic in root main.tf** (via locals — see R11):
 - Subnet: `coalesce(pe.network_configuration.subnet_resource_id, local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key])`
-- DNS zones: `setunion(pe.private_dns_zone.resource_ids, [for k in pe.private_dns_zone.keys : var.byo_private_dns_zone_virtual_network_links[k].private_dns_zone_id])`
+- DNS zones: `setunion(pe.private_dns_zone.resource_ids, [for k in pe.private_dns_zone.keys : var.byo_private_dns_zones[k].private_dns_zone_id])`
 
-**Rationale**: The key-based pattern eliminates the need for callers to look up computed subnet IDs and DNS zone IDs themselves. Consumers reference resources by their map keys (from `virtual_networks` and `byo_private_dns_zone_virtual_network_links`). The pattern module performs the ID resolution internally. This removes the `key_vaults` local block previously needed in `full/main.tf` to merge computed IDs.
+**Rationale**: The key-based pattern eliminates the need for callers to look up computed subnet IDs and DNS zone IDs themselves. Consumers reference resources by their map keys (from `virtual_networks` and `byo_private_dns_zones`). The pattern module performs the ID resolution internally. This removes the `key_vaults` local block previously needed in `full/main.tf` to merge computed IDs.
 
 **Impact on examples**: The `full/` example's `terraform.tfvars` now declares PE configs using `vnet_key`/`subnet_key` and `private_dns_zone.keys` instead of hardcoded resource IDs or computed locals. No `key_vaults` local is needed in `main.tf`.
 

@@ -503,36 +503,39 @@ object({
 
 Default: `null`
 
-### <a name="input_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_virtual\_network\_links](#input\_byo\_private\_dns\_zone\_virtual\_network\_links)
+### <a name="input_byo_private_dns_zones"></a> [byo\_private\_dns\_zones](#input\_byo\_private\_dns\_zones)
 
-Description: A map of VNet links to existing (bring-your-own) Private DNS Zones. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
+Description: A map of existing (bring-your-own) Private DNS Zones to link to VNets. The map key is a user-chosen identifier for the BYO DNS zone. This structure mirrors `private_dns_zones` for consistency.
 
-- `name` - (Required) The name of the virtual network link.
-- `private_dns_zone_id` - (Required) The Azure resource ID of the existing Private DNS Zone to link.
-- `virtual_network` - (Required) The virtual network to link to the DNS zone. Specify exactly one of `key` or `resource_id`.
-  - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Mutually exclusive with `resource_id`.
-  - `resource_id` - (Optional) The Azure resource ID of an existing virtual network not managed by this pattern. Mutually exclusive with `key`.
-- `registration_enabled` - (Optional) Whether auto-registration of DNS records is enabled for this link. Defaults to `false`.
-- `resolution_policy` - (Optional) The resolution policy for the link. Defaults to `"Default"`.
-- `private_dns_zone_supports_private_link` - (Optional) Whether the DNS zone supports private link resolution. Defaults to `false`.
-- `tags` - (Optional) Tags to apply to this virtual network link. Defaults to `{}`.
+- `private_dns_zone_id` - (Required) The Azure resource ID of the existing Private DNS Zone.
+- `virtual_network_links` - (Optional) A map of VNet links to create for this BYO DNS zone. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
+  - `name` - (Required) The name of the virtual network link.
+  - `virtual_network` - (Required) The virtual network to link to the DNS zone. Specify exactly one of `key` or `resource_id`.
+    - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. Mutually exclusive with `resource_id`.
+    - `resource_id` - (Optional) The Azure resource ID of an existing virtual network not managed by this pattern. Mutually exclusive with `key`.
+  - `registration_enabled` - (Optional) Whether auto-registration of DNS records is enabled for this link. Defaults to `false`.
+  - `resolution_policy` - (Optional) The resolution policy for the link. Defaults to `"Default"`.
+  - `private_dns_zone_supports_private_link` - (Optional) Whether the DNS zone supports private link resolution. Defaults to `false`.
+  - `tags` - (Optional) Tags to apply to this virtual network link. Defaults to `{}`.
 
-> **Pattern note:** Use this variable for DNS zones NOT managed by this pattern. For creating DNS zones as part of this pattern, use `private_dns_zones` instead. Tags in `tags` are merged with `var.tags`.
+> **Pattern note:** Use this variable for DNS zones NOT managed by this pattern. For creating DNS zones as part of this pattern, use `private_dns_zones` instead. Tags in `tags` are merged with `var.tags`. The map key is also used in `pe_dns_zone_ids` for private endpoint DNS zone resolution — PEs can reference BYO zones via `private_dns_zone.keys`.
 
 Type:
 
 ```hcl
 map(object({
-    name                = string
     private_dns_zone_id = string
-    virtual_network = object({
-      key         = optional(string)
-      resource_id = optional(string)
-    })
-    registration_enabled                   = optional(bool, false)
-    resolution_policy                      = optional(string, "Default")
-    private_dns_zone_supports_private_link = optional(bool, false)
-    tags                                   = optional(map(string), {})
+    virtual_network_links = optional(map(object({
+      name = string
+      virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
+      registration_enabled                   = optional(bool, false)
+      resolution_policy                      = optional(string, "Default")
+      private_dns_zone_supports_private_link = optional(bool, false)
+      tags                                   = optional(map(string), {})
+    })), {})
   }))
 ```
 
@@ -1383,7 +1386,7 @@ Description: A map of Private DNS Zones to create and optionally link to VNets c
 
 - `tags` - (Optional) Tags to apply to this DNS zone. Defaults to `{}`.
 
-> **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zone_virtual_network_links` instead.
+> **Pattern note:** Tags in `tags` and `virtual_network_links[].tags` are merged with `var.tags`. For linking to existing (BYO) Private DNS Zones not managed by this pattern, use `byo_private_dns_zones` instead.
 
 Type:
 
@@ -1483,7 +1486,7 @@ Description: A map of Azure Recovery Services Vaults to create. The map key is d
   - `subresource_name` - (Required) The sub-resource name for the PE (e.g., `"AzureBackup"`, `"AzureSiteRecovery"`).
   - `private_dns_zone` - (Optional) DNS zone configuration.
     - `resource_ids` - (Optional) Explicit DNS zone resource IDs.
-    - `keys` - (Optional) Keys from `private_dns_zones` or `byo_private_dns_zone_virtual_network_links`.
+    - `keys` - (Optional) Keys from `private_dns_zones` or `byo_private_dns_zones`.
   - Additional PE fields: `private_dns_zone_group_name`, `application_security_group_associations`, `private_service_connection_name`, `network_interface_name`, `location`, `resource_group_name`, `ip_configurations`, `tags`.
 - `lock` - (Optional) Resource lock configuration.
   - `kind` - (Required) `"CanNotDelete"` or `"ReadOnly"`.
@@ -2905,7 +2908,7 @@ Description: Map of Bastion host resource IDs and names, keyed by bastion\_hosts
 
 ### <a name="output_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_virtual\_network\_links](#output\_byo\_private\_dns\_zone\_virtual\_network\_links)
 
-Description: Map of BYO Private DNS Zone VNet link keys to their resource IDs and names.
+Description: Map of BYO Private DNS Zone VNet link composite keys (zone\_key/link\_key) to their resource IDs and names.
 
 ### <a name="output_key_vaults"></a> [key\_vaults](#output\_key\_vaults)
 

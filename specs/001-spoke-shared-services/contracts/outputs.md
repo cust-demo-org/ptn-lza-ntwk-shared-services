@@ -84,7 +84,7 @@ output "private_dns_zones" {
 ## BYO private dns zone virtual network link Outputs
 
 ```hcl
-output "byo_private_dns_zone_virtual_network_links" {
+output "byo_private_dns_zones" {
   value       = { for key, mod in module.byo_private_dns_zone_virtual_network_link : key => {
     resource_id = mod.resource_id
     name        = mod.resource.name
