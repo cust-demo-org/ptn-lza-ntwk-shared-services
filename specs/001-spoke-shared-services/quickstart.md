@@ -327,38 +327,44 @@ role_assignments = {
 
 ### Enabling Network Watcher Flow Logs
 
-Configure VNet flow logs on an existing Network Watcher (typically auto-created by Azure per region). Add to `terraform.tfvars`:
+Configure VNet flow logs on an existing Network Watcher (typically auto-created by Azure per region). The pattern includes a `time_sleep` delay (`var.network_watcher_creation_delay`, default `"120s"`) that waits after VNet creation for Azure to auto-provision the Network Watcher, enabling single-step deployment. Add to `terraform.tfvars`:
 
 ```hcl
 flowlog_configuration = {
-  network_watcher_id   = "/subscriptions/<sub>/resourceGroups/NetworkWatcherRG/providers/Microsoft.Network/networkWatchers/NetworkWatcher_eastus"
-  network_watcher_name = "NetworkWatcher_eastus"
-  resource_group_name  = "NetworkWatcherRG"
-  # location           = "eastus"  # optional — defaults to module location if omitted
+  # network_watcher_id, network_watcher_name, and resource_group_name are
+  # optional — they default to Azure's standard NetworkWatcherRG /
+  # NetworkWatcher_<location>.
 
   flow_logs = {
-    "vnet-spoke-flow-log" = {
-      enabled            = true
-      name               = "flowlog-vnet-spoke"
-      target_resource_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet-name>"
-      storage_account_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage-name>"
+    fl_spoke_vnet = {
+      enabled = true
+      name    = "fl-spoke-vnet"
+      virtual_network = {
+        key = "vnet_spoke"    # references a key in the virtual_networks variable
+      }
+      storage_account = {
+        key = "sa_flowlog"    # references a key in the storage_accounts variable
+      }
       retention_policy = {
-        days    = 90
         enabled = true
+        days    = 90
       }
       traffic_analytics = {
-        enabled               = true
-        interval_in_minutes   = 10
-        workspace_id          = "<law-workspace-guid>"
-        workspace_region      = "eastus"
-        workspace_resource_id = "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name>"
+        enabled             = true
+        interval_in_minutes = 10
+        # workspace_id, workspace_region, workspace_resource_id default
+        # to the pattern's Log Analytics workspace (BYO or pattern-managed)
       }
+      version = 2
     }
   }
 }
+
+# (Optional) Set to "0s" if Network Watcher already exists
+# network_watcher_creation_delay = "0s"
 ```
 
-> **Note**: Set `flowlog_configuration = null` (or omit it entirely) to disable Network Watcher flow logs. The `target_resource_id` should reference the VNet or subnet you want to monitor. The storage account must exist and be in the same region as the Network Watcher.
+> **Note**: Set `flowlog_configuration = null` (or omit it entirely) to disable Network Watcher flow logs. When using key-based references (`virtual_network.key`, `storage_account.key`), the resources must exist in the same `virtual_networks` / `storage_accounts` variables. Alternatively, use `virtual_network.resource_id` / `storage_account.resource_id` for resources not managed by this pattern. Traffic analytics workspace fields default to the pattern's Log Analytics workspace.
 
 ### Using an Existing Log Analytics Workspace
 

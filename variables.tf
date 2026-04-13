@@ -3053,6 +3053,8 @@ variable "flowlog_configuration" {
     - `tags` - (Optional) Tags to apply to the Network Watcher. Defaults to `{}`.
 
     > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. If `network_watcher_id`, `network_watcher_name`, and `resource_group_name` are not specified, defaults to the Azure auto-created `NetworkWatcher_<location>` in `NetworkWatcherRG`. For `traffic_analytics`, `workspace_id`, `workspace_region`, and `workspace_resource_id` default to the pattern's Log Analytics workspace (BYO or pattern-managed).
+    >
+    > **Network Watcher delay:** Azure auto-creates a Network Watcher when the first VNet is deployed in a region. This is asynchronous and can take a few minutes. The pattern includes a configurable `time_sleep` (see `var.network_watcher_creation_delay`) that waits after VNet creation before configuring flow logs, enabling single-step deployment without needing to comment out `flowlog_configuration` on first apply.
   EOT
 
   validation {
@@ -3068,5 +3070,23 @@ variable "flowlog_configuration" {
       (fl.virtual_network.key != null ? 1 : 0) + (fl.virtual_network.resource_id != null ? 1 : 0) == 1
     ])
     error_message = "Each flow log must set exactly one of virtual_network.key or virtual_network.resource_id."
+  }
+}
+
+variable "network_watcher_creation_delay" {
+  type        = string
+  default     = "120s"
+  description = <<-EOT
+    The duration to wait after VNet creation before configuring flow logs. Azure auto-creates a
+    Network Watcher (`NetworkWatcher_<region>` in `NetworkWatcherRG`) asynchronously when the first
+    VNet is deployed in a region. This delay ensures the Network Watcher exists before the AVM
+    network_watcher module attempts to read it via `data "azurerm_network_watcher"`. Set to `"0s"`
+    if the Network Watcher already exists (e.g., subsequent applies or pre-provisioned environments).
+    Only applies when `flowlog_configuration` is not `null`.
+  EOT
+
+  validation {
+    condition     = can(regex("^[0-9]+(s|m|h)$", var.network_watcher_creation_delay))
+    error_message = "network_watcher_creation_delay must be a valid Go duration string (e.g., \"120s\", \"2m\", \"0s\")."
   }
 }

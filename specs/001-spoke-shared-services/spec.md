@@ -213,7 +213,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 #### Network Watcher & Flow Logs
 
-- **FR-040**: The pattern MUST support optional configuration of Network Watcher VNet flow logs via a `flowlog_configuration` variable (implicit toggle — `null` = no flow logs). When non-null, the pattern provisions flow logs using the AVM Network Watcher module (`avm-res-network-networkwatcher`). All flow log settings are consumer-defined and passed through to the AVM module; the pattern does not auto-configure any flow log settings.
+- **FR-040**: The pattern MUST support optional configuration of Network Watcher VNet flow logs via a `flowlog_configuration` variable (implicit toggle — `null` = no flow logs). When non-null, the pattern provisions flow logs using the AVM Network Watcher module (`avm-res-network-networkwatcher`). A configurable `time_sleep` delay (`var.network_watcher_creation_delay`, default `"120s"`) MUST wait after VNet creation for Azure to auto-create the Network Watcher, enabling single-step deployment without needing to comment out `flowlog_configuration` on first apply.
 
 #### AVM Interface Pass-Through
 

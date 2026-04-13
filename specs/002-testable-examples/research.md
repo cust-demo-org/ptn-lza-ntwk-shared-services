@@ -285,7 +285,7 @@ variable "resource_groups" {
 - `network_watcher_name` → `"NetworkWatcher_<location>"` (uses `flowlog_configuration.location` or `var.location`)
 - `network_watcher_id` → constructed from subscription ID + the above defaults
 
-**Resolution**: Azure auto-creates `NetworkWatcherRG` and `NetworkWatcher_<region>` when the first VNet is deployed in a subscription. Since the vast majority of deployments use these standard resources, callers should not be required to supply these values. The `coalesce` pattern allows callers to override if they have a custom Network Watcher.
+**Resolution**: Azure auto-creates `NetworkWatcherRG` and `NetworkWatcher_<region>` when the first VNet is deployed in a subscription. Since the vast majority of deployments use these standard resources, callers should not be required to supply these values. The `coalesce` pattern allows callers to override if they have a custom Network Watcher. A `time_sleep` resource (`var.network_watcher_creation_delay`, default `"120s"`) waits after VNet creation for the auto-provisioning to complete, enabling single-step deployment.
 
 **Impact on `full/` example**: Removed `nw_rg_name`, `nw_name`, `nw_id` locals and their merge overrides from `main.tf` — the pattern module now computes these internally. The `terraform.tfvars` commented block no longer shows the 3 NW fields.
 

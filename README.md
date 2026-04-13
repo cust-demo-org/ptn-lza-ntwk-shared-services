@@ -61,6 +61,8 @@ The following requirements are needed by this module:
 
 - <a name="requirement_random"></a> [random](#requirement\_random) (~> 3.0)
 
+- <a name="requirement_time"></a> [time](#requirement\_time) (~> 0.13)
+
 ## Resources
 
 The following resources are used by this module:
@@ -68,6 +70,7 @@ The following resources are used by this module:
 - [random_string.key_vault_suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) (resource)
 - [random_string.storage_account_suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) (resource)
 - [terraform_data.validation](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) (resource)
+- [time_sleep.wait_for_network_watcher](https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep) (resource)
 - [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) (data source)
 - [azurerm_log_analytics_workspace.external](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/log_analytics_workspace) (data source)
 
@@ -500,7 +503,7 @@ object({
 
 Default: `null`
 
-### <a name="input_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_links](#input\_byo\_private\_dns\_zone\_links)
+### <a name="input_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_virtual\_network\_links](#input\_byo\_private\_dns\_zone\_virtual\_network\_links)
 
 Description: A map of VNet links to existing (bring-your-own) Private DNS Zones. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time.
 
@@ -590,6 +593,8 @@ Description: Network Watcher and VNet flow log configuration. When `null` (the d
 - `tags` - (Optional) Tags to apply to the Network Watcher. Defaults to `{}`.
 
 > **Pattern note:** If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. If `network_watcher_id`, `network_watcher_name`, and `resource_group_name` are not specified, defaults to the Azure auto-created `NetworkWatcher_<location>` in `NetworkWatcherRG`. For `traffic_analytics`, `workspace_id`, `workspace_region`, and `workspace_resource_id` default to the pattern's Log Analytics workspace (BYO or pattern-managed).
+>
+> **Network Watcher delay:** Azure auto-creates a Network Watcher when the first VNet is deployed in a region. This is asynchronous and can take a few minutes. The pattern includes a configurable `time_sleep` (see `var.network_watcher_creation_delay`) that waits after VNet creation before configuring flow logs, enabling single-step deployment without needing to comment out `flowlog_configuration` on first apply.
 
 Type:
 
@@ -1330,6 +1335,19 @@ map(object({
 ```
 
 Default: `{}`
+
+### <a name="input_network_watcher_creation_delay"></a> [network\_watcher\_creation\_delay](#input\_network\_watcher\_creation\_delay)
+
+Description: The duration to wait after VNet creation before configuring flow logs. Azure auto-creates a  
+Network Watcher (`NetworkWatcher_<region>` in `NetworkWatcherRG`) asynchronously when the first  
+VNet is deployed in a region. This delay ensures the Network Watcher exists before the AVM  
+network\_watcher module attempts to read it via `data "azurerm_network_watcher"`. Set to `"0s"`  
+if the Network Watcher already exists (e.g., subsequent applies or pre-provisioned environments).  
+Only applies when `flowlog_configuration` is not `null`.
+
+Type: `string`
+
+Default: `"120s"`
 
 ### <a name="input_private_dns_zones"></a> [private\_dns\_zones](#input\_private\_dns\_zones)
 
@@ -2885,7 +2903,7 @@ Description: Map of backup vault keys to their resource IDs and names.
 
 Description: Map of Bastion host resource IDs and names, keyed by bastion\_hosts map key. Empty map when no Bastion hosts are deployed.
 
-### <a name="output_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_links](#output\_byo\_private\_dns\_zone\_links)
+### <a name="output_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_virtual\_network\_links](#output\_byo\_private\_dns\_zone\_virtual\_network\_links)
 
 Description: Map of BYO Private DNS Zone VNet link keys to their resource IDs and names.
 
@@ -2993,7 +3011,7 @@ Source: Azure/avm-res-network-privatednszone/azurerm
 
 Version: 0.5.0
 
-### <a name="module_private_dns_zone_virtual_network_link"></a> [private\_dns\_zone\_link](#module\_private\_dns\_zone\_link)
+### <a name="module_private_dns_zone_virtual_network_link"></a> [private\_dns\_zone\_virtual\_network\_link](#module\_private\_dns\_zone\_virtual\_network\_link)
 
 Source: Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link
 

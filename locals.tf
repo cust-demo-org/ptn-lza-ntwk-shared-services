@@ -67,4 +67,20 @@ locals {
       : v.virtual_network.resource_id
     )
   }
+
+  # Network Watcher defaults — pre-computed to avoid inline data source references
+  # that can cause "known after apply" deferral when callers use depends_on.
+  # When network_watcher_id is null, we construct the Azure-standard default from
+  # data.azurerm_client_config, which is always available at plan time in this module.
+  # However, if a caller uses depends_on on this module, Terraform defers ALL data
+  # sources inside the module, making the constructed ID "known after apply" and
+  # forcing azapi_resource.flow_logs replacement on every plan.
+  # To avoid this, we compute the default here and use it consistently.
+  flowlog_location             = var.flowlog_configuration != null ? coalesce(var.flowlog_configuration.location, var.location) : var.location
+  flowlog_network_watcher_name = var.flowlog_configuration != null ? coalesce(var.flowlog_configuration.network_watcher_name, "NetworkWatcher_${local.flowlog_location}") : null
+  flowlog_resource_group_name  = var.flowlog_configuration != null ? coalesce(var.flowlog_configuration.resource_group_name, "NetworkWatcherRG") : null
+  flowlog_network_watcher_id = var.flowlog_configuration != null ? coalesce(
+    var.flowlog_configuration.network_watcher_id,
+    "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${local.flowlog_resource_group_name}/providers/Microsoft.Network/networkWatchers/${local.flowlog_network_watcher_name}"
+  ) : null
 }
