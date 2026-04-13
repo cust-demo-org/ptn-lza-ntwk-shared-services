@@ -488,7 +488,9 @@ log_analytics_workspace_configuration = {
 # ─── Network Watcher / Flow Logs ────────────────────────────
 
 # (Optional) Network Watcher VNet flow logs.  null = no flow logs.
-# References an existing Network Watcher (typically auto-created by Azure).
+# Azure auto-creates a Network Watcher when VNets are deployed. The pattern
+# includes a time_sleep delay (var.network_watcher_creation_delay, default 120s)
+# that waits after VNet creation, enabling single-step deployment.
 # Default: null
 # flowlog_configuration = {
 #   network_watcher_id   = "/subscriptions/.../providers/Microsoft.Network/networkWatchers/NetworkWatcher_southeastasia"
@@ -520,3 +522,8 @@ log_analytics_workspace_configuration = {
 #   # role_assignments = { ... }
 #   # tags = {}
 # }
+
+# (Optional) Delay after VNet creation before configuring flow logs.
+# Set to "0s" if the Network Watcher already exists (subsequent applies).
+# Default: "120s"
+# network_watcher_creation_delay = "120s"

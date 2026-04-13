@@ -21,6 +21,7 @@ Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_virtua
 - Standalone role assignments with computed scope
 - Azure Bastion with key-based subnet/VNet references and pattern-managed public IP
 - Storage accounts (for flow log target)
+- Network Watcher VNet flow logs with traffic analytics
 - Diagnostic settings on all supported resources (LAW, NSGs, VNet, Key Vault, Bastion, Storage Account)
 - Storage account sub-resource diagnostic settings (blob, file, queue, table)
 
@@ -289,7 +290,7 @@ object({
 
 Default: `null`
 
-### <a name="input_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_links](#input\_byo\_private\_dns\_zone\_links)
+### <a name="input_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_virtual\_network\_links](#input\_byo\_private\_dns\_zone\_virtual\_network\_links)
 
 Description: Map of BYO Private DNS Zone VNet links. Refer to the main pattern module variable descriptions for complete details.
 

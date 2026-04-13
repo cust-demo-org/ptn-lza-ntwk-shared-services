@@ -19,6 +19,7 @@ Key Vault DNS zone is created inline and linked via `byo_private_dns_zone_virtua
 - Standalone role assignments with computed scope
 - Azure Bastion with key-based subnet/VNet references and pattern-managed public IP
 - Storage accounts (for flow log target)
+- Network Watcher VNet flow logs with traffic analytics
 - Diagnostic settings on all supported resources (LAW, NSGs, VNet, Key Vault, Bastion, Storage Account)
 - Storage account sub-resource diagnostic settings (blob, file, queue, table)
 

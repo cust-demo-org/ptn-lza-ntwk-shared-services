@@ -438,39 +438,33 @@ storage_accounts = {
 }
 
 # ─── Network Watcher / Flow Logs ────────────────────────────
-# NOTE: The AVM network_watcher module performs a data lookup for an existing
-# Network Watcher. Azure auto-creates NetworkWatcher_<region> in
-# NetworkWatcherRG when VNets are deployed. To enable flow logs, first deploy
-# without flowlog_configuration, then uncomment the block below after the
-# auto-created Network Watcher exists.
-#
-# The network_watcher_id, network_watcher_name, and resource_group_name fields
-# are optional — they default to the Azure standard NetworkWatcherRG /
-# NetworkWatcher_<location>.
-#
-# flowlog_configuration = {
-#   flow_logs = {
-#     fl_spoke_vnet = {
-#       enabled = true
-#       name    = "fl-spoke-vnet"
-#       virtual_network = {
-#         key = "vnet_spoke"
-#       }
-#       storage_account = {
-#         key = "sa_flowlog"
-#       }
-#       retention_policy = {
-#         enabled = true
-#         days    = 90
-#       }
-#       traffic_analytics = {
-#         enabled             = true
-#         interval_in_minutes = 10
-#       }
-#       version = 2
-#     }
-#   }
-# }
+# The pattern includes a time_sleep delay (var.network_watcher_creation_delay,
+# default 120s) that waits after VNet creation for Azure to auto-create the
+# Network Watcher before configuring flow logs — no two-step deployment needed.
+
+flowlog_configuration = {
+  flow_logs = {
+    fl_spoke_vnet = {
+      enabled = true
+      name    = "fl-spoke-vnet"
+      virtual_network = {
+        key = "vnet_spoke"
+      }
+      storage_account = {
+        key = "sa_flowlog"
+      }
+      retention_policy = {
+        enabled = true
+        days    = 90
+      }
+      traffic_analytics = {
+        enabled             = true
+        interval_in_minutes = 10
+      }
+      version = 2
+    }
+  }
+}
 
 # ──────────────────────────────────────────────────────────────
 # Backup Vaults (Azure Data Protection)
