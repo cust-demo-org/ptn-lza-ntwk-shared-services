@@ -27,7 +27,7 @@
 
 Work through variables in the order from `data-model.md` § Description Rewrite Priority Order:
 - Trivial: `location`, `tags` (light polish only)
-- Low: `byo_log_analytics_workspace`, `byo_private_dns_zone_virtual_network_links`, `route_tables`, `role_assignments`
+- Low: `byo_log_analytics_workspace`, `byo_private_dns_zones`, `route_tables`, `role_assignments`
 - Medium: `network_security_groups`, `private_dns_zones`, `managed_identities`, `vhub_connectivity_definitions`, `bastion_hosts`, `flowlog_configuration`
 - High: `log_analytics_workspace_configuration`, `key_vaults`
 - Very High: `virtual_networks`, `storage_accounts`

@@ -146,7 +146,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 
 #### private dns zone virtual network links
 
-- **FR-015**: The pattern MUST support two modes for Private DNS Zone integration: (a) **Create zones** — the `private_dns_zones` variable creates Private DNS Zones using the AVM `avm-res-network-privatednszone` root module (v0.5.0) and optionally links them to spoke VNets via `virtual_network_links`; (b) **BYO zones** — the `byo_private_dns_zone_virtual_network_links` variable links one or more existing (externally managed) Azure Private DNS Zones to the spoke VNet by resource ID. Both use the implicit map-based toggle pattern (empty map = disabled).
+- **FR-015**: The pattern MUST support two modes for Private DNS Zone integration: (a) **Create zones** — the `private_dns_zones` variable creates Private DNS Zones using the AVM `avm-res-network-privatednszone` root module (v0.5.0) and optionally links them to spoke VNets via `virtual_network_links`; (b) **BYO zones** — the `byo_private_dns_zones` variable links one or more existing (externally managed) Azure Private DNS Zones to the spoke VNet by resource ID. Both use the implicit map-based toggle pattern (empty map = disabled).
 
 #### Managed Identities
 
@@ -193,7 +193,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - **FR-029**: End users MUST only need to edit `terraform.tfvars` to customise the deployment. All `.tf` files MUST be reusable without modification.
 - **FR-030**: All input variables MUST have a descriptive name, explicit type constraint (no `any`), a non-empty `description` attribute, and a secure default value. Sensitive values MUST be marked `sensitive = true`. Note: the current pattern accepts no sensitive inputs (no passwords, connection strings, or secrets); this requirement applies if future variables introduce sensitive values.
 - **FR-031**: Example `.tfvars` files MUST be provided with rich inline comments explaining each variable, its object shape, and why defaults are secure. A `examples/full/terraform.tfvars` with all features enabled MUST be maintained as an integration-level design validation tool — if a variable is difficult to express in an example, the variable interface SHOULD be reconsidered.
-- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Implicit null-toggle** where `null` disables the feature and a non-null object enables it (e.g., `flowlog_configuration`, `log_analytics_workspace_configuration`); (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `bastion_hosts`, `private_dns_zones`, `byo_private_dns_zone_virtual_network_links`, `managed_identities`, `key_vaults`, `role_assignments`). Standalone `enable_*` boolean variables MUST NOT be introduced alongside a configuration object — the configuration object itself serves as the toggle. The chosen pattern for each feature MUST be documented in the variable description.
+- **FR-032**: Optional components MUST be toggled using one of two patterns: (a) **Implicit null-toggle** where `null` disables the feature and a non-null object enables it (e.g., `flowlog_configuration`, `log_analytics_workspace_configuration`); (b) **Implicit map-based toggles** where an empty map `{}` disables the feature (e.g., `bastion_hosts`, `private_dns_zones`, `byo_private_dns_zones`, `managed_identities`, `key_vaults`, `role_assignments`). Standalone `enable_*` boolean variables MUST NOT be introduced alongside a configuration object — the configuration object itself serves as the toggle. The chosen pattern for each feature MUST be documented in the variable description.
 
 #### Documentation
 
@@ -247,7 +247,7 @@ A platform engineer enables Azure Bastion for secure remote access to VMs in the
 - The pattern is structured as a flat root module (no nested sub-modules). Each Azure resource is already abstracted by its AVM module; an additional sub-module layer is unnecessary.
 - An Azure subscription and appropriate RBAC permissions are available before deployment.
 - A hub VNet or Virtual WAN hub already exists when spoke connectivity is configured.
-- Private DNS Zones already exist (provisioned by a platform team) when BYO DNS zone links (`byo_private_dns_zone_virtual_network_links`) are configured. Alternatively, the pattern can create Private DNS Zones directly via the `private_dns_zones` variable.
+- Private DNS Zones already exist (provisioned by a platform team) when BYO DNS zone links (`byo_private_dns_zones`) are configured. Alternatively, the pattern can create Private DNS Zones directly via the `private_dns_zones` variable.
 - Consumers are familiar with Terraform CLI workflows (`init`, `plan`, `apply`).
 - The pattern targets Terraform >= 1.13, < 2.0 and AzureRM provider ~> 4.0 (exact versions pinned in the pattern).
 - `terraform-docs` and `tflint` are available in the CI environment.

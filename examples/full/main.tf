@@ -58,9 +58,9 @@ locals {
     })
   }
 
-  # BYO DNS zone links with computed private DNS zone ID
-  byo_private_dns_zone_virtual_network_links = merge(var.byo_private_dns_zone_virtual_network_links, {
-    byo_dns_kv = merge(var.byo_private_dns_zone_virtual_network_links.byo_dns_kv, {
+  # BYO DNS zones with computed private DNS zone ID
+  byo_private_dns_zones = merge(var.byo_private_dns_zones, {
+    byo_dns_kv = merge(var.byo_private_dns_zones.byo_dns_kv, {
       private_dns_zone_id = azurerm_private_dns_zone.kv.id
     })
   })
@@ -90,7 +90,7 @@ module "pattern" {
   route_tables                               = var.route_tables
   virtual_networks                           = local.virtual_networks
   private_dns_zones                          = var.private_dns_zones
-  byo_private_dns_zone_virtual_network_links = local.byo_private_dns_zone_virtual_network_links
+  byo_private_dns_zones                     = local.byo_private_dns_zones
   managed_identities                         = var.managed_identities
   key_vaults                                 = var.key_vaults
   role_assignments                           = local.role_assignments

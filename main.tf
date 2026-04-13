@@ -20,10 +20,12 @@ resource "terraform_data" "validation" {
 
     precondition {
       condition = alltrue([
-        for k, link in var.byo_private_dns_zone_virtual_network_links :
-        link.virtual_network.key == null || contains(keys(var.virtual_networks), link.virtual_network.key)
+        for zone_key, zone in var.byo_private_dns_zones : alltrue([
+          for vnl_key, vnl in zone.virtual_network_links :
+          vnl.virtual_network.key == null || contains(keys(var.virtual_networks), vnl.virtual_network.key)
+        ])
       ])
-      error_message = "DNS zone link references a virtual_network.key that does not exist in virtual_networks."
+      error_message = "BYO DNS zone link references a virtual_network.key that does not exist in virtual_networks."
     }
 
     precondition {
@@ -386,11 +388,26 @@ module "private_dns_zone" {
   }
 }
 
-module "private_dns_zone_virtual_network_link" {
+module "private_dns_zone_virtual_network_link" { # separate module to link BYO private DNS to pattern-managed VNets
   source  = "Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link"
   version = "0.5.0"
 
-  for_each = var.byo_private_dns_zone_virtual_network_links
+  for_each = {
+    for item in flatten([
+      for zone_key, zone in var.byo_private_dns_zones : [
+        for vnl_key, vnl in zone.virtual_network_links : {
+          key                 = "${zone_key}/${vnl_key}"
+          name                = vnl.name
+          private_dns_zone_id = zone.private_dns_zone_id
+          virtual_network     = vnl.virtual_network
+          registration_enabled                   = vnl.registration_enabled
+          resolution_policy                      = vnl.resolution_policy
+          private_dns_zone_supports_private_link = vnl.private_dns_zone_supports_private_link
+          tags                                   = vnl.tags
+        }
+      ]
+    ]) : item.key => item
+  }
 
   name      = each.value.name
   parent_id = each.value.private_dns_zone_id

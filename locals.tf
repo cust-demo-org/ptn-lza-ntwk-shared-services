@@ -56,7 +56,7 @@ locals {
   # PEs reference these via private_dns_zone.keys — keys can come from either source
   pe_dns_zone_ids = merge(
     { for key, mod in module.private_dns_zone : key => mod.resource_id },
-    { for key, link in var.byo_private_dns_zone_virtual_network_links : key => link.private_dns_zone_id }
+    { for key, zone in var.byo_private_dns_zones : key => zone.private_dns_zone_id }
   )
 
   # vHub connection VNet ID resolution: resolve virtual_network.key → resource ID, or pass through virtual_network.resource_id

@@ -41,7 +41,7 @@ Each example's `variables.tf` mirrors the root module's 17+ variables. All have 
 | `route_tables` | ✅ | ✅ | ✅ | ✅ | `{}` |
 | `virtual_networks` | ✅ | ✅ | ✅ | ✅ | `{}` |
 | `private_dns_zones` | ❌ | ❌ | ❌ | ✅ | `{}` |
-| `byo_private_dns_zone_virtual_network_links` | ❌ | ❌ | ❌ | ✅ | `{}` |
+| `byo_private_dns_zones` | ❌ | ❌ | ❌ | ✅ | `{}` |
 | `managed_identities` | ❌ | ❌ | ❌ | ✅ | `{}` |
 | `key_vaults` | ❌ | ❌ | ❌ | ✅ | `{}` |
 | `role_assignments` | ❌ | ❌ | ❌ | ✅ | `{}` |
@@ -81,11 +81,11 @@ module "pattern" — depends_on = [ azurerm_virtual_hub.main ]
 ```
 azurerm_resource_group — hub/connectivity RG
 azurerm_virtual_network — hub VNet (peering target)
-azurerm_private_dns_zone — KV DNS zone (BYO, linked via byo_private_dns_zone_virtual_network_links)
+azurerm_private_dns_zone — KV DNS zone (BYO, linked via byo_private_dns_zones)
 module "pattern" — depends_on = [ azurerm_virtual_network.hub, azurerm_private_dns_zone.kv ]
 ```
 
-**Note**: The blob DNS zone is created by the pattern module via `private_dns_zones`. The KV DNS zone is BYO (created inline) and linked via `byo_private_dns_zone_virtual_network_links`. Bastion uses `create_public_ip = true` (no inline `azurerm_public_ip` needed).
+**Note**: The blob DNS zone is created by the pattern module via `private_dns_zones`. The KV DNS zone is BYO (created inline) and linked via `byo_private_dns_zones`. Bastion uses `create_public_ip = true` (no inline `azurerm_public_ip` needed).
 
 **Diagnostic settings**: Configured on all supported resources — `log_analytics_workspace_configuration`, `network_security_groups` (all 3 NSGs), `virtual_networks`, `key_vaults`, `bastion_hosts`, and `storage_accounts` (including sub-resource diagnostics: `diagnostic_settings_blob`, `diagnostic_settings_file`, `diagnostic_settings_queue`, `diagnostic_settings_table`). Each diagnostic_settings entry includes `use_default_log_analytics` (default: `true`) which auto-fills `workspace_resource_id` with the pattern's LAW (BYO or auto-created). Set to `false` to use `workspace_resource_id` as-is (`null` = not sent to LAW).
 
@@ -158,7 +158,7 @@ private_endpoints = optional(map(object({
   })
   private_dns_zone = optional(object({
     resource_ids = optional(set(string))     # Direct IDs — OR use key-based:
-    keys         = optional(set(string))     # Keys in private_dns_zones OR byo_private_dns_zone_virtual_network_links map
+    keys         = optional(set(string))     # Keys in private_dns_zones OR byo_private_dns_zones map
   }))
   tags = optional(map(string), null)
 })), {})
@@ -167,7 +167,7 @@ private_endpoints = optional(map(object({
 ### Resolution Logic (root main.tf, via locals)
 
 - **Subnet**: `coalesce(pe.network_configuration.subnet_resource_id, local.subnet_resource_ids[pe.network_configuration.vnet_key][pe.network_configuration.subnet_key])`
-- **DNS zones**: `setunion(pe.private_dns_zone.resource_ids, [for k in pe.private_dns_zone.keys : local.pe_dns_zone_ids[k]])` — `pe_dns_zone_ids` merges keys from both `private_dns_zones` module outputs and `byo_private_dns_zone_virtual_network_links` variable
+- **DNS zones**: `setunion(pe.private_dns_zone.resource_ids, [for k in pe.private_dns_zone.keys : local.pe_dns_zone_ids[k]])` — `pe_dns_zone_ids` merges keys from both `private_dns_zones` module outputs and `byo_private_dns_zones` variable
 
 ### Affected Variables
 

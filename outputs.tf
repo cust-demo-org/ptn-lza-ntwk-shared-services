@@ -54,7 +54,7 @@ output "byo_private_dns_zone_virtual_network_links" {
     resource_id = mod.resource_id
     name        = mod.resource.name
   } }
-  description = "Map of BYO Private DNS Zone VNet link keys to their resource IDs and names."
+  description = "Map of BYO Private DNS Zone VNet link composite keys (zone_key/link_key) to their resource IDs and names."
 }
 
 output "managed_identities" {

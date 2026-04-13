@@ -9,7 +9,7 @@ Resource Group 1───* Virtual Network
 Virtual Network 1───* Subnet
 Virtual Network 1───0..* VNet Peering (via peerings map)
 Virtual Network 1───0..* Virtual Hub Connection (via vhub_connectivity_definitions)
-Virtual Network 1───* private dns zone virtual network link (via byo_private_dns_zone_virtual_network_links)
+Virtual Network 1───* private dns zone virtual network link (via byo_private_dns_zones)
 Virtual Network 1───* Private DNS Zone VNet Link (via private_dns_zones[*].virtual_network_links)
 Resource Group 1───* Private DNS Zone (via private_dns_zones)
 Subnet *───1 Network Security Group
@@ -185,7 +185,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | tags | `map(string)` | No | `{}` | Tags. |
 
 **AVM Module**: `Azure/avm-res-network-privatednszone/azurerm//modules/private_dns_virtual_network_link` v0.5.0 (submodule).
-**Map Key**: User-defined key in `byo_private_dns_zone_virtual_network_links` input variable.
+**Map Key**: User-defined key in `byo_private_dns_zones` input variable.
 **Dependencies**: Virtual Network.
 
 ---

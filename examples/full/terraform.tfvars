@@ -238,12 +238,16 @@ private_dns_zones = {
   }
 }
 
-byo_private_dns_zone_virtual_network_links = {
+byo_private_dns_zones = {
   byo_dns_kv = {
-    name                = "link-kv-to-spoke"
     private_dns_zone_id = "placeholder" # overridden in main.tf with computed azurerm_private_dns_zone.kv.id
-    virtual_network = {
-      key = "vnet_spoke"
+    virtual_network_links = {
+      link_kv_to_spoke = {
+        name = "link-kv-to-spoke"
+        virtual_network = {
+          key = "vnet_spoke"
+        }
+      }
     }
   }
 }
@@ -259,7 +263,7 @@ managed_identities = {
 
 # ─── Key Vaults ─────────────────────────────────────────────
 # Private endpoint subnet and DNS zone are resolved by the pattern module
-# using vnet_key/subnet_key and private_dns_zones/byo_private_dns_zone_virtual_network_links keys.
+# using vnet_key/subnet_key and private_dns_zones/byo_private_dns_zones keys.
 
 key_vaults = {
   kv_shared = {
