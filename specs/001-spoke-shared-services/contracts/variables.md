@@ -114,7 +114,10 @@ variable "virtual_networks" {
     tags = optional(map(string), {})
     peerings = optional(map(object({
       name                                = string
-      remote_virtual_network_resource_id  = string
+      remote_virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
       allow_forwarded_traffic             = optional(bool, true)
       allow_gateway_transit               = optional(bool, false)
       use_remote_gateways                 = optional(bool, false)

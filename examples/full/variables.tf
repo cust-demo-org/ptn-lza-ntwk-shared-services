@@ -293,14 +293,17 @@ variable "virtual_networks" {
     })))
     tags = optional(map(string), {})
     peerings = optional(map(object({
-      name                               = string
-      remote_virtual_network_resource_id = string
-      allow_forwarded_traffic            = optional(bool, true)
-      allow_gateway_transit              = optional(bool, false)
-      allow_virtual_network_access       = optional(bool, true)
-      do_not_verify_remote_gateways      = optional(bool, false)
-      enable_only_ipv6_peering           = optional(bool, false)
-      peer_complete_vnets                = optional(bool, true)
+      name = string
+      remote_virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
+      allow_forwarded_traffic       = optional(bool, true)
+      allow_gateway_transit         = optional(bool, false)
+      allow_virtual_network_access  = optional(bool, true)
+      do_not_verify_remote_gateways = optional(bool, false)
+      enable_only_ipv6_peering      = optional(bool, false)
+      peer_complete_vnets           = optional(bool, true)
       local_peered_address_spaces = optional(list(object({
         address_prefix = string
       })))
