@@ -10,7 +10,7 @@
 ## Requirement Completeness — Minimal Example
 
 - [x] CHK001 - Does the minimal example use the `peerings` map inside `virtual_networks` for hub connectivity instead of the removed `connectivity_mode` and `hub_virtual_network_id` variables? [Completeness, Quickstart §Minimal Example vs Contracts §Connectivity Variables Design Note]
-- [x] CHK002 - Does the minimal example demonstrate all required fields in the `peerings` map entry (`name`, `remote_virtual_network_resource_id`) per the variable contract? [Completeness, Quickstart §Minimal Example vs Contracts §virtual_networks.peerings]
+- [x] CHK002 - Does the minimal example demonstrate all required fields in the `peerings` map entry (`name`, `remote_virtual_network.resource_id`) per the variable contract? [Completeness, Quickstart §Minimal Example vs Contracts §virtual_networks.peerings]
 - [x] CHK003 - Are optional peering fields (`allow_forwarded_traffic`, `create_reverse_peering`, etc.) shown with their defaults documented in inline comments? [Clarity, Spec §FR-031]
 - [x] CHK004 - Does the minimal example show that `network_security_group_key` and `route_table_key` are optional fields on subnets (not required), consistent with the contract's `optional(string)` type? [Clarity, Contracts §virtual_networks.subnets]
 

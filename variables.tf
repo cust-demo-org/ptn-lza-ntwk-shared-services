@@ -590,14 +590,17 @@ variable "virtual_networks" {
     })))
     tags = optional(map(string), {})
     peerings = optional(map(object({
-      name                               = string
-      remote_virtual_network_resource_id = string
-      allow_forwarded_traffic            = optional(bool, true)
-      allow_gateway_transit              = optional(bool, false)
-      allow_virtual_network_access       = optional(bool, true)
-      do_not_verify_remote_gateways      = optional(bool, false)
-      enable_only_ipv6_peering           = optional(bool, false)
-      peer_complete_vnets                = optional(bool, true)
+      name = string
+      remote_virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
+      allow_forwarded_traffic       = optional(bool, true)
+      allow_gateway_transit         = optional(bool, false)
+      allow_virtual_network_access  = optional(bool, true)
+      do_not_verify_remote_gateways = optional(bool, false)
+      enable_only_ipv6_peering      = optional(bool, false)
+      peer_complete_vnets           = optional(bool, true)
       local_peered_address_spaces = optional(list(object({
         address_prefix = string
       })))
@@ -739,8 +742,9 @@ variable "virtual_networks" {
     - `tags` - (Optional) Tags to apply to this VNet. Defaults to `{}`.
     - `peerings` - (Optional) A map of VNet peerings. The map key is deliberately arbitrary to avoid issues where map keys maybe unknown at plan time. Defaults to `{}`.
       - `name` - (Required) The name of the peering.
-      - `remote_virtual_network_resource_id` - (Required) The resource ID of the remote virtual network.
-      - `allow_forwarded_traffic` - (Optional) Whether forwarded traffic is allowed. Defaults to `true`.
+      - `remote_virtual_network` - (Required) The remote virtual network to peer with. Provide exactly one of `key` or `resource_id`.
+        - `key` - (Optional) The key of the virtual network in the `virtual_networks` variable. **Pattern cross-reference**: resolves to the virtual network resource ID via `local.vnet_resource_ids`. Use this for peering between pattern-managed VNets.
+        - `resource_id` - (Optional) The resource ID of an existing virtual network. Use this for peering to externally-managed VNets not created by this pattern.      - `allow_forwarded_traffic` - (Optional) Whether forwarded traffic is allowed. Defaults to `true`.
       - `allow_gateway_transit` - (Optional) Whether gateway transit is allowed. Defaults to `false`.
       - `allow_virtual_network_access` - (Optional) Whether virtual network access is allowed. Defaults to `true`.
       - `do_not_verify_remote_gateways` - (Optional) Whether to skip verification of remote gateways. Defaults to `false`.

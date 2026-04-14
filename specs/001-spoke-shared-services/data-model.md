@@ -129,7 +129,7 @@ VNet peering is not a standalone entity — it is a nested configuration within 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | name | `string` | Yes | Computed | Peering name. |
-| remote_virtual_network_resource_id | `string` | Yes | User-provided | Hub VNet ID (from `virtual_networks[*].peerings[*].remote_virtual_network_resource_id`). |
+| remote_virtual_network | `object({key,resource_id})` | Yes | User-provided | Hub VNet reference — `key` for pattern-managed VNets or `resource_id` for external VNets. |
 | allow_forwarded_traffic | `bool` | No | `true` | Allow forwarded traffic. |
 | allow_gateway_transit | `bool` | No | `false` | Allow gateway transit. |
 | use_remote_gateways | `bool` | No | `false` | Use remote gateways. |

@@ -146,10 +146,13 @@ log_analytics_workspace_configuration = {
 #
 #     # peerings = {
 #     #   to_hub = {
-#     #     name                               = "spoke-to-hub"
-#     #     remote_virtual_network_resource_id = "/subscriptions/.../providers/Microsoft.Network/virtualNetworks/vnet-hub"
-#     #     allow_forwarded_traffic            = true
-#     #     use_remote_gateways                = false
+#     #     name = "spoke-to-hub"
+#     #     remote_virtual_network = {
+#     #       resource_id = "/subscriptions/.../providers/Microsoft.Network/virtualNetworks/vnet-hub"
+#     #       # key = "vnet_hub"  # alternative: reference a pattern-managed VNet by key
+#     #     }
+#     #     allow_forwarded_traffic = true
+#     #     use_remote_gateways     = false
 #     #   }
 #     # }
 #     # role_assignments    = { ... }

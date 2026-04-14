@@ -17,7 +17,24 @@ resource "terraform_data" "validation" {
       condition     = var.byo_log_analytics_workspace != null || var.log_analytics_workspace_configuration != null
       error_message = "log_analytics_workspace_configuration must be provided when byo_log_analytics_workspace is null, so that a pattern-managed Log Analytics workspace can be created."
     }
-
+    precondition {
+      condition = alltrue(flatten([
+        for dns_key, dns in var.private_dns_zones : [
+          for vnl_key, vnl in dns.virtual_network_links :
+          vnl.virtual_network == null || vnl.virtual_network.key == null || contains(keys(var.virtual_networks), vnl.virtual_network.key)
+        ]
+      ]))
+      error_message = "One or more private_dns_zones virtual_network_links reference a virtual_network.key that does not exist in var.virtual_networks."
+    }
+    precondition {
+      condition = alltrue(flatten([
+        for vnet_key, vnet in var.virtual_networks : [
+          for pk, pv in vnet.peerings :
+          pv.remote_virtual_network.key == null || contains(keys(var.virtual_networks), pv.remote_virtual_network.key)
+        ]
+      ]))
+      error_message = "One or more virtual_networks peerings reference a remote_virtual_network.key that does not exist in var.virtual_networks."
+    }
     precondition {
       condition = alltrue([
         for zone_key, zone in var.byo_private_dns_zones : alltrue([
@@ -27,7 +44,6 @@ resource "terraform_data" "validation" {
       ])
       error_message = "BYO DNS zone link references a virtual_network.key that does not exist in virtual_networks."
     }
-
     precondition {
       condition = alltrue([
         for kv_key, kv in var.key_vaults : alltrue([
@@ -318,7 +334,15 @@ module "virtual_network" {
     })
   }
 
-  peerings = each.value.peerings
+  peerings = {
+    for pk, pv in each.value.peerings : pk => merge(pv, {
+      remote_virtual_network_resource_id = (
+        pv.remote_virtual_network.key != null
+        ? "${local.resource_group_resource_ids[var.virtual_networks[pv.remote_virtual_network.key].resource_group_key]}/providers/Microsoft.Network/virtualNetworks/${var.virtual_networks[pv.remote_virtual_network.key].name}"
+        : pv.remote_virtual_network.resource_id
+      )
+    })
+  }
   diagnostic_settings = {
     for dk, dv in each.value.diagnostic_settings : dk => {
       name                                     = dv.name
@@ -396,10 +420,10 @@ module "private_dns_zone_virtual_network_link" { # separate module to link BYO p
     for item in flatten([
       for zone_key, zone in var.byo_private_dns_zones : [
         for vnl_key, vnl in zone.virtual_network_links : {
-          key                 = "${zone_key}/${vnl_key}"
-          name                = vnl.name
-          private_dns_zone_id = zone.private_dns_zone_id
-          virtual_network     = vnl.virtual_network
+          key                                    = "${zone_key}/${vnl_key}"
+          name                                   = vnl.name
+          private_dns_zone_id                    = zone.private_dns_zone_id
+          virtual_network                        = vnl.virtual_network
           registration_enabled                   = vnl.registration_enabled
           resolution_policy                      = vnl.resolution_policy
           private_dns_zone_supports_private_link = vnl.private_dns_zone_supports_private_link

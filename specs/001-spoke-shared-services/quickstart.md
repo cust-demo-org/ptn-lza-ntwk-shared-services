@@ -77,7 +77,9 @@ virtual_networks = {
     peerings = {
       "peer-to-hub" = {
         name                               = "peer-spoke01-to-hub"
-        remote_virtual_network_resource_id = "/subscriptions/<hub-sub>/resourceGroups/<hub-rg>/providers/Microsoft.Network/virtualNetworks/<hub-vnet>"
+        remote_virtual_network = {
+          resource_id = "/subscriptions/<hub-sub>/resourceGroups/<hub-rg>/providers/Microsoft.Network/virtualNetworks/<hub-vnet>"
+        }
         allow_forwarded_traffic            = true  # default: true
         allow_gateway_transit              = false # default: false
         allow_virtual_network_access       = true  # default: true

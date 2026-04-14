@@ -1644,8 +1644,11 @@ map(object({
     })))
     tags = optional(map(string), {})
     peerings = optional(map(object({
-      name                               = string
-      remote_virtual_network_resource_id = string
+      name = string
+      remote_virtual_network = object({
+        key         = optional(string)
+        resource_id = optional(string)
+      })
       allow_forwarded_traffic            = optional(bool, true)
       allow_gateway_transit              = optional(bool, false)
       allow_virtual_network_access       = optional(bool, true)
