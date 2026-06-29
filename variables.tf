@@ -25,6 +25,15 @@ variable "tags" {
   EOT
 }
 
+variable "lock" {
+  type = object({
+    kind = string
+    name = optional(string, null)
+  })
+  default     = null
+  description = "Optional resource lock applied to all resources if specified."
+}
+
 
 variable "resource_groups" {
   type = map(object({
@@ -327,46 +336,6 @@ variable "log_analytics_workspace_configuration" {
     > **Pattern note:** Used only when `byo_log_analytics_workspace` is `null`. If `location` is not specified, defaults to `var.location`. Tags in `tags` are merged with `var.tags`. The `diagnostic_settings` block on this resource does NOT have `use_default_log_analytics` to avoid circular references (the workspace cannot send diagnostics to itself by default).
   EOT
 
-  validation {
-    condition = alltrue([
-      for ra_key, ra in var.log_analytics_workspace_configuration.role_assignments : ((ra.principal_id != null ? 1 : 0) + (ra.managed_identity_key != null ? 1 : 0) + (ra.assign_to_caller ? 1 : 0)) == 1
-    ])
-    error_message = "Each Log Analytics workspace role assignment must set exactly one of principal_id, managed_identity_key, or assign_to_caller."
-  }
-
-  validation {
-    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
-      (var.log_analytics_workspace_configuration.customer_managed_key.key_vault_resource_id != null ? 1 : 0) +
-      (var.log_analytics_workspace_configuration.customer_managed_key.key_vault_key != null ? 1 : 0)
-    ) == 1
-    error_message = "customer_managed_key must set exactly one of key_vault_resource_id or key_vault_key."
-  }
-
-  validation {
-    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
-      (var.log_analytics_workspace_configuration.customer_managed_key.key_name != null ? 1 : 0) +
-      (var.log_analytics_workspace_configuration.customer_managed_key.key_key != null ? 1 : 0)
-    ) == 1
-    error_message = "customer_managed_key must set exactly one of key_name or key_key."
-  }
-
-  validation {
-    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
-      var.log_analytics_workspace_configuration.customer_managed_key.key_key == null ||
-      var.log_analytics_workspace_configuration.customer_managed_key.key_vault_key != null
-    )
-    error_message = "customer_managed_key key_key requires key_vault_key to be set (the key must reference a key vault created by this pattern)."
-  }
-
-  validation {
-    condition = var.log_analytics_workspace_configuration.customer_managed_key == null ? true : (
-      var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity == null ? true : (
-        (var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity.resource_id != null ? 1 : 0) +
-        (var.log_analytics_workspace_configuration.customer_managed_key.user_assigned_identity.key != null ? 1 : 0)
-      ) == 1
-    )
-    error_message = "customer_managed_key user_assigned_identity must set exactly one of resource_id or key."
-  }
 }
 
 variable "network_security_groups" {

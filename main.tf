@@ -98,7 +98,7 @@ module "resource_group" {
   name             = each.value.name
   location         = coalesce(each.value.location, var.location)
   tags             = merge(var.tags, each.value.tags)
-  lock             = each.value.lock
+  lock             = try(coalesce(each.value.lock, var.lock), null)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -158,7 +158,7 @@ module "log_analytics_workspace" {
   log_analytics_workspace_linked_storage_accounts = var.log_analytics_workspace_configuration.linked_storage_accounts
   log_analytics_workspace_tables                  = var.log_analytics_workspace_configuration.tables
   tags                                            = merge(var.tags, var.log_analytics_workspace_configuration.tags)
-  lock                                            = var.log_analytics_workspace_configuration.lock
+  lock                                            = try(coalesce(var.log_analytics_workspace_configuration.lock, var.lock), null)
   role_assignments = {
     for ra_key, ra in var.log_analytics_workspace_configuration.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -236,7 +236,7 @@ module "network_security_group" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
   tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
@@ -264,7 +264,7 @@ module "route_table" {
   location                      = coalesce(each.value.location, var.location)
   bgp_route_propagation_enabled = each.value.bgp_route_propagation_enabled
   routes                        = each.value.routes
-  lock                          = each.value.lock
+  lock                          = try(coalesce(each.value.lock, var.lock), null)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name
@@ -357,7 +357,7 @@ module "virtual_network" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
   tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
@@ -396,7 +396,7 @@ module "private_dns_zone" {
       tags                                   = merge(var.tags, vnl.tags)
     }
   }
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
   tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
@@ -456,7 +456,7 @@ module "managed_identity" {
   name                           = each.value.name
   location                       = coalesce(each.value.location, var.location)
   resource_group_name            = local.resource_group_names[each.value.resource_group_key]
-  lock                           = each.value.lock
+  lock                           = try(coalesce(each.value.lock, var.lock), null)
   tags                           = merge(var.tags, each.value.tags)
   role_assignments               = each.value.role_assignments
   federated_identity_credentials = each.value.federated_identity_credentials
@@ -551,7 +551,7 @@ module "key_vault" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
   tags = merge(var.tags, each.value.tags)
 
   role_assignments = {
@@ -582,7 +582,7 @@ module "key_vault" {
           principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
-      lock = pe.lock
+      lock = try(coalesce(pe.lock, var.lock), null)
       tags = pe.tags
       subnet_resource_id = (
         pe.network_configuration.subnet_resource_id != null
@@ -746,7 +746,7 @@ module "storage_account" {
       principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
     }
   }
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
   diagnostic_settings_storage_account = {
     for dk, dv in each.value.diagnostic_settings : dk => {
       name                                     = dv.name
@@ -834,7 +834,7 @@ module "storage_account" {
           principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
-      lock = pe.lock
+      lock = try(coalesce(pe.lock, var.lock), null)
       tags = pe.tags
       subnet_resource_id = (
         pe.network_configuration.subnet_resource_id != null
@@ -931,7 +931,7 @@ module "backup_vault" {
     }
   }
 
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
 
   diagnostic_settings = {
     for dk, dv in each.value.diagnostic_settings : dk => {
@@ -977,17 +977,19 @@ module "recovery_services_vault" {
   alerts_for_critical_operation_failures_enabled = each.value.alerts_for_critical_operation_failures_enabled
 
   customer_managed_key = each.value.customer_managed_key != null ? {
-    key_vault_resource_id = (
+    key_vault_resource_id = ( # Variable defined by not used in AVM modules
       each.value.customer_managed_key.key_vault_key != null
       ? local.key_vault_resource_ids[each.value.customer_managed_key.key_vault_key]
       : each.value.customer_managed_key.key_vault_resource_id
     )
-    key_name = (
-      each.value.customer_managed_key.key_key != null
-      ? var.key_vaults[each.value.customer_managed_key.key_vault_key].keys[each.value.customer_managed_key.key_key].name
+    key_name = ( # In module key_name is set to key_id
+      each.value.customer_managed_key.key_vault_key != null && each.value.customer_managed_key.key_key != null
+      ? (each.value.customer_managed_key.key_version != null
+        ? "https://${var.key_vaults[each.value.customer_managed_key.key_vault_key].name}.vault.azure.net/keys/${var.key_vaults[each.value.customer_managed_key.key_vault_key].keys[each.value.customer_managed_key.key_key].name}/${each.value.customer_managed_key.key_version}"
+      : "https://${var.key_vaults[each.value.customer_managed_key.key_vault_key].name}.vault.azure.net/keys/${var.key_vaults[each.value.customer_managed_key.key_vault_key].keys[each.value.customer_managed_key.key_key].name}")
       : each.value.customer_managed_key.key_name
     )
-    key_version = each.value.customer_managed_key.key_version
+    key_version = each.value.customer_managed_key.key_version # Variable defined but not used in RSV AVM module
     user_assigned_identity = each.value.customer_managed_key.user_assigned_identity != null ? {
       resource_id = (
         each.value.customer_managed_key.user_assigned_identity.key != null
@@ -1039,7 +1041,7 @@ module "recovery_services_vault" {
           principal_type                         = ra.managed_identity_key != null ? "ServicePrincipal" : ra.principal_type
         }
       }
-      lock = pe.lock
+      lock = try(coalesce(pe.lock, var.lock), null)
       tags = pe.tags
       subnet_resource_id = (
         pe.network_configuration.subnet_resource_id != null
@@ -1061,7 +1063,7 @@ module "recovery_services_vault" {
     }
   }
 
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
 
   diagnostic_settings = {
     for dk, dv in each.value.diagnostic_settings : dk => {
@@ -1169,7 +1171,7 @@ module "bastion_host" {
       marketplace_partner_resource_id          = dv.marketplace_partner_resource_id
     }
   }
-  lock = each.value.lock
+  lock = try(coalesce(each.value.lock, var.lock), null)
   tags = merge(var.tags, each.value.tags)
   role_assignments = {
     for ra_key, ra in each.value.role_assignments : ra_key => {
@@ -1212,13 +1214,13 @@ module "network_watcher" {
     for k, fl in var.flowlog_configuration.flow_logs : k => {
       enabled = fl.enabled
       name    = fl.name
-      target_resource_id = (
+      target_resource_id = nonsensitive(
         fl.virtual_network.key != null
         ? local.vnet_resource_ids[fl.virtual_network.key]
         : fl.virtual_network.resource_id
       )
       retention_policy = fl.retention_policy
-      storage_account_id = (
+      storage_account_id = nonsensitive(
         fl.storage_account.key != null
         ? local.storage_account_resource_ids[fl.storage_account.key]
         : fl.storage_account.resource_id
@@ -1226,14 +1228,14 @@ module "network_watcher" {
       traffic_analytics = fl.traffic_analytics != null ? {
         enabled               = fl.traffic_analytics.enabled
         interval_in_minutes   = fl.traffic_analytics.interval_in_minutes
-        workspace_id          = coalesce(fl.traffic_analytics.workspace_id, local.law_workspace_id)
+        workspace_id          = nonsensitive(coalesce(fl.traffic_analytics.workspace_id, local.law_workspace_id))
         workspace_region      = coalesce(fl.traffic_analytics.workspace_region, local.law_workspace_region)
-        workspace_resource_id = coalesce(fl.traffic_analytics.workspace_resource_id, local.default_log_analytics_workspace_resource_id)
+        workspace_resource_id = nonsensitive(coalesce(fl.traffic_analytics.workspace_resource_id, local.default_log_analytics_workspace_resource_id))
       } : null
       version = fl.version
     }
   } : null
-  lock = var.flowlog_configuration.lock
+  lock = try(coalesce(var.flowlog_configuration.lock, var.lock), null)
   role_assignments = {
     for ra_key, ra in var.flowlog_configuration.role_assignments : ra_key => {
       role_definition_id_or_name             = ra.role_definition_id_or_name

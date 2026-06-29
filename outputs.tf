@@ -49,12 +49,26 @@ output "private_dns_zones" {
   description = "Map of Private DNS Zone keys to their resource IDs and names. Empty map when no private_dns_zones are configured."
 }
 
-output "byo_private_dns_zone_virtual_network_links" {
-  value = { for key, mod in module.private_dns_zone_virtual_network_link : key => {
-    resource_id = mod.resource_id
-    name        = mod.resource.name
+output "byo_private_dns_zones" {
+  value = { for key, zone in var.byo_private_dns_zones : key => {
+    resource_id = zone.private_dns_zone_id
+    name        = split("/", zone.private_dns_zone_id)[length(split("/", zone.private_dns_zone_id)) - 1]
   } }
-  description = "Map of BYO Private DNS Zone VNet link composite keys (zone_key/link_key) to their resource IDs and names."
+  description = "Map of BYO Private DNS Zone keys to their resource IDs and names. Empty map when no byo_private_dns_zones are configured."
+}
+
+output "combined_private_dns_zones" {
+  value = merge(
+    { for key, mod in module.private_dns_zone : key => {
+      resource_id = mod.resource_id
+      name        = mod.resource.name
+    } },
+    { for key, zone in var.byo_private_dns_zones : key => {
+      resource_id = zone.private_dns_zone_id
+      name        = split("/", zone.private_dns_zone_id)[length(split("/", zone.private_dns_zone_id)) - 1]
+    } }
+  )
+  description = "Combined map of Private DNS Zone keys to resource IDs and names, including both pattern-managed zones and BYO zones. This is used for private endpoint resolution where zones can come from either source."
 }
 
 output "managed_identities" {
@@ -72,8 +86,9 @@ output "key_vaults" {
     resource_id = mod.resource_id
     name        = mod.name
     uri         = mod.uri
+    keys        = mod.keys
   } }
-  description = "Map of Key Vault keys to their resource IDs, names, and URIs."
+  description = "Map of Key Vault keys to their resource IDs, names, URIs, and keys."
 }
 
 output "role_assignments" {
@@ -114,10 +129,11 @@ output "network_watcher" {
 
 output "storage_accounts" {
   value = { for key, mod in module.storage_account : key => {
-    resource_id = mod.resource_id
-    name        = mod.name
+    resource_id        = mod.resource_id
+    name               = mod.name
+    primary_access_key = mod.resource.primary_access_key
   } }
-  description = "Map of storage account keys to their resource IDs and names."
+  description = "Map of storage account keys to their resource IDs, names, and primary access keys. The primary access key is only populated when the account has shared_access_key_enabled = true (it is null otherwise)."
 }
 
 output "backup_vaults" {

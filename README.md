@@ -929,6 +929,21 @@ map(object({
 
 Default: `{}`
 
+### <a name="input_lock"></a> [lock](#input\_lock)
+
+Description: Optional resource lock applied to all resources if specified.
+
+Type:
+
+```hcl
+object({
+    kind = string
+    name = optional(string, null)
+  })
+```
+
+Default: `null`
+
 ### <a name="input_log_analytics_workspace_configuration"></a> [log\_analytics\_workspace\_configuration](#input\_log\_analytics\_workspace\_configuration)
 
 Description: Configuration for the pattern-managed Log Analytics workspace which will be set as default log analytics workspace for the pattern. The following attributes are supported:
@@ -2766,17 +2781,17 @@ map(object({
     })))
     tags = optional(map(string), {})
     peerings = optional(map(object({
-      name                               = string
+      name = string
       remote_virtual_network = object({
         key         = optional(string)
         resource_id = optional(string)
       })
-      allow_forwarded_traffic            = optional(bool, true)
-      allow_gateway_transit              = optional(bool, false)
-      allow_virtual_network_access       = optional(bool, true)
-      do_not_verify_remote_gateways      = optional(bool, false)
-      enable_only_ipv6_peering           = optional(bool, false)
-      peer_complete_vnets                = optional(bool, true)
+      allow_forwarded_traffic       = optional(bool, true)
+      allow_gateway_transit         = optional(bool, false)
+      allow_virtual_network_access  = optional(bool, true)
+      do_not_verify_remote_gateways = optional(bool, false)
+      enable_only_ipv6_peering      = optional(bool, false)
+      peer_complete_vnets           = optional(bool, true)
       local_peered_address_spaces = optional(list(object({
         address_prefix = string
       })))
@@ -2910,13 +2925,17 @@ Description: Map of backup vault keys to their resource IDs and names.
 
 Description: Map of Bastion host resource IDs and names, keyed by bastion\_hosts map key. Empty map when no Bastion hosts are deployed.
 
-### <a name="output_byo_private_dns_zone_virtual_network_links"></a> [byo\_private\_dns\_zone\_virtual\_network\_links](#output\_byo\_private\_dns\_zone\_virtual\_network\_links)
+### <a name="output_byo_private_dns_zones"></a> [byo\_private\_dns\_zones](#output\_byo\_private\_dns\_zones)
 
-Description: Map of BYO Private DNS Zone VNet link composite keys (zone\_key/link\_key) to their resource IDs and names.
+Description: Map of BYO Private DNS Zone keys to their resource IDs and names. Empty map when no byo\_private\_dns\_zones are configured.
+
+### <a name="output_combined_private_dns_zones"></a> [combined\_private\_dns\_zones](#output\_combined\_private\_dns\_zones)
+
+Description: Combined map of Private DNS Zone keys to resource IDs and names, including both pattern-managed zones and BYO zones. This is used for private endpoint resolution where zones can come from either source.
 
 ### <a name="output_key_vaults"></a> [key\_vaults](#output\_key\_vaults)
 
-Description: Map of Key Vault keys to their resource IDs, names, and URIs.
+Description: Map of Key Vault keys to their resource IDs, names, URIs, and keys.
 
 ### <a name="output_log_analytics_workspace"></a> [log\_analytics\_workspace](#output\_log\_analytics\_workspace)
 
@@ -2956,7 +2975,7 @@ Description: Map of route table keys to their resource IDs and names.
 
 ### <a name="output_storage_accounts"></a> [storage\_accounts](#output\_storage\_accounts)
 
-Description: Map of storage account keys to their resource IDs and names.
+Description: Map of storage account keys to their resource IDs, names, and primary access keys. The primary access key is only populated when the account has shared\_access\_key\_enabled = true (it is null otherwise).
 
 ### <a name="output_vhub_connections"></a> [vhub\_connections](#output\_vhub\_connections)
 
